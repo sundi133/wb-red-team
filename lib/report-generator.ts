@@ -10,6 +10,11 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   output_evasion: 8,
   sensitive_data: 10,
   rate_limit: 5,
+  indirect_prompt_injection: 12,
+  steganographic_exfiltration: 10,
+  out_of_band_exfiltration: 14,
+  training_data_extraction: 10,
+  side_channel_inference: 6,
 };
 
 const CATEGORIES: AttackCategory[] = [
@@ -20,6 +25,11 @@ const CATEGORIES: AttackCategory[] = [
   "data_exfiltration",
   "rate_limit",
   "sensitive_data",
+  "indirect_prompt_injection",
+  "steganographic_exfiltration",
+  "out_of_band_exfiltration",
+  "training_data_extraction",
+  "side_channel_inference",
 ];
 
 export function generateReport(targetUrl: string, rounds: RoundResult[]): Report {

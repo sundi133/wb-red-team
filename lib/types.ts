@@ -7,7 +7,12 @@ export type AttackCategory =
   | "output_evasion"
   | "data_exfiltration"
   | "rate_limit"
-  | "sensitive_data";
+  | "sensitive_data"
+  | "indirect_prompt_injection"
+  | "steganographic_exfiltration"
+  | "out_of_band_exfiltration"
+  | "training_data_extraction"
+  | "side_channel_inference";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 

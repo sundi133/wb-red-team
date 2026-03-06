@@ -13,6 +13,11 @@ LLM-powered red-team testing framework for agentic AI endpoints. It automaticall
 | `data_exfiltration` | Extracting secrets via tool calls, side channels |
 | `rate_limit` | Rapid-fire requests to test throttling |
 | `sensitive_data` | Leaking API keys, credentials, PII from responses |
+| `indirect_prompt_injection` | Poisoned external data sources (URLs, emails, DB records) that hijack agent behavior |
+| `steganographic_exfiltration` | Hiding secrets in benign output via whitespace, acrostics, emoji, or markdown tricks |
+| `out_of_band_exfiltration` | Forcing outbound requests (HTTP callbacks, DNS, webhooks) to leak data externally |
+| `training_data_extraction` | Extracting memorized training data, system prompts, or context window contents |
+| `side_channel_inference` | Inferring secrets via timing, token counts, error messages, or yes/no confirmation |
 
 ## Prerequisites
 
@@ -199,6 +204,11 @@ attacks/
   data-exfiltration.ts   # Data exfiltration via tool calls
   rate-limit.ts          # Rate limiting tests
   sensitive-data.ts      # Sensitive data exposure tests
+  indirect-prompt-injection.ts  # Indirect prompt injection via external data
+  steganographic-exfiltration.ts # Covert encoding exfiltration
+  out-of-band-exfiltration.ts   # External callback/DNS/webhook exfiltration
+  training-data-extraction.ts   # Training data and system prompt extraction
+  side-channel-inference.ts     # Timing, error, and behavioral side channels
 report/                  # Generated reports (JSON + Markdown)
 ```
 

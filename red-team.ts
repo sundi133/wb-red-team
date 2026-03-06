@@ -16,6 +16,11 @@ import { outputEvasionModule } from "./attacks/output-evasion.js";
 import { dataExfiltrationModule } from "./attacks/data-exfiltration.js";
 import { rateLimitModule } from "./attacks/rate-limit.js";
 import { sensitiveDataModule } from "./attacks/sensitive-data.js";
+import { indirectPromptInjectionModule } from "./attacks/indirect-prompt-injection.js";
+import { steganographicExfiltrationModule } from "./attacks/steganographic-exfiltration.js";
+import { outOfBandExfiltrationModule } from "./attacks/out-of-band-exfiltration.js";
+import { trainingDataExtractionModule } from "./attacks/training-data-extraction.js";
+import { sideChannelInferenceModule } from "./attacks/side-channel-inference.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -25,6 +30,11 @@ const ALL_MODULES: AttackModule[] = [
   dataExfiltrationModule,
   rateLimitModule,
   sensitiveDataModule,
+  indirectPromptInjectionModule,
+  steganographicExfiltrationModule,
+  outOfBandExfiltrationModule,
+  trainingDataExtractionModule,
+  sideChannelInferenceModule,
 ];
 
 async function main() {
