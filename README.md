@@ -160,6 +160,24 @@ Edit `config.json` to point at your AI app:
    - `report-<timestamp>.json` — full machine-readable results
    - `report-<timestamp>.md` — human-readable summary
 
+## Demo Target App
+
+Use [demo-agentic-app](https://github.com/sundi133/demo-agentic-app) as a reference target to try the framework against. It's a fully functional agentic AI app with tools (file read, email, Slack, database queries, GitHub gists), role-based access, JWT auth, and intentional vulnerabilities — ideal for testing all 12 attack categories.
+
+```bash
+# 1. Clone and start the demo app
+git clone https://github.com/sundi133/demo-agentic-app.git
+cd demo-agentic-app
+npm install
+npm run dev   # runs on http://localhost:3000
+
+# 2. In another terminal, run red-team against it
+cd red-team-ai
+cp config.example.json config.json
+# config.example.json is already set up for the demo app's endpoints
+npm start
+```
+
 ## How It Works
 
 1. **Config loading** — reads target URL, auth details, and attack parameters
