@@ -1,3 +1,36 @@
+# Dependencies
 node_modules/
+
+# Build
 dist/
+
+# Reports (generated output)
 report/
+
+# Config with real secrets
+config.json
+config.local.json
+config.*.json
+!config.example.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/

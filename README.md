@@ -29,6 +29,17 @@ LLM-powered red-team testing framework for agentic AI endpoints. It automaticall
 export OPENAI_API_KEY="sk-..."
 ```
 
+## Quick Start
+
+```bash
+git clone https://github.com/jyotirmoysundi/red-team-ai.git
+cd red-team-ai
+npm install
+cp config.example.json config.json
+# Edit config.json with your target details
+npm start
+```
+
 ## Installation
 
 ```bash
@@ -37,7 +48,13 @@ npm install
 
 ## Configuration
 
-Create a `config.json` (or copy and modify the included one) pointing at your AI app:
+Copy the example config and fill in your target details:
+
+```bash
+cp config.example.json config.json
+```
+
+Edit `config.json` to point at your AI app:
 
 ```jsonc
 {
@@ -116,6 +133,7 @@ Create a `config.json` (or copy and modify the included one) pointing at your AI
 | `attackConfig.adaptiveRounds` | No | Number of adaptive rounds (default: 3) |
 | `attackConfig.enableLlmGeneration` | No | Use LLM to generate novel attacks (default: true) |
 | `attackConfig.llmModel` | No | OpenAI model for attack generation (default: `gpt-4o`) |
+| `attackConfig.maxMultiTurnSteps` | No | Max steps per multi-turn attack (default: 8) |
 
 ## Running
 
@@ -187,7 +205,7 @@ Create a `config.json` (or copy and modify the included one) pointing at your AI
 
 ```
 red-team.ts              # Entry point
-config.json              # Target configuration
+config.example.json      # Example configuration (copy to config.json)
 lib/
   types.ts               # Shared type definitions
   config-loader.ts       # Config parsing and validation
@@ -209,7 +227,17 @@ attacks/
   out-of-band-exfiltration.ts   # External callback/DNS/webhook exfiltration
   training-data-extraction.ts   # Training data and system prompt extraction
   side-channel-inference.ts     # Timing, error, and behavioral side channels
+tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
+```
+
+## Development
+
+```bash
+npm run typecheck       # Type check
+npm test                # Run tests
+npm run test:watch      # Run tests in watch mode
+npm run lint            # Lint
 ```
 
 ## Verdicts
@@ -220,6 +248,10 @@ report/                  # Generated reports (JSON + Markdown)
 | `FAIL` | Defense held — the attack was blocked |
 | `PARTIAL` | Partial leak or inconsistent behavior |
 | `ERROR` | Request failed or unexpected error |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add attack modules, set up dev environment, and submit PRs.
 
 ## License
 

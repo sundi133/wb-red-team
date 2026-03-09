@@ -1,0 +1,50 @@
+{
+  "target": {
+    "baseUrl": "http://localhost:3000",
+    "agentEndpoint": "/api/your-agent",
+    "authEndpoint": "/api/auth/login"
+  },
+  "codebasePath": "../your-app/src",
+  "codebaseGlob": "**/*.ts",
+  "auth": {
+    "methods": ["jwt", "api_key", "body_role"],
+    "jwtSecret": "your-jwt-secret-here",
+    "credentials": [
+      { "email": "admin@example.com", "password": "CHANGE_ME", "role": "admin" },
+      { "email": "user@example.com", "password": "CHANGE_ME", "role": "viewer" }
+    ],
+    "apiKeys": {
+      "admin": "your-admin-api-key",
+      "viewer": "your-viewer-api-key"
+    }
+  },
+  "requestSchema": {
+    "messageField": "message",
+    "roleField": "role",
+    "apiKeyField": "api_key",
+    "guardrailModeField": "guardrail_mode"
+  },
+  "responseSchema": {
+    "responsePath": "response",
+    "toolCallsPath": "tool_calls",
+    "userInfoPath": "user",
+    "guardrailsPath": "guardrails"
+  },
+  "sensitivePatterns": [
+    "sk-proj-",
+    "sk_live_",
+    "AKIA",
+    "xoxb-",
+    "postgres://",
+    "password"
+  ],
+  "attackConfig": {
+    "adaptiveRounds": 3,
+    "maxAttacksPerCategory": 15,
+    "concurrency": 3,
+    "delayBetweenRequestsMs": 200,
+    "llmModel": "gpt-4o",
+    "enableLlmGeneration": true,
+    "maxMultiTurnSteps": 8
+  }
+}

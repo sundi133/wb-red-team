@@ -1,11 +1,41 @@
 {
-  "name": "red-team",
+  "name": "red-team-ai",
   "version": "1.0.0",
-  "private": true,
   "description": "LLM-powered red-team testing framework for agentic AI endpoints",
+  "license": "MIT",
+  "author": "Jyotirmoy Sundi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jyotirmoysundi/red-team-ai"
+  },
+  "homepage": "https://github.com/jyotirmoysundi/red-team-ai#readme",
+  "bugs": {
+    "url": "https://github.com/jyotirmoysundi/red-team-ai/issues"
+  },
+  "keywords": [
+    "red-team",
+    "security",
+    "testing",
+    "llm",
+    "ai-agents",
+    "vulnerability",
+    "penetration-testing",
+    "prompt-injection",
+    "agentic-ai"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "red-team-ai": "./red-team.ts"
+  },
   "scripts": {
     "start": "tsx red-team.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
     "glob": "^10.0.0",
@@ -15,6 +45,10 @@
   "devDependencies": {
     "tsx": "^4.0.0",
     "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "vitest": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0"
   }
 }
