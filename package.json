@@ -1,7 +1,7 @@
 {
   "name": "red-team-ai",
   "version": "1.0.0",
-  "description": "LLM-powered red-team testing framework for agentic AI endpoints",
+  "description": "White-box red-teaming framework for agentic AI apps — analyzes source code, generates LLM-powered attacks across 12 categories, and produces scored security reports",
   "type": "module",
   "license": "MIT",
   "author": "Jyotirmoy Sundi",

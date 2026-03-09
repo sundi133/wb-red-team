@@ -1,6 +1,6 @@
-# Red-Team Security Testing Framework
+# Red-Team AI
 
-LLM-powered red-team testing framework for agentic AI endpoints. It automatically discovers vulnerabilities by analyzing your app's codebase, generating targeted attacks across multiple categories, and adapting over multiple rounds.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 12 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
