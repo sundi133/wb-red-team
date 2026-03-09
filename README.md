@@ -271,6 +271,10 @@ npm run lint            # Lint
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add attack modules, set up dev environment, and submit PRs.
 
+## Contact
+
+For questions, partnerships, or enterprise inquiries: **info@votal.ai**
+
 ## License
 
 [MIT](LICENSE)
