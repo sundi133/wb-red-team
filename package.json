@@ -2,6 +2,7 @@
   "name": "red-team-ai",
   "version": "1.0.0",
   "description": "LLM-powered red-team testing framework for agentic AI endpoints",
+  "type": "module",
   "license": "MIT",
   "author": "Jyotirmoy Sundi",
   "repository": {
