@@ -3,7 +3,7 @@
 import { loadConfig } from "./lib/config-loader.js";
 import { analyzeCodebase } from "./lib/codebase-analyzer.js";
 import { planAttacks } from "./lib/attack-planner.js";
-import { preAuthenticate, executeAttack, executeRapidFire, sleep } from "./lib/attack-runner.js";
+import { preAuthenticate, executeAttack, executeMultiTurn, executeRapidFire, sleep } from "./lib/attack-runner.js";
 import { analyzeResponse } from "./lib/response-analyzer.js";
 import { generateReport, writeReport, printConsoleSummary } from "./lib/report-generator.js";
 import type { AttackModule, AttackResult, RoundResult } from "./lib/types.js";
@@ -117,18 +117,47 @@ async function main() {
         continue;
       }
 
-      // Standard attack
-      process.stdout.write(`  ${progress} ${attack.name}...`);
-      const { statusCode, body, timeMs } = await executeAttack(config, attack);
-      const result = await analyzeResponse(config, attack, statusCode, body, timeMs);
+      // Multi-turn attack
+      if (attack.steps && attack.steps.length > 0) {
+        const totalSteps = 1 + attack.steps.length;
+        process.stdout.write(`  ${progress} ${attack.name} (${totalSteps} steps)...`);
 
-      const icon = result.verdict === "PASS" ? "!!" : result.verdict === "PARTIAL" ? "~" : result.verdict === "FAIL" ? "OK" : "??";
-      console.log(` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`);
-      if (result.findings.length > 0) {
-        console.log(`    ${result.findings[0]}`);
+        const { results: stepResults, stoppedEarly } = await executeMultiTurn(
+          config,
+          attack,
+          async (cfg, atk, sc, b, t) => {
+            const r = await analyzeResponse(cfg, atk, sc, b, t);
+            return { verdict: r.verdict, findings: r.findings };
+          },
+        );
+
+        const lastStep = stepResults[stepResults.length - 1];
+        const result = await analyzeResponse(config, attack, lastStep.statusCode, lastStep.body, lastStep.timeMs);
+        result.stepIndex = lastStep.stepIndex;
+        result.totalSteps = stepResults.length;
+
+        const icon = result.verdict === "PASS" ? "!!" : result.verdict === "PARTIAL" ? "~" : result.verdict === "FAIL" ? "OK" : "??";
+        const earlyTag = stoppedEarly ? ` (stopped at step ${lastStep.stepIndex + 1})` : "";
+        console.log(` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`);
+        if (result.findings.length > 0) {
+          console.log(`    ${result.findings[0]}`);
+        }
+
+        roundResults.push(result);
+      } else {
+        // Single-turn attack
+        process.stdout.write(`  ${progress} ${attack.name}...`);
+        const { statusCode, body, timeMs } = await executeAttack(config, attack);
+        const result = await analyzeResponse(config, attack, statusCode, body, timeMs);
+
+        const icon = result.verdict === "PASS" ? "!!" : result.verdict === "PARTIAL" ? "~" : result.verdict === "FAIL" ? "OK" : "??";
+        console.log(` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`);
+        if (result.findings.length > 0) {
+          console.log(`    ${result.findings[0]}`);
+        }
+
+        roundResults.push(result);
       }
-
-      roundResults.push(result);
 
       // Delay between requests
       if (config.attackConfig.delayBetweenRequestsMs > 0) {

@@ -110,6 +110,55 @@ export async function executeAttack(
   }
 }
 
+export async function executeMultiTurn(
+  config: Config,
+  attack: Attack,
+  analyzeResponseFn: (
+    config: Config,
+    attack: Attack,
+    statusCode: number,
+    body: unknown,
+    timeMs: number,
+  ) => Promise<{ verdict: string; findings: string[] }>,
+): Promise<{ results: { statusCode: number; body: unknown; timeMs: number; stepIndex: number }[]; stoppedEarly: boolean }> {
+  const steps = attack.steps ?? [];
+  const maxSteps = Math.min(1 + steps.length, config.attackConfig.maxMultiTurnSteps);
+  const results: { statusCode: number; body: unknown; timeMs: number; stepIndex: number }[] = [];
+
+  // Step 0: initial payload
+  const initial = await executeAttack(config, attack);
+  results.push({ ...initial, stepIndex: 0 });
+
+  // Check if already succeeded
+  const initialAnalysis = await analyzeResponseFn(config, attack, initial.statusCode, initial.body, initial.timeMs);
+  if (initialAnalysis.verdict === "PASS") {
+    return { results, stoppedEarly: true };
+  }
+
+  // Follow-up steps
+  for (let i = 0; i < steps.length && results.length < maxSteps; i++) {
+    if (config.attackConfig.delayBetweenRequestsMs > 0) {
+      await sleep(config.attackConfig.delayBetweenRequestsMs);
+    }
+
+    const stepAttack: Attack = {
+      ...attack,
+      payload: steps[i].payload,
+      expectation: steps[i].expectation ?? attack.expectation,
+    };
+    const stepResult = await executeAttack(config, stepAttack);
+    results.push({ ...stepResult, stepIndex: i + 1 });
+
+    // Stop early on success
+    const stepAnalysis = await analyzeResponseFn(config, stepAttack, stepResult.statusCode, stepResult.body, stepResult.timeMs);
+    if (stepAnalysis.verdict === "PASS") {
+      return { results, stoppedEarly: true };
+    }
+  }
+
+  return { results, stoppedEarly: false };
+}
+
 export async function executeRapidFire(
   config: Config,
   attack: Attack,

@@ -25,6 +25,7 @@ export function loadConfig(configPath?: string): Config {
     delayBetweenRequestsMs: 200,
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
+    maxMultiTurnSteps: 8,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 

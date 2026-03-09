@@ -56,6 +56,7 @@ export interface Config {
     delayBetweenRequestsMs: number;
     llmModel: string;
     enableLlmGeneration: boolean;
+    maxMultiTurnSteps: number;
   };
 }
 
@@ -67,6 +68,11 @@ export interface CodebaseAnalysis {
   authMechanisms: string[];
   knownWeaknesses: string[];
   systemPromptHints: string[];
+}
+
+export interface AttackStep {
+  payload: Record<string, unknown>;
+  expectation?: string;
 }
 
 export interface Attack {
@@ -81,6 +87,8 @@ export interface Attack {
   expectation: string;
   severity: "critical" | "high" | "medium" | "low";
   isLlmGenerated: boolean;
+  /** Multi-turn: additional follow-up steps after the initial payload. */
+  steps?: AttackStep[];
 }
 
 export interface AttackResult {
@@ -91,6 +99,10 @@ export interface AttackResult {
   responseTimeMs: number;
   findings: string[];
   llmReasoning?: string;
+  /** For multi-turn attacks: which step produced the result (0 = initial). */
+  stepIndex?: number;
+  /** Total steps executed (1 = single-turn). */
+  totalSteps?: number;
 }
 
 export interface AttackModule {
