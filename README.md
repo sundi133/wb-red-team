@@ -4,6 +4,8 @@ White-box red-teaming framework for agentic AI apps. It analyzes your app's sour
 
 ## Attack Categories
 
+We're actively adding new attack categories. You can also [add your own](CONTRIBUTING.md#adding-a-new-attack-module) — just implement the `AttackModule` interface and plug it in.
+
 | Category | Description |
 |----------|-------------|
 | `auth_bypass` | Forged JWTs, missing auth, credential stuffing |
