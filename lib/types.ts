@@ -54,7 +54,9 @@ export interface Config {
     maxAttacksPerCategory: number;
     concurrency: number;
     delayBetweenRequestsMs: number;
+    llmProvider: "openai" | "anthropic" | "openrouter";
     llmModel: string;
+    judgeModel?: string;
     enableLlmGeneration: boolean;
     maxMultiTurnSteps: number;
   };

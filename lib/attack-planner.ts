@@ -1,7 +1,5 @@
-import OpenAI from "openai";
+import { getLlmProvider } from "./llm-provider.js";
 import type { Config, CodebaseAnalysis, Attack, AttackResult, AttackModule, AttackCategory } from "./types.js";
-
-const openai = new OpenAI();
 
 export async function planAttacks(
   config: Config,
@@ -61,15 +59,15 @@ IMPORTANT RULES:
 - Return ONLY the JSON array, no markdown fences.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const llm = getLlmProvider(config);
+    const text = await llm.chat({
       model: config.attackConfig.llmModel,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.8,
-      max_tokens: 4096,
+      maxTokens: 4096,
     });
 
-    const text = response.choices[0]?.message?.content?.trim() ?? "[]";
-    const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    const cleaned = (text || "[]").replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const attacks: Attack[] = JSON.parse(cleaned);
 
     return attacks.map((a) => ({

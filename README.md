@@ -25,10 +25,17 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 
 - **Node.js** >= 18
 - **npm**
-- An **OpenAI API key** (used for LLM-powered attack generation and response analysis)
+- An API key for one of the supported LLM providers:
 
 ```bash
+# Option 1: OpenAI (default)
 export OPENAI_API_KEY="sk-..."
+
+# Option 2: Anthropic Claude
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Option 3: OpenRouter (access to open-source models)
+export OPENROUTER_API_KEY="sk-or-..."
 ```
 
 ## Quick Start
@@ -112,7 +119,9 @@ Edit `config.json` to point at your AI app:
     "maxAttacksPerCategory": 15,
     "concurrency": 3,
     "delayBetweenRequestsMs": 200,
+    "llmProvider": "openai",
     "llmModel": "gpt-4o",
+    "judgeModel": "gpt-4o-mini",
     "enableLlmGeneration": true
   }
 }
@@ -133,9 +142,28 @@ Edit `config.json` to point at your AI app:
 | `auth.apiKeys` | No | API keys mapped by role |
 | `sensitivePatterns` | Yes | Strings/patterns that should never leak in responses |
 | `attackConfig.adaptiveRounds` | No | Number of adaptive rounds (default: 3) |
+| `attackConfig.llmProvider` | No | `openai`, `anthropic`, or `openrouter` (default: `openai`) |
+| `attackConfig.llmModel` | No | Model for attack generation (default: `gpt-4o`) |
+| `attackConfig.judgeModel` | No | Model for response judging (defaults to `llmModel`) |
 | `attackConfig.enableLlmGeneration` | No | Use LLM to generate novel attacks (default: true) |
-| `attackConfig.llmModel` | No | OpenAI model for attack generation (default: `gpt-4o`) |
 | `attackConfig.maxMultiTurnSteps` | No | Max steps per multi-turn attack (default: 8) |
+
+### LLM Provider Examples
+
+**OpenAI** (default):
+```json
+{ "llmProvider": "openai", "llmModel": "gpt-4o", "judgeModel": "gpt-4o-mini" }
+```
+
+**Anthropic Claude**:
+```json
+{ "llmProvider": "anthropic", "llmModel": "claude-sonnet-4-20250514", "judgeModel": "claude-haiku-4-5-20251001" }
+```
+
+**OpenRouter** (open-source models):
+```json
+{ "llmProvider": "openrouter", "llmModel": "meta-llama/llama-3.1-70b-instruct", "judgeModel": "meta-llama/llama-3.1-8b-instruct" }
+```
 
 ## Running
 

@@ -23,6 +23,7 @@ export function loadConfig(configPath?: string): Config {
     maxAttacksPerCategory: 15,
     concurrency: 3,
     delayBetweenRequestsMs: 200,
+    llmProvider: "openai",
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
     maxMultiTurnSteps: 8,

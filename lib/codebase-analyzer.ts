@@ -1,10 +1,8 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { glob } from "glob";
-import OpenAI from "openai";
+import { getLlmProvider } from "./llm-provider.js";
 import type { Config, CodebaseAnalysis } from "./types.js";
-
-const openai = new OpenAI();
 
 export async function analyzeCodebase(config: Config): Promise<CodebaseAnalysis> {
   const basePath = resolve(config.codebasePath);
@@ -48,16 +46,16 @@ Respond with ONLY the JSON object, no markdown fences.
 SOURCE CODE:
 ${sourceBundle.join("\n\n")}`;
 
-  const response = await openai.chat.completions.create({
+  const llm = getLlmProvider(config);
+  const text = await llm.chat({
     model: config.attackConfig.llmModel,
     messages: [{ role: "user", content: prompt }],
     temperature: 0.2,
-    max_tokens: 4096,
+    maxTokens: 4096,
   });
 
-  const text = response.choices[0]?.message?.content?.trim() ?? "{}";
   // Strip markdown fences if the model includes them
-  const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  const cleaned = (text || "{}").replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
 
   try {
     return JSON.parse(cleaned) as CodebaseAnalysis;

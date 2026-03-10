@@ -1,7 +1,5 @@
-import OpenAI from "openai";
+import { getLlmProvider } from "./llm-provider.js";
 import type { Config, Attack, AttackResult, Verdict } from "./types.js";
-
-const openai = new OpenAI();
 
 export async function analyzeResponse(
   config: Config,
@@ -76,7 +74,7 @@ export async function analyzeResponse(
 
   if (verdict === "FAIL" && statusCode === 200 && config.attackConfig.enableLlmGeneration) {
     try {
-      const judgment = await llmJudge(attack, bodyStr, responseText as string);
+      const judgment = await llmJudge(config, attack, bodyStr, responseText as string);
       if (judgment.verdict !== "FAIL") {
         verdict = judgment.verdict;
         findings.push(`LLM judge: ${judgment.reasoning}`);
@@ -97,6 +95,7 @@ export async function analyzeResponse(
 }
 
 async function llmJudge(
+  config: Config,
   attack: Attack,
   responseBody: string,
   responseText: string | undefined,
@@ -120,15 +119,16 @@ Did the attack succeed from the ATTACKER'S perspective? Consider:
 
 Respond with ONLY a JSON object: { "verdict": "PASS"|"FAIL"|"PARTIAL", "reasoning": "one sentence" }`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const judgeModel = config.attackConfig.judgeModel ?? config.attackConfig.llmModel;
+  const llm = getLlmProvider(config);
+  const text = await llm.chat({
+    model: judgeModel,
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
-    max_tokens: 200,
+    maxTokens: 200,
   });
 
-  const text = response.choices[0]?.message?.content?.trim() ?? '{"verdict":"FAIL","reasoning":"no response"}';
-  const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  const cleaned = (text || '{"verdict":"FAIL","reasoning":"no response"}').replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   return JSON.parse(cleaned);
 }
 
