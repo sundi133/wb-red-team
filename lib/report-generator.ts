@@ -15,6 +15,12 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   out_of_band_exfiltration: 14,
   training_data_extraction: 10,
   side_channel_inference: 6,
+  tool_misuse: 12,
+  rogue_agent: 14,
+  goal_hijack: 10,
+  identity_privilege: 12,
+  unexpected_code_exec: 15,
+  cascading_failure: 10,
 };
 
 const CATEGORIES: AttackCategory[] = [
@@ -30,6 +36,12 @@ const CATEGORIES: AttackCategory[] = [
   "out_of_band_exfiltration",
   "training_data_extraction",
   "side_channel_inference",
+  "tool_misuse",
+  "rogue_agent",
+  "goal_hijack",
+  "identity_privilege",
+  "unexpected_code_exec",
+  "cascading_failure",
 ];
 
 export function generateReport(targetUrl: string, rounds: RoundResult[]): Report {

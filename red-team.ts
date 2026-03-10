@@ -21,6 +21,12 @@ import { steganographicExfiltrationModule } from "./attacks/steganographic-exfil
 import { outOfBandExfiltrationModule } from "./attacks/out-of-band-exfiltration.js";
 import { trainingDataExtractionModule } from "./attacks/training-data-extraction.js";
 import { sideChannelInferenceModule } from "./attacks/side-channel-inference.js";
+import { toolMisuseModule } from "./attacks/tool-misuse.js";
+import { rogueAgentModule } from "./attacks/rogue-agent.js";
+import { goalHijackModule } from "./attacks/goal-hijack.js";
+import { identityPrivilegeModule } from "./attacks/identity-privilege.js";
+import { unexpectedCodeExecModule } from "./attacks/unexpected-code-exec.js";
+import { cascadingFailureModule } from "./attacks/cascading-failure.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -35,6 +41,12 @@ const ALL_MODULES: AttackModule[] = [
   outOfBandExfiltrationModule,
   trainingDataExtractionModule,
   sideChannelInferenceModule,
+  toolMisuseModule,
+  rogueAgentModule,
+  goalHijackModule,
+  identityPrivilegeModule,
+  unexpectedCodeExecModule,
+  cascadingFailureModule,
 ];
 
 async function main() {

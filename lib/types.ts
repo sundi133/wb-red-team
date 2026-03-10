@@ -12,7 +12,13 @@ export type AttackCategory =
   | "steganographic_exfiltration"
   | "out_of_band_exfiltration"
   | "training_data_extraction"
-  | "side_channel_inference";
+  | "side_channel_inference"
+  | "tool_misuse"
+  | "rogue_agent"
+  | "goal_hijack"
+  | "identity_privilege"
+  | "unexpected_code_exec"
+  | "cascading_failure";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 

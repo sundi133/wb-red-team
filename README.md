@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 12 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 18 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -20,6 +20,12 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `out_of_band_exfiltration` | Forcing outbound requests (HTTP callbacks, DNS, webhooks) to leak data externally |
 | `training_data_extraction` | Extracting memorized training data, system prompts, or context window contents |
 | `side_channel_inference` | Inferring secrets via timing, token counts, error messages, or yes/no confirmation |
+| `tool_misuse` | Abusing tools beyond intended scope — parameter injection, unauthorized chaining, resource exhaustion |
+| `rogue_agent` | Persona override, autonomous loops, self-modification, persistent backdoors |
+| `goal_hijack` | Task diversion, fake emergencies, nested instructions that redirect agent goals |
+| `identity_privilege` | Identity spoofing, privilege self-delegation, cross-tenant impersonation |
+| `unexpected_code_exec` | Code injection via tool params — eval, template injection, command injection, XSS |
+| `cascading_failure` | Recursive loops, error amplification, dependent service overload, shared state corruption |
 
 ## Prerequisites
 
@@ -325,6 +331,12 @@ attacks/
   out-of-band-exfiltration.ts   # External callback/DNS/webhook exfiltration
   training-data-extraction.ts   # Training data and system prompt extraction
   side-channel-inference.ts     # Timing, error, and behavioral side channels
+  tool-misuse.ts               # Tool parameter injection, unauthorized chaining
+  rogue-agent.ts               # Persona override, autonomous loops, backdoors
+  goal-hijack.ts               # Task diversion, fake emergencies, nested goals
+  identity-privilege.ts        # Identity spoofing, privilege escalation
+  unexpected-code-exec.ts      # Code/command/template injection via tools
+  cascading-failure.ts         # Recursive loops, error amplification, state corruption
 tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
 ```
