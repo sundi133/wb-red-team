@@ -367,6 +367,12 @@ npm run lint            # Lint
 | `PARTIAL` | Partial leak or inconsistent behavior |
 | `ERROR` | Request failed or unexpected error |
 
+## Detailed Reports, Risk Quantification & Compliance Mappings
+
+For detailed security reports, risk quantification of attacks, and compliance mappings (OWASP LLM Top 10, NIST AI RMF, EU AI Act, GDPR, ISO 27001), visit [app.votal.ai](https://app.votal.ai/) or reach out at **info@votal.ai**.
+
+![Votal Dashboard](assets/votal-dashboard.png)
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add attack modules, set up dev environment, and submit PRs.
