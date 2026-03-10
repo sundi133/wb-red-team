@@ -86,6 +86,11 @@ export async function executeAttack(
       break;
   }
 
+  // Default: attach static bearer token if configured and no Authorization header was set
+  if (!headers["Authorization"] && config.auth.bearerToken) {
+    headers["Authorization"] = `Bearer ${config.auth.bearerToken}`;
+  }
+
   // Build request body — remove internal fields
   const body = { ...attack.payload };
   delete body._jwtClaims;

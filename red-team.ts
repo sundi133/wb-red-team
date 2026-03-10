@@ -32,6 +32,26 @@ import { multiAgentDelegationModule } from "./attacks/multi-agent-delegation.js"
 import { memoryPoisoningModule } from "./attacks/memory-poisoning.js";
 import { toolOutputManipulationModule } from "./attacks/tool-output-manipulation.js";
 import { guardrailTimingModule } from "./attacks/guardrail-timing.js";
+import { multiTurnEscalationModule } from "./attacks/multi-turn-escalation.js";
+import { conversationManipulationModule } from "./attacks/conversation-manipulation.js";
+import { contextWindowAttackModule } from "./attacks/context-window-attack.js";
+import { slowBurnExfiltrationModule } from "./attacks/slow-burn-exfiltration.js";
+import { brandReputationModule } from "./attacks/brand-reputation.js";
+import { competitorEndorsementModule } from "./attacks/competitor-endorsement.js";
+import { toxicContentModule } from "./attacks/toxic-content.js";
+import { misinformationModule } from "./attacks/misinformation.js";
+import { piiDisclosureModule } from "./attacks/pii-disclosure.js";
+import { regulatoryViolationModule } from "./attacks/regulatory-violation.js";
+import { copyrightInfringementModule } from "./attacks/copyright-infringement.js";
+import { consentBypassModule } from "./attacks/consent-bypass.js";
+import { sessionHijackingModule } from "./attacks/session-hijacking.js";
+import { crossTenantAccessModule } from "./attacks/cross-tenant-access.js";
+import { apiAbuseModule } from "./attacks/api-abuse.js";
+import { supplyChainModule } from "./attacks/supply-chain.js";
+import { socialEngineeringModule } from "./attacks/social-engineering.js";
+import { harmfulAdviceModule } from "./attacks/harmful-advice.js";
+import { biasExploitationModule } from "./attacks/bias-exploitation.js";
+import { contentFilterBypassModule } from "./attacks/content-filter-bypass.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -56,6 +76,26 @@ const ALL_MODULES: AttackModule[] = [
   memoryPoisoningModule,
   toolOutputManipulationModule,
   guardrailTimingModule,
+  multiTurnEscalationModule,
+  conversationManipulationModule,
+  contextWindowAttackModule,
+  slowBurnExfiltrationModule,
+  brandReputationModule,
+  competitorEndorsementModule,
+  toxicContentModule,
+  misinformationModule,
+  piiDisclosureModule,
+  regulatoryViolationModule,
+  copyrightInfringementModule,
+  consentBypassModule,
+  sessionHijackingModule,
+  crossTenantAccessModule,
+  apiAbuseModule,
+  supplyChainModule,
+  socialEngineeringModule,
+  harmfulAdviceModule,
+  biasExploitationModule,
+  contentFilterBypassModule,
 ];
 
 async function main() {

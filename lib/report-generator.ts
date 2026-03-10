@@ -25,6 +25,26 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   memory_poisoning: 12,
   tool_output_manipulation: 12,
   guardrail_timing: 10,
+  multi_turn_escalation: 12,
+  conversation_manipulation: 10,
+  context_window_attack: 8,
+  slow_burn_exfiltration: 12,
+  brand_reputation: 8,
+  competitor_endorsement: 6,
+  toxic_content: 10,
+  misinformation: 10,
+  pii_disclosure: 15,
+  regulatory_violation: 14,
+  copyright_infringement: 8,
+  consent_bypass: 14,
+  session_hijacking: 15,
+  cross_tenant_access: 15,
+  api_abuse: 10,
+  supply_chain: 14,
+  social_engineering: 10,
+  harmful_advice: 10,
+  bias_exploitation: 8,
+  content_filter_bypass: 8,
 };
 
 const CATEGORIES: AttackCategory[] = [
@@ -50,6 +70,26 @@ const CATEGORIES: AttackCategory[] = [
   "memory_poisoning",
   "tool_output_manipulation",
   "guardrail_timing",
+  "multi_turn_escalation",
+  "conversation_manipulation",
+  "context_window_attack",
+  "slow_burn_exfiltration",
+  "brand_reputation",
+  "competitor_endorsement",
+  "toxic_content",
+  "misinformation",
+  "pii_disclosure",
+  "regulatory_violation",
+  "copyright_infringement",
+  "consent_bypass",
+  "session_hijacking",
+  "cross_tenant_access",
+  "api_abuse",
+  "supply_chain",
+  "social_engineering",
+  "harmful_advice",
+  "bias_exploitation",
+  "content_filter_bypass",
 ];
 
 export function generateReport(targetUrl: string, rounds: RoundResult[], staticAnalysis?: StaticAnalysisResult): Report {
@@ -117,15 +157,30 @@ export function writeReport(report: Report): { jsonPath: string; mdPath: string 
   const jsonPath = resolve(dir, `report-${ts}.json`);
   const mdPath = resolve(dir, `report-${ts}.md`);
 
-  // Strip verbose responseBody from JSON report to keep it manageable
+  // Include payload and response in JSON report for full traceability
   const jsonReport = {
     ...report,
     rounds: report.rounds.map((round) => ({
       ...round,
       results: round.results.map((r) => ({
-        ...r,
-        responseBody: undefined,
+        attack: {
+          id: r.attack.id,
+          category: r.attack.category,
+          name: r.attack.name,
+          description: r.attack.description,
+          severity: r.attack.severity,
+          authMethod: r.attack.authMethod,
+          role: r.attack.role,
+          payload: r.attack.payload,
+        },
+        verdict: r.verdict,
         statusCode: r.statusCode,
+        responseTimeMs: r.responseTimeMs,
+        responseBody: truncateBody(r.responseBody, 2000),
+        findings: r.findings,
+        llmReasoning: r.llmReasoning,
+        stepIndex: r.stepIndex,
+        totalSteps: r.totalSteps,
       })),
     })),
   };
@@ -191,21 +246,66 @@ function buildMarkdown(report: Report): string {
     }
   }
 
-  // Per-round breakdown
+  // Per-round breakdown with full payload and response
   for (const round of report.rounds) {
     lines.push(`## Round ${round.round} Details`);
-    lines.push(`| Attack | Category | Verdict | Status | Time (ms) |`);
-    lines.push(`|--------|----------|---------|--------|-----------|`);
+    lines.push("");
     for (const r of round.results) {
       const emoji = r.verdict === "PASS" ? "!!" : r.verdict === "PARTIAL" ? "~" : r.verdict === "ERROR" ? "?" : "";
-      lines.push(
-        `| ${r.attack.name} | ${r.attack.category} | ${emoji}${r.verdict} | ${r.statusCode} | ${r.responseTimeMs} |`,
-      );
+      lines.push(`### ${emoji} ${r.attack.name}`);
+      lines.push(`- **Category:** ${r.attack.category}`);
+      lines.push(`- **Verdict:** ${r.verdict} | **Status:** ${r.statusCode} | **Time:** ${r.responseTimeMs}ms`);
+      lines.push(`- **Severity:** ${r.attack.severity} | **Auth:** ${r.attack.authMethod} (${r.attack.role})`);
+      if (r.findings.length > 0) {
+        lines.push(`- **Findings:** ${r.findings.join("; ")}`);
+      }
+      lines.push("");
+
+      // Input payload
+      const payloadMsg = (r.attack.payload as Record<string, unknown>)?.message;
+      if (payloadMsg) {
+        lines.push("**Input Prompt:**");
+        lines.push("```");
+        lines.push(String(payloadMsg).slice(0, 1000));
+        lines.push("```");
+        lines.push("");
+      }
+
+      // AI response
+      const responseStr = formatResponseBody(r.responseBody, 1000);
+      if (responseStr) {
+        lines.push("**AI Response:**");
+        lines.push("```");
+        lines.push(responseStr);
+        lines.push("```");
+        lines.push("");
+      }
+
+      lines.push("---");
+      lines.push("");
     }
-    lines.push("");
   }
 
   return lines.join("\n");
+}
+
+function truncateBody(body: unknown, maxLen: number): unknown {
+  if (body == null) return null;
+  if (typeof body === "string") return body.slice(0, maxLen);
+  const str = JSON.stringify(body);
+  if (str.length <= maxLen) return body;
+  return JSON.parse(str.slice(0, maxLen) + '..."truncated"}') ?? str.slice(0, maxLen);
+}
+
+function formatResponseBody(body: unknown, maxLen: number): string {
+  if (body == null) return "";
+  if (typeof body === "string") return body.slice(0, maxLen);
+  try {
+    const str = JSON.stringify(body, null, 2);
+    return str.slice(0, maxLen);
+  } catch {
+    return String(body).slice(0, maxLen);
+  }
 }
 
 export function printConsoleSummary(report: Report): void {

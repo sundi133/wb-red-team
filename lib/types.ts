@@ -22,7 +22,27 @@ export type AttackCategory =
   | "multi_agent_delegation"
   | "memory_poisoning"
   | "tool_output_manipulation"
-  | "guardrail_timing";
+  | "guardrail_timing"
+  | "multi_turn_escalation"
+  | "conversation_manipulation"
+  | "context_window_attack"
+  | "slow_burn_exfiltration"
+  | "brand_reputation"
+  | "competitor_endorsement"
+  | "toxic_content"
+  | "misinformation"
+  | "pii_disclosure"
+  | "regulatory_violation"
+  | "copyright_infringement"
+  | "consent_bypass"
+  | "session_hijacking"
+  | "cross_tenant_access"
+  | "api_abuse"
+  | "supply_chain"
+  | "social_engineering"
+  | "harmful_advice"
+  | "bias_exploitation"
+  | "content_filter_bypass";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
@@ -45,6 +65,8 @@ export interface Config {
     jwtSecret: string;
     credentials: Credential[];
     apiKeys: Record<string, string>;
+    /** Static bearer token to attach to all requests. If set, used as default auth when no other method applies. */
+    bearerToken?: string;
   };
   requestSchema: {
     messageField: string;

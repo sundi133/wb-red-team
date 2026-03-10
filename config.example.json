@@ -16,7 +16,8 @@
     "apiKeys": {
       "admin": "your-admin-api-key",
       "viewer": "your-viewer-api-key"
-    }
+    },
+    "bearerToken": ""
   },
   "requestSchema": {
     "messageField": "message",

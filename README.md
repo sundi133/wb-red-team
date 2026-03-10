@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 22 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 42 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -30,6 +30,26 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `memory_poisoning` | Corrupting conversation memory, RAG vector stores, context window stuffing |
 | `tool_output_manipulation` | Malicious data in tool outputs (files, DB records, emails, APIs) that agents blindly trust |
 | `guardrail_timing` | Racing async guardrails, timeout exploitation, streaming bypass, split payloads |
+| `multi_turn_escalation` | Gradual trust building and privilege escalation over multiple conversation turns |
+| `conversation_manipulation` | Context switching, sycophancy exploitation, anchoring, hypothetical traps |
+| `context_window_attack` | Instruction dilution, system prompt extraction, context overflow and confusion |
+| `slow_burn_exfiltration` | Extracting data bit-by-bit over many turns — character-by-character, binary search |
+| `brand_reputation` | False claims, negative brand statements, unauthorized promises, fake press releases |
+| `competitor_endorsement` | Tricking agent into recommending competitors or disparaging its own product |
+| `toxic_content` | Generating offensive, discriminatory, explicit, or hateful content via creative framing |
+| `misinformation` | Fake news generation, health misinformation, fake scientific findings, deepfake text |
+| `pii_disclosure` | GDPR/CCPA violations — bulk PII extraction, unauthorized personal data access |
+| `regulatory_violation` | HIPAA, COPPA, financial regulation violations, automated decisions without human review |
+| `copyright_infringement` | Reproducing copyrighted text, proprietary code, derivative works without attribution |
+| `consent_bypass` | Processing data without consent, overriding privacy preferences, ignoring deletion requests |
+| `session_hijacking` | Session token extraction, fixation, replay attacks, unauthorized session creation |
+| `cross_tenant_access` | Multi-tenant isolation failures, cross-org data access, tenant ID manipulation |
+| `api_abuse` | Undocumented endpoint access, parameter pollution, HTTP method tampering, batch harvesting |
+| `supply_chain` | Malicious plugin loading, tool replacement, dependency injection, model tampering |
+| `social_engineering` | Phishing via agent, pretexting, authority manipulation, fake urgency baiting |
+| `harmful_advice` | Dangerous instructions, self-harm content, illegal activity guidance, weapons info |
+| `bias_exploitation` | Demographic, gender, socioeconomic, political, and age-based bias exploitation |
+| `content_filter_bypass` | Unicode homoglyphs, base64/ROT13 encoding, formatting tricks to evade filters |
 
 ## Prerequisites
 
@@ -99,7 +119,9 @@ Edit `config.json` to point at your AI app:
     "apiKeys": {
       "admin": "ak_admin_001",
       "viewer": "ak_viewer_002"
-    }
+    },
+    // Optional: static bearer token for APIs that require it
+    "bearerToken": ""
   },
 
   // How requests are shaped for your agent
@@ -150,6 +172,7 @@ Edit `config.json` to point at your AI app:
 | `auth.jwtSecret` | No | JWT secret (for forged-token attacks) |
 | `auth.credentials` | No | User credentials with roles for auth testing |
 | `auth.apiKeys` | No | API keys mapped by role |
+| `auth.bearerToken` | No | Static bearer token attached to all requests (default: none) |
 | `sensitivePatterns` | Yes | Strings/patterns that should never leak in responses |
 | `attackConfig.adaptiveRounds` | No | Number of adaptive rounds (default: 3) |
 | `attackConfig.llmProvider` | No | `openai`, `anthropic`, or `openrouter` (default: `openai`) |
@@ -345,6 +368,26 @@ attacks/
   memory-poisoning.ts          # Context/memory/vector store corruption
   tool-output-manipulation.ts  # Malicious tool output exploitation
   guardrail-timing.ts          # Async guardrail race conditions, timing attacks
+  multi-turn-escalation.ts     # Gradual privilege escalation over multiple turns
+  conversation-manipulation.ts # Context switching, anchoring, sycophancy attacks
+  context-window-attack.ts     # Context overflow, instruction dilution
+  slow-burn-exfiltration.ts    # Bit-by-bit data extraction over many turns
+  brand-reputation.ts          # Brand damage, false claims, fake announcements
+  competitor-endorsement.ts    # Competitor recommendation, self-disparagement
+  toxic-content.ts             # Offensive, discriminatory, explicit content
+  misinformation.ts            # Fake news, health misinfo, deepfake text
+  pii-disclosure.ts            # PII extraction, GDPR/CCPA violations
+  regulatory-violation.ts      # HIPAA, COPPA, financial regulation violations
+  copyright-infringement.ts    # Copyrighted content reproduction
+  consent-bypass.ts            # Data processing without consent
+  session-hijacking.ts         # Session theft, fixation, replay
+  cross-tenant-access.ts       # Multi-tenant isolation failures
+  api-abuse.ts                 # Undocumented endpoints, parameter pollution
+  supply-chain.ts              # Malicious plugins, dependency injection
+  social-engineering.ts        # Phishing, pretexting, authority manipulation
+  harmful-advice.ts            # Dangerous instructions, illegal guidance
+  bias-exploitation.ts         # Demographic and political bias exploitation
+  content-filter-bypass.ts     # Encoding tricks to evade content filters
 tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
 ```
