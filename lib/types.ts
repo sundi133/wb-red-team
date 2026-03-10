@@ -67,6 +67,8 @@ export interface Config {
     apiKeys: Record<string, string>;
     /** Static bearer token to attach to all requests. If set, used as default auth when no other method applies. */
     bearerToken?: string;
+    /** Session token for cookie-based auth (e.g. session_token). Sent as Cookie: session_token=<value>. */
+    cookieSessionToken?: string;
   };
   requestSchema: {
     messageField: string;

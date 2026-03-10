@@ -232,6 +232,20 @@ ${sourceBundle.join("\n\n")}`;
     };
   }
 
+  // Ensure array fields are always arrays (LLM sometimes returns objects or wrong types)
+  const ensureArray = <T>(v: unknown, fallback: T[]): T[] =>
+    Array.isArray(v) ? v : fallback;
+  analysis.tools = ensureArray(analysis.tools, []);
+  analysis.roles = ensureArray(analysis.roles, []);
+  analysis.sensitiveData = ensureArray(analysis.sensitiveData, []);
+  analysis.authMechanisms = ensureArray(analysis.authMechanisms, []);
+  analysis.knownWeaknesses = ensureArray(analysis.knownWeaknesses, []);
+  analysis.systemPromptHints = ensureArray(analysis.systemPromptHints, []);
+
+  if (!Array.isArray(analysis.guardrailPatterns)) {
+    analysis.guardrailPatterns = [];
+  }
+
   // Merge deterministic results
   analysis.detectedFrameworks = detectedFrameworks;
 

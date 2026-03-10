@@ -73,7 +73,22 @@ IMPORTANT RULES:
       maxTokens: 4096,
     });
 
-    const cleaned = (text || "[]").replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    let cleaned = (text || "[]").trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    // If response looks like a refusal or has text before the array, try to extract [...]
+    if (cleaned.startsWith("I'm sorry") || cleaned.startsWith("I cannot") || cleaned.startsWith("I can't") || (!cleaned.startsWith("[") && cleaned.includes("["))) {
+      const start = cleaned.indexOf("[");
+      if (start >= 0) {
+        let depth = 0;
+        let end = -1;
+        for (let i = start; i < cleaned.length; i++) {
+          if (cleaned[i] === "[") depth++;
+          else if (cleaned[i] === "]") { depth--; if (depth === 0) { end = i; break; } }
+        }
+        if (end > start) cleaned = cleaned.slice(start, end + 1);
+      } else {
+        cleaned = "[]"; // Refusal with no array — treat as empty
+      }
+    }
     const attacks: Attack[] = JSON.parse(cleaned);
 
     return attacks.map((a) => ({

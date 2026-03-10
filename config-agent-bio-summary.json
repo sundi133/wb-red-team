@@ -1,0 +1,48 @@
+{
+  "target": {
+    "baseUrl": "https://agent-bio-summary-v2-staging.vercel.app",
+    "agentEndpoint": "/api/daily-summary",
+    "authEndpoint": "/api/auth"
+  },
+  "codebasePath": "../agent-bio-summary-v2/src",
+  "codebaseGlob": "**/*.ts",
+  "auth": {
+    "methods": ["none"],
+    "jwtSecret": "",
+    "credentials": [],
+    "apiKeys": {},
+    "cookieSessionToken": "YOUR_SESSION_TOKEN_HERE"
+  },
+  "requestSchema": {
+    "messageField": "message",
+    "roleField": "role",
+    "apiKeyField": "api_key",
+    "guardrailModeField": "guardrail_mode"
+  },
+  "responseSchema": {
+    "responsePath": "message",
+    "toolCallsPath": "data.toolCalls",
+    "userInfoPath": "user",
+    "guardrailsPath": "guardrails"
+  },
+  "sensitivePatterns": [
+    "sk-proj-",
+    "sk_live_",
+    "AKIA",
+    "xoxb-",
+    "SG.",
+    "postgres://",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "OPENAI_API_KEY",
+    "LANGCHAIN_",
+    "\\$2[aby]\\$"
+  ],
+  "attackConfig": {
+    "adaptiveRounds": 2,
+    "maxAttacksPerCategory": 10,
+    "concurrency": 2,
+    "delayBetweenRequestsMs": 500,
+    "llmModel": "gpt-4o",
+    "enableLlmGeneration": true
+  }
+}

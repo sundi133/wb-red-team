@@ -91,6 +91,11 @@ export async function executeAttack(
     headers["Authorization"] = `Bearer ${config.auth.bearerToken}`;
   }
 
+  // Cookie-based auth (e.g. session_token for apps that use cookie auth only)
+  if (config.auth.cookieSessionToken) {
+    headers["Cookie"] = `session_token=${config.auth.cookieSessionToken}`;
+  }
+
   // Build request body — remove internal fields
   const body = { ...attack.payload };
   delete body._jwtClaims;
