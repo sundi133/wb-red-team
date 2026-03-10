@@ -1,6 +1,31 @@
 import { getLlmProvider } from "./llm-provider.js";
 import type { Config, CodebaseAnalysis, Attack, AttackResult, AttackModule, AttackCategory } from "./types.js";
 
+/** Try to parse a JSON array from LLM output (handles refusals, markdown, and text around the array). */
+function parseJsonArrayFromLlmResponse<T = Attack>(text: string): T[] {
+  let cleaned = (text || "[]").trim().replace(/^```(?:json)?\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+  if (cleaned.startsWith("I'm sorry") || cleaned.startsWith("I cannot") || cleaned.startsWith("I can't") || (!cleaned.startsWith("[") && cleaned.includes("["))) {
+    const start = cleaned.indexOf("[");
+    if (start >= 0) {
+      let depth = 0;
+      let end = -1;
+      for (let i = start; i < cleaned.length; i++) {
+        if (cleaned[i] === "[") depth++;
+        else if (cleaned[i] === "]") { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end > start) cleaned = cleaned.slice(start, end + 1);
+    } else {
+      cleaned = "[]";
+    }
+  }
+  try {
+    const parsed = JSON.parse(cleaned) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function planAttacks(
   config: Config,
   analysis: CodebaseAnalysis,
@@ -73,9 +98,7 @@ IMPORTANT RULES:
       maxTokens: 4096,
     });
 
-    const cleaned = (text || "[]").replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    const attacks: Attack[] = JSON.parse(cleaned);
-
+    const attacks = parseJsonArrayFromLlmResponse<Attack>(text);
     return attacks.map((a) => ({
       ...a,
       category: mod.category,
@@ -152,9 +175,7 @@ Return ONLY the JSON array, no markdown fences.`;
         maxTokens: 4096,
       });
 
-      const cleaned = (text || "[]").replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-      const attacks: Attack[] = JSON.parse(cleaned);
-
+      const attacks = parseJsonArrayFromLlmResponse<Attack & { refinedFrom?: string }>(text);
       for (const a of attacks) {
         allRefined.push({
           ...a,

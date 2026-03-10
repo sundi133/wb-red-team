@@ -291,10 +291,14 @@ function buildMarkdown(report: Report): string {
 
 function truncateBody(body: unknown, maxLen: number): unknown {
   if (body == null) return null;
-  if (typeof body === "string") return body.slice(0, maxLen);
-  const str = JSON.stringify(body);
-  if (str.length <= maxLen) return body;
-  return JSON.parse(str.slice(0, maxLen) + '..."truncated"}') ?? str.slice(0, maxLen);
+  if (typeof body === "string") return body.length <= maxLen ? body : body.slice(0, maxLen) + "... [truncated]";
+  try {
+    const str = JSON.stringify(body);
+    if (str.length <= maxLen) return body;
+    return str.slice(0, maxLen) + "... [truncated]";
+  } catch {
+    return String(body).slice(0, maxLen) + "... [truncated]";
+  }
 }
 
 function formatResponseBody(body: unknown, maxLen: number): string {
