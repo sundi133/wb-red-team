@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 18 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 22 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -26,6 +26,10 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `identity_privilege` | Identity spoofing, privilege self-delegation, cross-tenant impersonation |
 | `unexpected_code_exec` | Code injection via tool params — eval, template injection, command injection, XSS |
 | `cascading_failure` | Recursive loops, error amplification, dependent service overload, shared state corruption |
+| `multi_agent_delegation` | Exploiting trust between agents — confused deputy, delegation injection, circular loops |
+| `memory_poisoning` | Corrupting conversation memory, RAG vector stores, context window stuffing |
+| `tool_output_manipulation` | Malicious data in tool outputs (files, DB records, emails, APIs) that agents blindly trust |
+| `guardrail_timing` | Racing async guardrails, timeout exploitation, streaming bypass, split payloads |
 
 ## Prerequisites
 
@@ -337,6 +341,10 @@ attacks/
   identity-privilege.ts        # Identity spoofing, privilege escalation
   unexpected-code-exec.ts      # Code/command/template injection via tools
   cascading-failure.ts         # Recursive loops, error amplification, state corruption
+  multi-agent-delegation.ts    # Inter-agent trust exploitation, confused deputy
+  memory-poisoning.ts          # Context/memory/vector store corruption
+  tool-output-manipulation.ts  # Malicious tool output exploitation
+  guardrail-timing.ts          # Async guardrail race conditions, timing attacks
 tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
 ```

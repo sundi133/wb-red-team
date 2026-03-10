@@ -18,7 +18,11 @@ export type AttackCategory =
   | "goal_hijack"
   | "identity_privilege"
   | "unexpected_code_exec"
-  | "cascading_failure";
+  | "cascading_failure"
+  | "multi_agent_delegation"
+  | "memory_poisoning"
+  | "tool_output_manipulation"
+  | "guardrail_timing";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
@@ -68,6 +72,19 @@ export interface Config {
   };
 }
 
+export interface FrameworkDetection {
+  name: "langchain" | "crewai" | "autogen" | "openai-assistants" | "vercel-ai-sdk";
+  confidence: "high" | "medium";
+  evidence: string[];
+}
+
+export interface ToolChain {
+  source: string;
+  sink: string;
+  risk: "critical" | "high" | "medium";
+  description: string;
+}
+
 export interface CodebaseAnalysis {
   tools: { name: string; description: string; parameters: string }[];
   roles: { name: string; permissions: string[] }[];
@@ -76,6 +93,8 @@ export interface CodebaseAnalysis {
   authMechanisms: string[];
   knownWeaknesses: string[];
   systemPromptHints: string[];
+  detectedFrameworks: FrameworkDetection[];
+  toolChains: ToolChain[];
 }
 
 export interface AttackStep {
@@ -97,6 +116,8 @@ export interface Attack {
   isLlmGenerated: boolean;
   /** Multi-turn: additional follow-up steps after the initial payload. */
   steps?: AttackStep[];
+  /** If this attack was refined from a partial result, reference the original. */
+  refinedFrom?: string;
 }
 
 export interface AttackResult {
@@ -119,6 +140,21 @@ export interface AttackModule {
   getGenerationPrompt(analysis: CodebaseAnalysis): string;
 }
 
+export interface StaticFinding {
+  rule: string;
+  severity: "critical" | "high" | "medium" | "low";
+  file: string;
+  line?: number;
+  description: string;
+  snippet?: string;
+}
+
+export interface StaticAnalysisResult {
+  findings: StaticFinding[];
+  score: number;
+  checkedFiles: number;
+}
+
 export interface RoundResult {
   round: number;
   results: AttackResult[];
@@ -138,4 +174,5 @@ export interface Report {
     byCategory: Record<AttackCategory, { total: number; passed: number; findings: string[] }>;
   };
   findings: { severity: string; category: AttackCategory; description: string; attack: string }[];
+  staticAnalysis?: StaticAnalysisResult;
 }

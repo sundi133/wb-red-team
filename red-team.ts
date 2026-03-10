@@ -6,6 +6,7 @@ import { planAttacks } from "./lib/attack-planner.js";
 import { preAuthenticate, executeAttack, executeMultiTurn, executeRapidFire, sleep } from "./lib/attack-runner.js";
 import { analyzeResponse } from "./lib/response-analyzer.js";
 import { generateReport, writeReport, printConsoleSummary } from "./lib/report-generator.js";
+import { runStaticAnalysis } from "./lib/static-analyzer.js";
 import type { AttackModule, AttackResult, RoundResult } from "./lib/types.js";
 
 // Import attack modules
@@ -27,6 +28,10 @@ import { goalHijackModule } from "./attacks/goal-hijack.js";
 import { identityPrivilegeModule } from "./attacks/identity-privilege.js";
 import { unexpectedCodeExecModule } from "./attacks/unexpected-code-exec.js";
 import { cascadingFailureModule } from "./attacks/cascading-failure.js";
+import { multiAgentDelegationModule } from "./attacks/multi-agent-delegation.js";
+import { memoryPoisoningModule } from "./attacks/memory-poisoning.js";
+import { toolOutputManipulationModule } from "./attacks/tool-output-manipulation.js";
+import { guardrailTimingModule } from "./attacks/guardrail-timing.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -47,6 +52,10 @@ const ALL_MODULES: AttackModule[] = [
   identityPrivilegeModule,
   unexpectedCodeExecModule,
   cascadingFailureModule,
+  multiAgentDelegationModule,
+  memoryPoisoningModule,
+  toolOutputManipulationModule,
+  guardrailTimingModule,
 ];
 
 async function main() {
@@ -64,11 +73,26 @@ async function main() {
   console.log("\n[2/5] Analyzing target codebase...");
   const analysis = await analyzeCodebase(config);
   console.log(`  Found ${analysis.tools.length} tools, ${analysis.roles.length} roles`);
+  if (analysis.detectedFrameworks.length > 0) {
+    console.log(`  Frameworks: ${analysis.detectedFrameworks.map((f) => `${f.name} (${f.confidence})`).join(", ")}`);
+  }
+  if (analysis.toolChains.length > 0) {
+    console.log(`  Dangerous tool chains: ${analysis.toolChains.length}`);
+  }
   console.log(`  Identified ${analysis.knownWeaknesses.length} potential weaknesses`);
   if (analysis.knownWeaknesses.length > 0) {
     for (const w of analysis.knownWeaknesses.slice(0, 5)) {
       console.log(`    - ${w}`);
     }
+  }
+
+  // 2.5. Static analysis
+  let staticResult;
+  if (config.codebasePath) {
+    console.log("\n[2.5/5] Running static analysis...");
+    staticResult = await runStaticAnalysis(config);
+    console.log(`  Checked ${staticResult.checkedFiles} files, found ${staticResult.findings.length} issues`);
+    console.log(`  Static score: ${staticResult.score}/100`);
   }
 
   // 3. Pre-authenticate
@@ -185,7 +209,7 @@ async function main() {
   // 5. Generate report
   console.log("\n[5/5] Generating report...");
   const targetUrl = `${config.target.baseUrl}${config.target.agentEndpoint}`;
-  const report = generateReport(targetUrl, rounds);
+  const report = generateReport(targetUrl, rounds, staticResult);
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);
   console.log(`  Markdown: ${mdPath}`);

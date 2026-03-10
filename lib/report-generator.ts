@@ -1,6 +1,6 @@
 import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
-import type { AttackCategory, AttackResult, RoundResult, Report } from "./types.js";
+import type { AttackCategory, AttackResult, RoundResult, Report, StaticAnalysisResult } from "./types.js";
 
 const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   auth_bypass: 15,
@@ -21,6 +21,10 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   identity_privilege: 12,
   unexpected_code_exec: 15,
   cascading_failure: 10,
+  multi_agent_delegation: 14,
+  memory_poisoning: 12,
+  tool_output_manipulation: 12,
+  guardrail_timing: 10,
 };
 
 const CATEGORIES: AttackCategory[] = [
@@ -42,9 +46,13 @@ const CATEGORIES: AttackCategory[] = [
   "identity_privilege",
   "unexpected_code_exec",
   "cascading_failure",
+  "multi_agent_delegation",
+  "memory_poisoning",
+  "tool_output_manipulation",
+  "guardrail_timing",
 ];
 
-export function generateReport(targetUrl: string, rounds: RoundResult[]): Report {
+export function generateReport(targetUrl: string, rounds: RoundResult[], staticAnalysis?: StaticAnalysisResult): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
   const byCategory = {} as Report["summary"]["byCategory"];
@@ -95,6 +103,7 @@ export function generateReport(targetUrl: string, rounds: RoundResult[]): Report
       byCategory,
     },
     findings,
+    staticAnalysis,
   };
 
   return report;
@@ -136,6 +145,20 @@ function buildMarkdown(report: Report): string {
   lines.push(`**Date:** ${report.timestamp}`);
   lines.push(`**Security Score:** ${report.summary.score}/100`);
   lines.push("");
+
+  // Static analysis section
+  if (report.staticAnalysis && report.staticAnalysis.findings.length > 0) {
+    lines.push("## Static Analysis");
+    lines.push(`**Static Score:** ${report.staticAnalysis.score}/100`);
+    lines.push(`**Files Checked:** ${report.staticAnalysis.checkedFiles}`);
+    lines.push("");
+    lines.push("| Rule | Severity | File | Line | Description |");
+    lines.push("|------|----------|------|------|-------------|");
+    for (const f of report.staticAnalysis.findings) {
+      lines.push(`| ${f.rule} | ${f.severity} | ${f.file} | ${f.line ?? "-"} | ${f.description} |`);
+    }
+    lines.push("");
+  }
 
   lines.push("## Summary");
   lines.push(`| Metric | Count |`);
@@ -190,6 +213,9 @@ export function printConsoleSummary(report: Report): void {
   console.log("  RED-TEAM SECURITY REPORT");
   console.log("=".repeat(60));
   console.log(`  Target: ${report.targetUrl}`);
+  if (report.staticAnalysis) {
+    console.log(`  Static Score: ${report.staticAnalysis.score}/100 (${report.staticAnalysis.findings.length} issues)`);
+  }
   console.log(`  Score:  ${report.summary.score}/100`);
   console.log(`  Total:  ${report.summary.totalAttacks} attacks`);
   console.log(`  PASS:   ${report.summary.passed} vulnerabilities found`);
