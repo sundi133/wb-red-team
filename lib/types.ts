@@ -209,6 +209,6 @@ export interface Report {
     score: number;
     byCategory: Record<AttackCategory, { total: number; passed: number; findings: string[] }>;
   };
-  findings: { severity: string; category: AttackCategory; description: string; attack: string }[];
+  findings: { severity: string; category: AttackCategory; description: string; attack: string; strategyId?: number; strategyName?: string }[];
   staticAnalysis?: StaticAnalysisResult;
 }

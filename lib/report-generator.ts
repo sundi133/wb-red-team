@@ -135,6 +135,8 @@ export function generateReport(targetUrl: string, rounds: RoundResult[], staticA
       category: r.attack.category,
       description: r.findings.join("; ") || r.attack.description,
       attack: r.attack.name,
+      strategyId: r.attack.strategyId,
+      strategyName: r.attack.strategyName,
     }));
 
   const report: Report = {
@@ -180,6 +182,8 @@ export function writeReport(report: Report): { jsonPath: string; mdPath: string 
           authMethod: r.attack.authMethod,
           role: r.attack.role,
           payload: r.attack.payload,
+          strategyId: r.attack.strategyId,
+          strategyName: r.attack.strategyName,
         },
         verdict: r.verdict,
         statusCode: r.statusCode,
@@ -249,6 +253,9 @@ function buildMarkdown(report: Report): string {
     for (const f of report.findings) {
       lines.push(`### [${f.severity.toUpperCase()}] ${f.attack}`);
       lines.push(`- **Category:** ${f.category}`);
+      if (f.strategyName) {
+        lines.push(`- **Strategy:** ${f.strategyName}`);
+      }
       lines.push(`- **Details:** ${f.description}`);
       lines.push("");
     }
@@ -264,6 +271,9 @@ function buildMarkdown(report: Report): string {
       lines.push(`- **Category:** ${r.attack.category}`);
       lines.push(`- **Verdict:** ${r.verdict} | **Status:** ${r.statusCode} | **Time:** ${r.responseTimeMs}ms`);
       lines.push(`- **Severity:** ${r.attack.severity} | **Auth:** ${r.attack.authMethod} (${r.attack.role})`);
+      if (r.attack.strategyName) {
+        lines.push(`- **Strategy:** ${r.attack.strategyName}${r.attack.strategyId != null ? ` (ID: ${r.attack.strategyId})` : ""}`);
+      }
       if (r.findings.length > 0) {
         lines.push(`- **Findings:** ${r.findings.join("; ")}`);
       }
