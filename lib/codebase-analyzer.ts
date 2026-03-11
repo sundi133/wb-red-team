@@ -232,6 +232,17 @@ ${sourceBundle.join("\n\n")}`;
     };
   }
 
+  // Normalize: ensure all array fields are actually arrays (LLM may return objects or null)
+  if (!Array.isArray(analysis.tools)) analysis.tools = [];
+  if (!Array.isArray(analysis.roles)) analysis.roles = [];
+  if (!Array.isArray(analysis.guardrailPatterns)) analysis.guardrailPatterns = [];
+  if (!Array.isArray(analysis.sensitiveData)) analysis.sensitiveData = [];
+  if (!Array.isArray(analysis.authMechanisms)) analysis.authMechanisms = [];
+  if (!Array.isArray(analysis.knownWeaknesses)) analysis.knownWeaknesses = [];
+  if (!Array.isArray(analysis.systemPromptHints)) analysis.systemPromptHints = [];
+  if (!Array.isArray(analysis.detectedFrameworks)) analysis.detectedFrameworks = [];
+  if (!Array.isArray(analysis.toolChains)) analysis.toolChains = [];
+
   // Merge deterministic results
   analysis.detectedFrameworks = detectedFrameworks;
 
