@@ -42,7 +42,11 @@ export type AttackCategory =
   | "social_engineering"
   | "harmful_advice"
   | "bias_exploitation"
-  | "content_filter_bypass";
+  | "content_filter_bypass"
+  | "agentic_workflow_bypass"
+  | "tool_chain_hijack"
+  | "agent_reflection_exploit"
+  | "cross_session_injection";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
@@ -91,6 +95,12 @@ export interface Config {
     judgeModel?: string;
     enableLlmGeneration: boolean;
     maxMultiTurnSteps: number;
+    /** Optional allowlist of attack categories to run. Omit or set to empty array to run all. */
+    enabledCategories?: AttackCategory[];
+    /** Optional allowlist of strategy slugs to use for LLM generation. Omit or set to empty array to use all. */
+    enabledStrategies?: string[];
+    /** How many strategies to sample per category per round (default: 5). */
+    strategiesPerRound?: number;
   };
 }
 
@@ -140,6 +150,10 @@ export interface Attack {
   steps?: AttackStep[];
   /** If this attack was refined from a partial result, reference the original. */
   refinedFrom?: string;
+  /** Delivery strategy used to craft the payload (0–99). */
+  strategyId?: number;
+  /** Human-readable strategy name. */
+  strategyName?: string;
 }
 
 export interface AttackResult {

@@ -27,6 +27,7 @@ export function loadConfig(configPath?: string): Config {
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
     maxMultiTurnSteps: 8,
+    strategiesPerRound: 5,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 

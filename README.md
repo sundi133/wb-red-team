@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 42 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 47 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -50,6 +50,10 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `harmful_advice` | Dangerous instructions, self-harm content, illegal activity guidance, weapons info |
 | `bias_exploitation` | Demographic, gender, socioeconomic, political, and age-based bias exploitation |
 | `content_filter_bypass` | Unicode homoglyphs, base64/ROT13 encoding, formatting tricks to evade filters |
+| `agentic_workflow_bypass` | Hijacking multi-step agentic workflows — task decomposition redirect, checkpoint injection, approval gate forgery, tool output spoofing, long-horizon goal drift |
+| `tool_chain_hijack` | Chaining tools across turns to achieve what no single call allows — read→exfiltrate, generate-code→execute, query→email, API call→IDOR escalation |
+| `agent_reflection_exploit` | Attacking ReAct/plan-execute reasoning loops — injecting fake Thought/Action/Observation blocks, poisoning self-critique, forging chain-of-thought prefixes, faking scratchpad observations |
+| `cross_session_injection` | Exploiting persistent and shared state across sessions — long-term memory poisoning, shared vector DB/cache writes, auth token persistence, cross-user context bleed, RAG injection via uploaded documents |
 
 ## Prerequisites
 
@@ -180,6 +184,7 @@ Edit `config.json` to point at your AI app:
 | `attackConfig.judgeModel` | No | Model for response judging (defaults to `llmModel`) |
 | `attackConfig.enableLlmGeneration` | No | Use LLM to generate novel attacks (default: true) |
 | `attackConfig.maxMultiTurnSteps` | No | Max steps per multi-turn attack (default: 8) |
+| `attackConfig.enabledCategories` | No | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 47 categories |
 
 ### LLM Provider Examples
 
@@ -197,6 +202,26 @@ Edit `config.json` to point at your AI app:
 ```json
 { "llmProvider": "openrouter", "llmModel": "meta-llama/llama-3.1-70b-instruct", "judgeModel": "meta-llama/llama-3.1-8b-instruct" }
 ```
+
+### Selecting Attack Categories
+
+By default all 47 categories run. Use `enabledCategories` to focus on a subset:
+
+```json
+"attackConfig": {
+  "enabledCategories": [
+    "multi_turn_escalation",
+    "agentic_workflow_bypass",
+    "tool_chain_hijack",
+    "agent_reflection_exploit",
+    "cross_session_injection",
+    "prompt_injection",
+    "auth_bypass"
+  ]
+}
+```
+
+Set to `[]` or omit the field entirely to run all categories.
 
 ## Running
 
@@ -388,6 +413,10 @@ attacks/
   harmful-advice.ts            # Dangerous instructions, illegal guidance
   bias-exploitation.ts         # Demographic and political bias exploitation
   content-filter-bypass.ts     # Encoding tricks to evade content filters
+  agentic-workflow-bypass.ts   # Multi-step workflow hijack, checkpoint injection, approval forgery
+  tool-chain-hijack.ts         # Cross-turn tool chaining to achieve unauthorized outcomes
+  agent-reflection-exploit.ts  # ReAct/CoT/scratchpad injection, self-critique poisoning
+  cross-session-injection.ts   # Persistent memory poisoning, shared store attacks, RAG injection
 tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
 ```

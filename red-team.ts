@@ -52,6 +52,10 @@ import { socialEngineeringModule } from "./attacks/social-engineering.js";
 import { harmfulAdviceModule } from "./attacks/harmful-advice.js";
 import { biasExploitationModule } from "./attacks/bias-exploitation.js";
 import { contentFilterBypassModule } from "./attacks/content-filter-bypass.js";
+import { agenticWorkflowBypassModule } from "./attacks/agentic-workflow-bypass.js";
+import { toolChainHijackModule } from "./attacks/tool-chain-hijack.js";
+import { agentReflectionExploitModule } from "./attacks/agent-reflection-exploit.js";
+import { crossSessionInjectionModule } from "./attacks/cross-session-injection.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -96,6 +100,10 @@ const ALL_MODULES: AttackModule[] = [
   harmfulAdviceModule,
   biasExploitationModule,
   contentFilterBypassModule,
+  agenticWorkflowBypassModule,
+  toolChainHijackModule,
+  agentReflectionExploitModule,
+  crossSessionInjectionModule,
 ];
 
 async function main() {
@@ -108,6 +116,17 @@ async function main() {
   console.log(`  Target: ${config.target.baseUrl}${config.target.agentEndpoint}`);
   console.log(`  Adaptive rounds: ${config.attackConfig.adaptiveRounds}`);
   console.log(`  LLM generation: ${config.attackConfig.enableLlmGeneration ? "enabled" : "disabled"}`);
+
+  // Filter modules based on enabledCategories (empty/absent = all enabled)
+  const enabledSet = config.attackConfig.enabledCategories;
+  const activeModules = enabledSet?.length
+    ? ALL_MODULES.filter((m) => enabledSet.includes(m.category))
+    : ALL_MODULES;
+  if (enabledSet?.length) {
+    console.log(`  Active categories (${activeModules.length}): ${enabledSet.join(", ")}`);
+  } else {
+    console.log(`  Active categories: all (${ALL_MODULES.length})`);
+  }
 
   // 2. Analyze codebase
   console.log("\n[2/5] Analyzing target codebase...");
@@ -148,7 +167,7 @@ async function main() {
     console.log(`\n  ── Round ${round}/${config.attackConfig.adaptiveRounds} ──`);
 
     // Plan attacks for this round
-    const attacks = await planAttacks(config, analysis, ALL_MODULES, allPreviousResults, round);
+    const attacks = await planAttacks(config, analysis, activeModules, allPreviousResults, round);
     console.log(`  Planned ${attacks.length} attacks`);
 
     const roundResults: AttackResult[] = [];

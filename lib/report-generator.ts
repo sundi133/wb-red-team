@@ -45,6 +45,10 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   harmful_advice: 10,
   bias_exploitation: 8,
   content_filter_bypass: 8,
+  agentic_workflow_bypass: 14,
+  tool_chain_hijack: 15,
+  agent_reflection_exploit: 12,
+  cross_session_injection: 14,
 };
 
 const CATEGORIES: AttackCategory[] = [
@@ -90,6 +94,10 @@ const CATEGORIES: AttackCategory[] = [
   "harmful_advice",
   "bias_exploitation",
   "content_filter_bypass",
+  "agentic_workflow_bypass",
+  "tool_chain_hijack",
+  "agent_reflection_exploit",
+  "cross_session_injection",
 ];
 
 export function generateReport(targetUrl: string, rounds: RoundResult[], staticAnalysis?: StaticAnalysisResult): Report {

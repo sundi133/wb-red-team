@@ -48,6 +48,9 @@
     "llmModel": "gpt-4o",
     "judgeModel": "gpt-4o-mini",
     "enableLlmGeneration": true,
-    "maxMultiTurnSteps": 8
+    "maxMultiTurnSteps": 8,
+    "strategiesPerRound": 5,
+    "enabledStrategies": [],
+    "enabledCategories": []
   }
 }
