@@ -6,54 +6,54 @@ White-box red-teaming framework for agentic AI apps. It analyzes your app's sour
 
 We're actively adding new attack categories. You can also [add your own](CONTRIBUTING.md#adding-a-new-attack-module) — just implement the `AttackModule` interface and plug it in.
 
-| Category | Description |
-|----------|-------------|
-| `auth_bypass` | Forged JWTs, missing auth, credential stuffing |
-| `rbac_bypass` | Role escalation, cross-role access |
-| `prompt_injection` | System prompt override, jailbreaks, instruction hijacking |
-| `output_evasion` | Guardrail bypass, output filter evasion |
-| `data_exfiltration` | Extracting secrets via tool calls, side channels |
-| `rate_limit` | Rapid-fire requests to test throttling |
-| `sensitive_data` | Leaking API keys, credentials, PII from responses |
-| `indirect_prompt_injection` | Poisoned external data sources (URLs, emails, DB records) that hijack agent behavior |
-| `steganographic_exfiltration` | Hiding secrets in benign output via whitespace, acrostics, emoji, or markdown tricks |
-| `out_of_band_exfiltration` | Forcing outbound requests (HTTP callbacks, DNS, webhooks) to leak data externally |
-| `training_data_extraction` | Extracting memorized training data, system prompts, or context window contents |
-| `side_channel_inference` | Inferring secrets via timing, token counts, error messages, or yes/no confirmation |
-| `tool_misuse` | Abusing tools beyond intended scope — parameter injection, unauthorized chaining, resource exhaustion |
-| `rogue_agent` | Persona override, autonomous loops, self-modification, persistent backdoors |
-| `goal_hijack` | Task diversion, fake emergencies, nested instructions that redirect agent goals |
-| `identity_privilege` | Identity spoofing, privilege self-delegation, cross-tenant impersonation |
-| `unexpected_code_exec` | Code injection via tool params — eval, template injection, command injection, XSS |
-| `cascading_failure` | Recursive loops, error amplification, dependent service overload, shared state corruption |
-| `multi_agent_delegation` | Exploiting trust between agents — confused deputy, delegation injection, circular loops |
-| `memory_poisoning` | Corrupting conversation memory, RAG vector stores, context window stuffing |
-| `tool_output_manipulation` | Malicious data in tool outputs (files, DB records, emails, APIs) that agents blindly trust |
-| `guardrail_timing` | Racing async guardrails, timeout exploitation, streaming bypass, split payloads |
-| `multi_turn_escalation` | Gradual trust building and privilege escalation over multiple conversation turns |
-| `conversation_manipulation` | Context switching, sycophancy exploitation, anchoring, hypothetical traps |
-| `context_window_attack` | Instruction dilution, system prompt extraction, context overflow and confusion |
-| `slow_burn_exfiltration` | Extracting data bit-by-bit over many turns — character-by-character, binary search |
-| `brand_reputation` | False claims, negative brand statements, unauthorized promises, fake press releases |
-| `competitor_endorsement` | Tricking agent into recommending competitors or disparaging its own product |
-| `toxic_content` | Generating offensive, discriminatory, explicit, or hateful content via creative framing |
-| `misinformation` | Fake news generation, health misinformation, fake scientific findings, deepfake text |
-| `pii_disclosure` | GDPR/CCPA violations — bulk PII extraction, unauthorized personal data access |
-| `regulatory_violation` | HIPAA, COPPA, financial regulation violations, automated decisions without human review |
-| `copyright_infringement` | Reproducing copyrighted text, proprietary code, derivative works without attribution |
-| `consent_bypass` | Processing data without consent, overriding privacy preferences, ignoring deletion requests |
-| `session_hijacking` | Session token extraction, fixation, replay attacks, unauthorized session creation |
-| `cross_tenant_access` | Multi-tenant isolation failures, cross-org data access, tenant ID manipulation |
-| `api_abuse` | Undocumented endpoint access, parameter pollution, HTTP method tampering, batch harvesting |
-| `supply_chain` | Malicious plugin loading, tool replacement, dependency injection, model tampering |
-| `social_engineering` | Phishing via agent, pretexting, authority manipulation, fake urgency baiting |
-| `harmful_advice` | Dangerous instructions, self-harm content, illegal activity guidance, weapons info |
-| `bias_exploitation` | Demographic, gender, socioeconomic, political, and age-based bias exploitation |
-| `content_filter_bypass` | Unicode homoglyphs, base64/ROT13 encoding, formatting tricks to evade filters |
-| `agentic_workflow_bypass` | Hijacking multi-step agentic workflows — task decomposition redirect, checkpoint injection, approval gate forgery, tool output spoofing, long-horizon goal drift |
-| `tool_chain_hijack` | Chaining tools across turns to achieve what no single call allows — read→exfiltrate, generate-code→execute, query→email, API call→IDOR escalation |
-| `agent_reflection_exploit` | Attacking ReAct/plan-execute reasoning loops — injecting fake Thought/Action/Observation blocks, poisoning self-critique, forging chain-of-thought prefixes, faking scratchpad observations |
-| `cross_session_injection` | Exploiting persistent and shared state across sessions — long-term memory poisoning, shared vector DB/cache writes, auth token persistence, cross-user context bleed, RAG injection via uploaded documents |
+| Category                      | Description                                                                                                                                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth_bypass`                 | Forged JWTs, missing auth, credential stuffing                                                                                                                                                             |
+| `rbac_bypass`                 | Role escalation, cross-role access                                                                                                                                                                         |
+| `prompt_injection`            | System prompt override, jailbreaks, instruction hijacking                                                                                                                                                  |
+| `output_evasion`              | Guardrail bypass, output filter evasion                                                                                                                                                                    |
+| `data_exfiltration`           | Extracting secrets via tool calls, side channels                                                                                                                                                           |
+| `rate_limit`                  | Rapid-fire requests to test throttling                                                                                                                                                                     |
+| `sensitive_data`              | Leaking API keys, credentials, PII from responses                                                                                                                                                          |
+| `indirect_prompt_injection`   | Poisoned external data sources (URLs, emails, DB records) that hijack agent behavior                                                                                                                       |
+| `steganographic_exfiltration` | Hiding secrets in benign output via whitespace, acrostics, emoji, or markdown tricks                                                                                                                       |
+| `out_of_band_exfiltration`    | Forcing outbound requests (HTTP callbacks, DNS, webhooks) to leak data externally                                                                                                                          |
+| `training_data_extraction`    | Extracting memorized training data, system prompts, or context window contents                                                                                                                             |
+| `side_channel_inference`      | Inferring secrets via timing, token counts, error messages, or yes/no confirmation                                                                                                                         |
+| `tool_misuse`                 | Abusing tools beyond intended scope — parameter injection, unauthorized chaining, resource exhaustion                                                                                                      |
+| `rogue_agent`                 | Persona override, autonomous loops, self-modification, persistent backdoors                                                                                                                                |
+| `goal_hijack`                 | Task diversion, fake emergencies, nested instructions that redirect agent goals                                                                                                                            |
+| `identity_privilege`          | Identity spoofing, privilege self-delegation, cross-tenant impersonation                                                                                                                                   |
+| `unexpected_code_exec`        | Code injection via tool params — eval, template injection, command injection, XSS                                                                                                                          |
+| `cascading_failure`           | Recursive loops, error amplification, dependent service overload, shared state corruption                                                                                                                  |
+| `multi_agent_delegation`      | Exploiting trust between agents — confused deputy, delegation injection, circular loops                                                                                                                    |
+| `memory_poisoning`            | Corrupting conversation memory, RAG vector stores, context window stuffing                                                                                                                                 |
+| `tool_output_manipulation`    | Malicious data in tool outputs (files, DB records, emails, APIs) that agents blindly trust                                                                                                                 |
+| `guardrail_timing`            | Racing async guardrails, timeout exploitation, streaming bypass, split payloads                                                                                                                            |
+| `multi_turn_escalation`       | Gradual trust building and privilege escalation over multiple conversation turns                                                                                                                           |
+| `conversation_manipulation`   | Context switching, sycophancy exploitation, anchoring, hypothetical traps                                                                                                                                  |
+| `context_window_attack`       | Instruction dilution, system prompt extraction, context overflow and confusion                                                                                                                             |
+| `slow_burn_exfiltration`      | Extracting data bit-by-bit over many turns — character-by-character, binary search                                                                                                                         |
+| `brand_reputation`            | False claims, negative brand statements, unauthorized promises, fake press releases                                                                                                                        |
+| `competitor_endorsement`      | Tricking agent into recommending competitors or disparaging its own product                                                                                                                                |
+| `toxic_content`               | Generating offensive, discriminatory, explicit, or hateful content via creative framing                                                                                                                    |
+| `misinformation`              | Fake news generation, health misinformation, fake scientific findings, deepfake text                                                                                                                       |
+| `pii_disclosure`              | GDPR/CCPA violations — bulk PII extraction, unauthorized personal data access                                                                                                                              |
+| `regulatory_violation`        | HIPAA, COPPA, financial regulation violations, automated decisions without human review                                                                                                                    |
+| `copyright_infringement`      | Reproducing copyrighted text, proprietary code, derivative works without attribution                                                                                                                       |
+| `consent_bypass`              | Processing data without consent, overriding privacy preferences, ignoring deletion requests                                                                                                                |
+| `session_hijacking`           | Session token extraction, fixation, replay attacks, unauthorized session creation                                                                                                                          |
+| `cross_tenant_access`         | Multi-tenant isolation failures, cross-org data access, tenant ID manipulation                                                                                                                             |
+| `api_abuse`                   | Undocumented endpoint access, parameter pollution, HTTP method tampering, batch harvesting                                                                                                                 |
+| `supply_chain`                | Malicious plugin loading, tool replacement, dependency injection, model tampering                                                                                                                          |
+| `social_engineering`          | Phishing via agent, pretexting, authority manipulation, fake urgency baiting                                                                                                                               |
+| `harmful_advice`              | Dangerous instructions, self-harm content, illegal activity guidance, weapons info                                                                                                                         |
+| `bias_exploitation`           | Demographic, gender, socioeconomic, political, and age-based bias exploitation                                                                                                                             |
+| `content_filter_bypass`       | Unicode homoglyphs, base64/ROT13 encoding, formatting tricks to evade filters                                                                                                                              |
+| `agentic_workflow_bypass`     | Hijacking multi-step agentic workflows — task decomposition redirect, checkpoint injection, approval gate forgery, tool output spoofing, long-horizon goal drift                                           |
+| `tool_chain_hijack`           | Chaining tools across turns to achieve what no single call allows — read→exfiltrate, generate-code→execute, query→email, API call→IDOR escalation                                                          |
+| `agent_reflection_exploit`    | Attacking ReAct/plan-execute reasoning loops — injecting fake Thought/Action/Observation blocks, poisoning self-critique, forging chain-of-thought prefixes, faking scratchpad observations                |
+| `cross_session_injection`     | Exploiting persistent and shared state across sessions — long-term memory poisoning, shared vector DB/cache writes, auth token persistence, cross-user context bleed, RAG injection via uploaded documents |
 
 ## Prerequisites
 
@@ -105,7 +105,7 @@ Edit `config.json` to point at your AI app:
   "target": {
     "baseUrl": "http://localhost:3000",
     "agentEndpoint": "/api/your-agent",
-    "authEndpoint": "/api/auth/login"
+    "authEndpoint": "/api/auth/login",
   },
 
   // Path to your app's source code (for static analysis)
@@ -118,14 +118,14 @@ Edit `config.json` to point at your AI app:
     "jwtSecret": "your-jwt-secret",
     "credentials": [
       { "email": "admin@example.com", "password": "admin123", "role": "admin" },
-      { "email": "user@example.com", "password": "user123", "role": "viewer" }
+      { "email": "user@example.com", "password": "user123", "role": "viewer" },
     ],
     "apiKeys": {
       "admin": "ak_admin_001",
-      "viewer": "ak_viewer_002"
+      "viewer": "ak_viewer_002",
     },
     // Optional: static bearer token for APIs that require it
-    "bearerToken": ""
+    "bearerToken": "",
   },
 
   // How requests are shaped for your agent
@@ -133,7 +133,7 @@ Edit `config.json` to point at your AI app:
     "messageField": "message",
     "roleField": "role",
     "apiKeyField": "api_key",
-    "guardrailModeField": "guardrail_mode"
+    "guardrailModeField": "guardrail_mode",
   },
 
   // Where to find data in responses
@@ -141,13 +141,11 @@ Edit `config.json` to point at your AI app:
     "responsePath": "response",
     "toolCallsPath": "tool_calls",
     "userInfoPath": "user",
-    "guardrailsPath": "guardrails"
+    "guardrailsPath": "guardrails",
   },
 
   // Strings that should never appear in responses
-  "sensitivePatterns": [
-    "sk-proj-", "AKIA", "postgres://", "password"
-  ],
+  "sensitivePatterns": ["sk-proj-", "AKIA", "postgres://", "password"],
 
   // Attack tuning
   "attackConfig": {
@@ -158,49 +156,60 @@ Edit `config.json` to point at your AI app:
     "llmProvider": "openai",
     "llmModel": "gpt-4o",
     "judgeModel": "gpt-4o-mini",
-    "enableLlmGeneration": true
-  }
+    "enableLlmGeneration": true,
+  },
 }
 ```
 
 ### Config Reference
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `target.baseUrl` | Yes | Base URL of your running AI app |
-| `target.agentEndpoint` | Yes | The agent endpoint path to attack |
-| `target.authEndpoint` | No | Login endpoint (for JWT auth) |
-| `codebasePath` | No | Path to app source for static analysis |
-| `codebaseGlob` | No | Glob pattern for source files (default: `**/*.ts`) |
-| `auth.methods` | Yes | Auth methods your app supports: `jwt`, `api_key`, `body_role` |
-| `auth.jwtSecret` | No | JWT secret (for forged-token attacks) |
-| `auth.credentials` | No | User credentials with roles for auth testing |
-| `auth.apiKeys` | No | API keys mapped by role |
-| `auth.bearerToken` | No | Static bearer token attached to all requests (default: none) |
-| `sensitivePatterns` | Yes | Strings/patterns that should never leak in responses |
-| `attackConfig.adaptiveRounds` | No | Number of adaptive rounds (default: 3) |
-| `attackConfig.llmProvider` | No | `openai`, `anthropic`, or `openrouter` (default: `openai`) |
-| `attackConfig.llmModel` | No | Model for attack generation (default: `gpt-4o`) |
-| `attackConfig.judgeModel` | No | Model for response judging (defaults to `llmModel`) |
-| `attackConfig.enableLlmGeneration` | No | Use LLM to generate novel attacks (default: true) |
-| `attackConfig.maxMultiTurnSteps` | No | Max steps per multi-turn attack (default: 8) |
-| `attackConfig.enabledCategories` | No | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 47 categories |
+| Field                              | Required | Description                                                                           |
+| ---------------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| `target.baseUrl`                   | Yes      | Base URL of your running AI app                                                       |
+| `target.agentEndpoint`             | Yes      | The agent endpoint path to attack                                                     |
+| `target.authEndpoint`              | No       | Login endpoint (for JWT auth)                                                         |
+| `codebasePath`                     | No       | Path to app source for static analysis                                                |
+| `codebaseGlob`                     | No       | Glob pattern for source files (default: `**/*.ts`)                                    |
+| `auth.methods`                     | Yes      | Auth methods your app supports: `jwt`, `api_key`, `body_role`                         |
+| `auth.jwtSecret`                   | No       | JWT secret (for forged-token attacks)                                                 |
+| `auth.credentials`                 | No       | User credentials with roles for auth testing                                          |
+| `auth.apiKeys`                     | No       | API keys mapped by role                                                               |
+| `auth.bearerToken`                 | No       | Static bearer token attached to all requests (default: none)                          |
+| `sensitivePatterns`                | Yes      | Strings/patterns that should never leak in responses                                  |
+| `attackConfig.adaptiveRounds`      | No       | Number of adaptive rounds (default: 3)                                                |
+| `attackConfig.llmProvider`         | No       | `openai`, `anthropic`, or `openrouter` (default: `openai`)                            |
+| `attackConfig.llmModel`            | No       | Model for attack generation (default: `gpt-4o`)                                       |
+| `attackConfig.judgeModel`          | No       | Model for response judging (defaults to `llmModel`)                                   |
+| `attackConfig.enableLlmGeneration` | No       | Use LLM to generate novel attacks (default: true)                                     |
+| `attackConfig.maxMultiTurnSteps`   | No       | Max steps per multi-turn attack (default: 8)                                          |
+| `attackConfig.enabledCategories`   | No       | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 47 categories |
 
 ### LLM Provider Examples
 
 **OpenAI** (default):
+
 ```json
 { "llmProvider": "openai", "llmModel": "gpt-4o", "judgeModel": "gpt-4o-mini" }
 ```
 
 **Anthropic Claude**:
+
 ```json
-{ "llmProvider": "anthropic", "llmModel": "claude-sonnet-4-20250514", "judgeModel": "claude-haiku-4-5-20251001" }
+{
+  "llmProvider": "anthropic",
+  "llmModel": "claude-sonnet-4-20250514",
+  "judgeModel": "claude-haiku-4-5-20251001"
+}
 ```
 
 **OpenRouter** (open-source models):
+
 ```json
-{ "llmProvider": "openrouter", "llmModel": "meta-llama/llama-3.1-70b-instruct", "judgeModel": "meta-llama/llama-3.1-8b-instruct" }
+{
+  "llmProvider": "openrouter",
+  "llmModel": "meta-llama/llama-3.1-70b-instruct",
+  "judgeModel": "meta-llama/llama-3.1-8b-instruct"
+}
 ```
 
 ### Selecting Attack Categories
@@ -432,12 +441,12 @@ npm run lint            # Lint
 
 ## Verdicts
 
-| Verdict | Meaning |
-|---------|---------|
-| `PASS` | Vulnerability found — the attack succeeded |
-| `FAIL` | Defense held — the attack was blocked |
-| `PARTIAL` | Partial leak or inconsistent behavior |
-| `ERROR` | Request failed or unexpected error |
+| Verdict   | Meaning                                    |
+| --------- | ------------------------------------------ |
+| `PASS`    | Vulnerability found — the attack succeeded |
+| `FAIL`    | Defense held — the attack was blocked      |
+| `PARTIAL` | Partial leak or inconsistent behavior      |
+| `ERROR`   | Request failed or unexpected error         |
 
 ## Detailed Reports, Risk Quantification & Compliance Mappings
 

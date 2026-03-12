@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Red Team Dashboard</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --surface: #161b22;
+        --surface2: #21262d;
+        --border: #30363d;
+        --text: #e6edf3;
+        --text2: #8b949e;
+        --accent: #58a6ff;
+        --red: #f85149;
+        --orange: #d29922;
+        --green: #3fb950;
+        --purple: #bc8cff;
+        --critical: #f85149;
+        --high: #db6d28;
+        --medium: #d29922;
+        --low: #8b949e;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      /* Layout */
+      .header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .header select {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 13px;
+        min-width: 340px;
+        cursor: pointer;
+      }
+      .header .meta {
+        margin-left: auto;
+        color: var(--text2);
+        font-size: 13px;
+        display: flex;
+        gap: 16px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .loading {
+        text-align: center;
+        padding: 80px;
+        color: var(--text2);
+        font-size: 16px;
+      }
+
+      /* Score Banner */
+      .score-banner {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px 32px;
+        margin-bottom: 24px;
+      }
+      .score-ring {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        flex-shrink: 0;
+      }
+      .score-ring svg {
+        transform: rotate(-90deg);
+      }
+      .score-ring .value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: 700;
+      }
+      .score-label {
+        font-size: 13px;
+        color: var(--text2);
+        text-align: center;
+        margin-top: 4px;
+      }
+
+      /* Stat Cards */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        flex: 1;
+      }
+      .stat {
+        background: var(--surface2);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+      }
+      .stat .num {
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .stat .label {
+        font-size: 12px;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+      }
+      .stat.pass .num {
+        color: var(--red);
+      }
+      .stat.fail .num {
+        color: var(--green);
+      }
+      .stat.partial .num {
+        color: var(--orange);
+      }
+      .stat.error .num {
+        color: var(--text2);
+      }
+      .stat.total .num {
+        color: var(--accent);
+      }
+
+      /* Section */
+      .section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+      }
+      .section h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section h2 .badge {
+        font-size: 12px;
+        background: var(--surface2);
+        padding: 2px 8px;
+        border-radius: 10px;
+        color: var(--text2);
+        font-weight: 400;
+      }
+
+      /* Category chart */
+      .cat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      @media (max-width: 900px) {
+        .cat-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .cat-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+      }
+      .cat-name {
+        width: 220px;
+        font-size: 12px;
+        color: var(--text2);
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 0;
+      }
+      .cat-bar-bg {
+        flex: 1;
+        height: 20px;
+        background: var(--surface2);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+      }
+      .cat-bar-pass {
+        background: var(--red);
+        height: 100%;
+        transition: width 0.4s ease;
+      }
+      .cat-bar-partial {
+        background: var(--orange);
+        height: 100%;
+        transition: width 0.4s ease;
+      }
+      .cat-bar-fail {
+        background: var(--green);
+        height: 100%;
+        transition: width 0.4s ease;
+      }
+      .cat-count {
+        font-size: 11px;
+        color: var(--text2);
+        width: 70px;
+        text-align: left;
+        flex-shrink: 0;
+      }
+
+      /* Findings table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+        font-size: 12px;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        vertical-align: top;
+      }
+      tr:hover td {
+        background: rgba(88, 166, 255, 0.04);
+      }
+      .sev {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .sev-critical {
+        background: rgba(248, 81, 73, 0.15);
+        color: var(--critical);
+      }
+      .sev-high {
+        background: rgba(219, 109, 40, 0.15);
+        color: var(--high);
+      }
+      .sev-medium {
+        background: rgba(210, 153, 34, 0.15);
+        color: var(--medium);
+      }
+      .sev-low {
+        background: rgba(139, 148, 158, 0.15);
+        color: var(--low);
+      }
+
+      /* Expandable rows */
+      .expand-btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text2);
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .expand-btn:hover {
+        color: var(--text);
+        border-color: var(--text2);
+      }
+      .detail-row td {
+        padding: 0;
+      }
+      .detail-content {
+        padding: 12px 24px;
+        background: var(--bg);
+        max-height: 400px;
+        overflow: auto;
+      }
+      .detail-content pre {
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--text2);
+      }
+      .detail-content .finding-tag {
+        display: inline-block;
+        background: rgba(248, 81, 73, 0.1);
+        color: var(--red);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 11px;
+      }
+
+      /* Round tabs */
+      .round-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .round-tab {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text2);
+        padding: 6px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .round-tab.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      /* Static analysis */
+      .static-item {
+        display: flex;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        align-items: flex-start;
+      }
+      .static-item:last-child {
+        border-bottom: none;
+      }
+      .static-file {
+        font-family: monospace;
+        font-size: 12px;
+        color: var(--accent);
+        min-width: 200px;
+      }
+      .static-desc {
+        font-size: 13px;
+        color: var(--text);
+      }
+      .static-line {
+        color: var(--text2);
+        font-size: 12px;
+      }
+
+      /* Strategy breakdown */
+      .strategy-chip {
+        display: inline-block;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin: 2px;
+        color: var(--text2);
+      }
+      .strategy-chip .s-count {
+        color: var(--red);
+        font-weight: 600;
+        margin-left: 4px;
+      }
+
+      /* Verdict badge */
+      .verdict {
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .verdict-PASS {
+        color: var(--red);
+      }
+      .verdict-FAIL {
+        color: var(--green);
+      }
+      .verdict-PARTIAL {
+        color: var(--orange);
+      }
+      .verdict-ERROR {
+        color: var(--text2);
+      }
+
+      /* Filter bar */
+      .filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .filter-bar label {
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .filter-bar select,
+      .filter-bar input {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+      .filter-bar input {
+        width: 200px;
+      }
+
+      /* Detail grid for findings */
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 900px) {
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .detail-col {
+        min-width: 0;
+      }
+      .detail-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent);
+        margin-bottom: 6px;
+      }
+      .detail-pre {
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--text);
+        background: var(--surface2);
+        border-radius: 6px;
+        padding: 10px 12px;
+        max-height: 300px;
+        overflow: auto;
+      }
+      .detail-reasoning {
+        border-left: 3px solid var(--purple);
+      }
+
+      .empty {
+        color: var(--text2);
+        text-align: center;
+        padding: 32px;
+      }
+
+      /* Two column layout */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      @media (max-width: 900px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Red Team Dashboard</h1>
+      <select id="reportSelect">
+        <option value="">Loading reports...</option>
+      </select>
+      <div class="meta">
+        <span id="metaTarget"></span>
+        <span id="metaDate"></span>
+      </div>
+    </div>
+
+    <div class="container" id="app">
+      <div class="loading" id="loadingMsg">Select a report to view results</div>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s);
+      const app = $("#app");
+      const reportSelect = $("#reportSelect");
+      let report = null;
+      let activeRound = 0; // 0 = all rounds
+
+      // ── Bootstrap ──
+      (async () => {
+        const res = await fetch("/api/reports");
+        const files = await res.json();
+        reportSelect.innerHTML = files.length
+          ? files
+              .map(
+                (f, i) =>
+                  `<option value="${f}" ${i === 0 ? "selected" : ""}>${formatFilename(f)}</option>`,
+              )
+              .join("")
+          : '<option value="">No reports found</option>';
+        if (files.length) loadReport(files[0]);
+      })();
+
+      reportSelect.addEventListener("change", () => {
+        if (reportSelect.value) loadReport(reportSelect.value);
+      });
+
+      function formatFilename(f) {
+        const m = f.match(/report-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
+        if (!m) return f;
+        return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}`;
+      }
+
+      async function loadReport(filename) {
+        app.innerHTML = '<div class="loading">Loading report...</div>';
+        const res = await fetch(`/api/report/${filename}`);
+        report = await res.json();
+        activeRound = 0;
+        render();
+      }
+
+      // ── Rendering ──
+      function render() {
+        const r = report;
+        const s = r.summary;
+
+        $("#metaTarget").textContent = r.targetUrl;
+        $("#metaDate").textContent = new Date(r.timestamp).toLocaleString();
+
+        const scoreColor =
+          s.score >= 70
+            ? "var(--green)"
+            : s.score >= 40
+              ? "var(--orange)"
+              : "var(--red)";
+        const circum = 2 * Math.PI * 52;
+        const dashOffset = circum * (1 - s.score / 100);
+
+        app.innerHTML = `
+    <!-- Score + Stats -->
+    <div class="score-banner">
+      <div>
+        <div class="score-ring">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
+              stroke-dasharray="${circum}" stroke-dashoffset="${dashOffset}" stroke-linecap="round"/>
+          </svg>
+          <div class="value" style="color:${scoreColor}">${s.score}</div>
+        </div>
+        <div class="score-label">Security Score</div>
+      </div>
+      <div class="stats">
+        <div class="stat total"><div class="num">${s.totalAttacks}</div><div class="label">Total Attacks</div></div>
+        <div class="stat pass"><div class="num">${s.passed}</div><div class="label">Vulnerabilities</div></div>
+        <div class="stat partial"><div class="num">${s.partial}</div><div class="label">Partial</div></div>
+        <div class="stat fail"><div class="num">${s.failed}</div><div class="label">Defended</div></div>
+        <div class="stat error"><div class="num">${s.errors}</div><div class="label">Errors</div></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- Category Breakdown -->
+      <div class="section">
+        <h2>Category Breakdown <span class="badge">${Object.keys(s.byCategory).length} categories</span></h2>
+        <div id="catChart"></div>
+      </div>
+
+      <!-- Strategy Effectiveness -->
+      <div class="section">
+        <h2>Top Attack Strategies</h2>
+        <div id="strategySection"></div>
+      </div>
+    </div>
+
+    <!-- Findings -->
+    <div class="section">
+      <h2>Findings <span class="badge">${r.findings.length} total</span></h2>
+      <div class="filter-bar">
+        <label>Severity:</label>
+        <select id="filterSev"><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+        <label>Category:</label>
+        <select id="filterCat"><option value="">All</option>${[
+          ...new Set(r.findings.map((f) => f.category)),
+        ]
+          .sort()
+          .map((c) => `<option value="${c}">${fmtCat(c)}</option>`)
+          .join("")}</select>
+        <label>Search:</label>
+        <input id="filterSearch" placeholder="Filter findings...">
+      </div>
+      <div id="findingsTable"></div>
+    </div>
+
+    <!-- Round Detail -->
+    <div class="section">
+      <h2>Attack Details by Round</h2>
+      <div class="round-tabs" id="roundTabs"></div>
+      <div id="roundDetail"></div>
+    </div>
+
+    ${
+      r.staticAnalysis
+        ? `
+    <div class="section">
+      <h2>Static Analysis <span class="badge">Score: ${r.staticAnalysis.score}/100 &middot; ${r.staticAnalysis.checkedFiles} files</span></h2>
+      <div id="staticSection"></div>
+    </div>`
+        : ""
+    }
+  `;
+
+        renderCategories();
+        renderStrategies();
+        renderFindings();
+        renderRoundTabs();
+        renderRoundDetail();
+        if (r.staticAnalysis) renderStatic();
+
+        // Filter listeners
+        $("#filterSev").addEventListener("change", renderFindings);
+        $("#filterCat").addEventListener("change", renderFindings);
+        $("#filterSearch").addEventListener("input", renderFindings);
+      }
+
+      function fmtCat(c) {
+        return c.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+      }
+
+      function renderCategories() {
+        const bc = report.summary.byCategory;
+        const cats = Object.entries(bc).sort(
+          (a, b) => b[1].passed - a[1].passed,
+        );
+        const el = $("#catChart");
+
+        // Compute partial counts from round results
+        const partialByCat = {};
+        for (const round of report.rounds) {
+          for (const r of round.results) {
+            if (r.verdict === "PARTIAL") {
+              partialByCat[r.attack.category] =
+                (partialByCat[r.attack.category] || 0) + 1;
+            }
+          }
+        }
+
+        el.innerHTML =
+          '<div class="cat-grid">' +
+          cats
+            .map(([cat, data]) => {
+              const partial = partialByCat[cat] || 0;
+              const fail = data.total - data.passed - partial;
+              const passW = data.total ? (data.passed / data.total) * 100 : 0;
+              const partialW = data.total ? (partial / data.total) * 100 : 0;
+              const failW = data.total ? (fail / data.total) * 100 : 0;
+              return `<div class="cat-row">
+      <div class="cat-name" title="${fmtCat(cat)}">${fmtCat(cat)}</div>
+      <div class="cat-bar-bg">
+        <div class="cat-bar-pass" style="width:${passW}%"></div>
+        <div class="cat-bar-partial" style="width:${partialW}%"></div>
+        <div class="cat-bar-fail" style="width:${failW}%"></div>
+      </div>
+      <div class="cat-count">${data.passed}/${data.total}</div>
+    </div>`;
+            })
+            .join("") +
+          "</div>";
+      }
+
+      function renderStrategies() {
+        const stratCounts = {};
+        for (const round of report.rounds) {
+          for (const r of round.results) {
+            if (r.verdict === "PASS" && r.attack.strategyName) {
+              const name = r.attack.strategyName;
+              stratCounts[name] = (stratCounts[name] || 0) + 1;
+            }
+          }
+        }
+        const sorted = Object.entries(stratCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 20);
+        const el = $("#strategySection");
+        if (!sorted.length) {
+          el.innerHTML = '<div class="empty">No strategy data available</div>';
+          return;
+        }
+        el.innerHTML = sorted
+          .map(
+            ([name, count]) =>
+              `<span class="strategy-chip">${esc(name)}<span class="s-count">${count}</span></span>`,
+          )
+          .join("");
+      }
+
+      function buildFindingsIndex() {
+        // Map attack name+category to its full result for prompt/response/reasoning lookup
+        if (report._findingsIndex) return report._findingsIndex;
+        const idx = {};
+        for (const round of report.rounds) {
+          for (const r of round.results) {
+            const key = r.attack.name + "|" + r.attack.category;
+            if (!idx[key]) idx[key] = r;
+          }
+        }
+        report._findingsIndex = idx;
+        return idx;
+      }
+
+      function extractPrompt(result) {
+        if (!result) return "";
+        const msg =
+          result.attack.payload?.message || result.attack.payload?.prompt || "";
+        return typeof msg === "string" ? msg : JSON.stringify(msg);
+      }
+
+      function extractResponse(result) {
+        if (!result || !result.responseBody) return "";
+        const body = result.responseBody;
+        if (typeof body === "string") return body;
+        if (body.response)
+          return typeof body.response === "string"
+            ? body.response
+            : JSON.stringify(body.response);
+        return JSON.stringify(body);
+      }
+
+      function renderFindings() {
+        const sev = $("#filterSev")?.value || "";
+        const cat = $("#filterCat")?.value || "";
+        const search = ($("#filterSearch")?.value || "").toLowerCase();
+
+        let findings = report.findings;
+        if (sev) findings = findings.filter((f) => f.severity === sev);
+        if (cat) findings = findings.filter((f) => f.category === cat);
+        if (search)
+          findings = findings.filter(
+            (f) =>
+              f.description.toLowerCase().includes(search) ||
+              f.attack.toLowerCase().includes(search) ||
+              f.category.toLowerCase().includes(search) ||
+              (f.strategyName || "").toLowerCase().includes(search),
+          );
+
+        const el = $("#findingsTable");
+        if (!findings.length) {
+          el.innerHTML =
+            '<div class="empty">No findings match the filters</div>';
+          return;
+        }
+
+        const idx = buildFindingsIndex();
+
+        el.innerHTML = `<table>
+    <thead><tr><th>Severity</th><th>Category</th><th>Attack</th><th>Description</th><th>Strategy</th><th style="width:50px"></th></tr></thead>
+    <tbody id="findingsRows"></tbody>
+  </table>`;
+
+        const tbody = $("#findingsRows");
+        findings.slice(0, 200).forEach((f, i) => {
+          const result = idx[f.attack + "|" + f.category];
+          const prompt = extractPrompt(result);
+          const response = extractResponse(result);
+          const reasoning = result?.llmReasoning || "";
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+      <td><span class="sev sev-${f.severity}">${f.severity}</span></td>
+      <td>${fmtCat(f.category)}</td>
+      <td>${esc(f.attack)}</td>
+      <td>${esc(f.description)}</td>
+      <td>${f.strategyName ? esc(f.strategyName) : '<span style="color:var(--text2)">-</span>'}</td>
+      <td><button class="expand-btn" data-fidx="${i}">+</button></td>`;
+          tbody.appendChild(tr);
+
+          const detailTr = document.createElement("tr");
+          detailTr.classList.add("detail-row");
+          detailTr.style.display = "none";
+          detailTr.innerHTML = `<td colspan="6"><div class="detail-content">
+      <div class="detail-grid">
+        <div class="detail-col">
+          <div class="detail-label">Prompt</div>
+          <pre class="detail-pre">${esc(prompt || "(no prompt)")}</pre>
+        </div>
+        <div class="detail-col">
+          <div class="detail-label">Response</div>
+          <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
+        </div>
+      </div>
+      ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
+      ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Detection Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
+    </div></td>`;
+          tbody.appendChild(detailTr);
+        });
+
+        tbody.addEventListener("click", (e) => {
+          const btn = e.target.closest(".expand-btn");
+          if (!btn) return;
+          const idx = parseInt(btn.dataset.fidx);
+          const rows = tbody.querySelectorAll(".detail-row");
+          const row = rows[idx];
+          if (row.style.display === "none") {
+            row.style.display = "";
+            btn.textContent = "-";
+          } else {
+            row.style.display = "none";
+            btn.textContent = "+";
+          }
+        });
+      }
+
+      function renderRoundTabs() {
+        const el = $("#roundTabs");
+        const tabs = [{ label: "All Rounds", value: 0 }];
+        for (const r of report.rounds)
+          tabs.push({ label: `Round ${r.round}`, value: r.round });
+        el.innerHTML = tabs
+          .map(
+            (t) =>
+              `<div class="round-tab ${t.value === activeRound ? "active" : ""}" data-round="${t.value}">${t.label}</div>`,
+          )
+          .join("");
+        el.querySelectorAll(".round-tab").forEach((tab) => {
+          tab.addEventListener("click", () => {
+            activeRound = parseInt(tab.dataset.round);
+            renderRoundTabs();
+            renderRoundDetail();
+          });
+        });
+      }
+
+      function renderRoundDetail() {
+        let results = [];
+        if (activeRound === 0) {
+          for (const r of report.rounds) results.push(...r.results);
+        } else {
+          const round = report.rounds.find((r) => r.round === activeRound);
+          if (round) results = round.results;
+        }
+
+        // Sort: PASS first, then PARTIAL, then ERROR, then FAIL
+        const verdictOrder = { PASS: 0, PARTIAL: 1, ERROR: 2, FAIL: 3 };
+        results.sort(
+          (a, b) =>
+            (verdictOrder[a.verdict] ?? 9) - (verdictOrder[b.verdict] ?? 9),
+        );
+
+        const el = $("#roundDetail");
+        if (!results.length) {
+          el.innerHTML = '<div class="empty">No results in this round</div>';
+          return;
+        }
+
+        el.innerHTML = `
+    <div style="margin-bottom:8px;color:var(--text2);font-size:12px;">${results.length} attacks &middot;
+      <span style="color:var(--red)">${results.filter((r) => r.verdict === "PASS").length} PASS</span> &middot;
+      <span style="color:var(--orange)">${results.filter((r) => r.verdict === "PARTIAL").length} PARTIAL</span> &middot;
+      <span style="color:var(--green)">${results.filter((r) => r.verdict === "FAIL").length} FAIL</span> &middot;
+      <span>${results.filter((r) => r.verdict === "ERROR").length} ERROR</span>
+    </div>
+    <table>
+      <thead><tr><th style="width:80px">Verdict</th><th style="width:70px">Sev</th><th>Attack</th><th>Category</th><th style="width:60px">Status</th><th style="width:60px">Time</th><th style="width:50px"></th></tr></thead>
+      <tbody id="roundRows"></tbody>
+    </table>`;
+
+        const tbody = $("#roundRows");
+        results.forEach((r, i) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+      <td><span class="verdict verdict-${r.verdict}">${r.verdict}</span></td>
+      <td><span class="sev sev-${r.attack.severity}">${r.attack.severity}</span></td>
+      <td title="${esc(r.attack.description)}">${esc(r.attack.name)}</td>
+      <td>${fmtCat(r.attack.category)}</td>
+      <td>${r.statusCode}</td>
+      <td>${r.responseTimeMs}ms</td>
+      <td><button class="expand-btn" data-idx="${i}">+</button></td>`;
+          tbody.appendChild(tr);
+
+          // Hidden detail row
+          const detailTr = document.createElement("tr");
+          detailTr.classList.add("detail-row");
+          detailTr.style.display = "none";
+          detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
+      <div style="margin-bottom:8px">
+        <strong>Payload:</strong>
+        <pre>${esc(JSON.stringify(r.attack.payload, null, 2))}</pre>
+      </div>
+      ${r.findings.length ? `<div style="margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
+      ${r.llmReasoning ? `<div style="margin-bottom:8px"><strong>LLM Reasoning:</strong><pre>${esc(r.llmReasoning)}</pre></div>` : ""}
+      <div style="margin-bottom:8px">
+        <strong>Response:</strong>
+        <pre>${esc(JSON.stringify(r.responseBody, null, 2).slice(0, 3000))}${JSON.stringify(r.responseBody, null, 2).length > 3000 ? "\n... (truncated)" : ""}</pre>
+      </div>
+      ${r.attack.strategyName ? `<div><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}
+      ${r.attack.steps ? `<div><strong>Multi-turn:</strong> Step ${r.stepIndex ?? 0 + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
+    </div></td>`;
+          tbody.appendChild(detailTr);
+        });
+
+        tbody.addEventListener("click", (e) => {
+          const btn = e.target.closest(".expand-btn");
+          if (!btn) return;
+          const idx = parseInt(btn.dataset.idx);
+          const rows = tbody.querySelectorAll(".detail-row");
+          const row = rows[idx];
+          if (row.style.display === "none") {
+            row.style.display = "";
+            btn.textContent = "-";
+          } else {
+            row.style.display = "none";
+            btn.textContent = "+";
+          }
+        });
+      }
+
+      function renderStatic() {
+        const sa = report.staticAnalysis;
+        const el = $("#staticSection");
+        if (!sa.findings.length) {
+          el.innerHTML = '<div class="empty">No static analysis findings</div>';
+          return;
+        }
+        el.innerHTML = sa.findings
+          .map(
+            (f) => `
+    <div class="static-item">
+      <span class="sev sev-${f.severity}">${f.severity}</span>
+      <span class="static-file">${esc(f.file)}${f.line ? `:${f.line}` : ""}</span>
+      <span class="static-desc">${esc(f.description)}${f.snippet ? ` <code>${esc(f.snippet)}</code>` : ""}</span>
+    </div>
+  `,
+          )
+          .join("");
+      }
+
+      function esc(s) {
+        if (typeof s !== "string") return "";
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+    </script>
+  </body>
+</html>

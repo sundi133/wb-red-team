@@ -105,7 +105,12 @@ export interface Config {
 }
 
 export interface FrameworkDetection {
-  name: "langchain" | "crewai" | "autogen" | "openai-assistants" | "vercel-ai-sdk";
+  name:
+    | "langchain"
+    | "crewai"
+    | "autogen"
+    | "openai-assistants"
+    | "vercel-ai-sdk";
   confidence: "high" | "medium";
   evidence: string[];
 }
@@ -207,8 +212,18 @@ export interface Report {
     partial: number;
     errors: number;
     score: number;
-    byCategory: Record<AttackCategory, { total: number; passed: number; findings: string[] }>;
+    byCategory: Record<
+      AttackCategory,
+      { total: number; passed: number; findings: string[] }
+    >;
   };
-  findings: { severity: string; category: AttackCategory; description: string; attack: string; strategyId?: number; strategyName?: string }[];
+  findings: {
+    severity: string;
+    category: AttackCategory;
+    description: string;
+    attack: string;
+    strategyId?: number;
+    strategyName?: string;
+  }[];
   staticAnalysis?: StaticAnalysisResult;
 }

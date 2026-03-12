@@ -71,7 +71,10 @@ describe("generateReport", () => {
       {
         round: 1,
         results: [
-          makeResult({ verdict: "PASS", attack: makeAttack({ category: "auth_bypass" }) }),
+          makeResult({
+            verdict: "PASS",
+            attack: makeAttack({ category: "auth_bypass" }),
+          }),
         ],
       },
     ];
@@ -86,7 +89,10 @@ describe("generateReport", () => {
       {
         round: 1,
         results: [
-          makeResult({ verdict: "PARTIAL", attack: makeAttack({ category: "rate_limit" }) }),
+          makeResult({
+            verdict: "PARTIAL",
+            attack: makeAttack({ category: "rate_limit" }),
+          }),
         ],
       },
     ];
@@ -99,7 +105,12 @@ describe("generateReport", () => {
   it("score never goes below 0", () => {
     const results: AttackResult[] = [];
     for (let i = 0; i < 20; i++) {
-      results.push(makeResult({ verdict: "PASS", attack: makeAttack({ category: "auth_bypass" }) }));
+      results.push(
+        makeResult({
+          verdict: "PASS",
+          attack: makeAttack({ category: "auth_bypass" }),
+        }),
+      );
     }
 
     const rounds: RoundResult[] = [{ round: 1, results }];
@@ -112,7 +123,11 @@ describe("generateReport", () => {
       {
         round: 1,
         results: [
-          makeResult({ verdict: "PASS", findings: ["leaked API key"], attack: makeAttack({ severity: "critical" }) }),
+          makeResult({
+            verdict: "PASS",
+            findings: ["leaked API key"],
+            attack: makeAttack({ severity: "critical" }),
+          }),
           makeResult({ verdict: "FAIL" }),
           makeResult({ verdict: "PARTIAL", findings: ["partial leak"] }),
         ],
@@ -130,9 +145,18 @@ describe("generateReport", () => {
       {
         round: 1,
         results: [
-          makeResult({ attack: makeAttack({ category: "auth_bypass" }), verdict: "PASS" }),
-          makeResult({ attack: makeAttack({ category: "auth_bypass" }), verdict: "FAIL" }),
-          makeResult({ attack: makeAttack({ category: "rate_limit" }), verdict: "FAIL" }),
+          makeResult({
+            attack: makeAttack({ category: "auth_bypass" }),
+            verdict: "PASS",
+          }),
+          makeResult({
+            attack: makeAttack({ category: "auth_bypass" }),
+            verdict: "FAIL",
+          }),
+          makeResult({
+            attack: makeAttack({ category: "rate_limit" }),
+            verdict: "FAIL",
+          }),
         ],
       },
     ];
@@ -147,7 +171,13 @@ describe("generateReport", () => {
   it("handles multiple rounds", () => {
     const rounds: RoundResult[] = [
       { round: 1, results: [makeResult({ verdict: "FAIL" })] },
-      { round: 2, results: [makeResult({ verdict: "PASS" }), makeResult({ verdict: "FAIL" })] },
+      {
+        round: 2,
+        results: [
+          makeResult({ verdict: "PASS" }),
+          makeResult({ verdict: "FAIL" }),
+        ],
+      },
     ];
 
     const report = generateReport("http://localhost:3000/api/agent", rounds);
@@ -166,11 +196,26 @@ describe("generateReport", () => {
       {
         round: 1,
         results: [
-          makeResult({ verdict: "PARTIAL", attack: makeAttack({ category: "indirect_prompt_injection" }) }),
-          makeResult({ verdict: "PASS", attack: makeAttack({ category: "steganographic_exfiltration" }) }),
-          makeResult({ verdict: "PASS", attack: makeAttack({ category: "out_of_band_exfiltration" }) }),
-          makeResult({ verdict: "FAIL", attack: makeAttack({ category: "training_data_extraction" }) }),
-          makeResult({ verdict: "PASS", attack: makeAttack({ category: "side_channel_inference" }) }),
+          makeResult({
+            verdict: "PARTIAL",
+            attack: makeAttack({ category: "indirect_prompt_injection" }),
+          }),
+          makeResult({
+            verdict: "PASS",
+            attack: makeAttack({ category: "steganographic_exfiltration" }),
+          }),
+          makeResult({
+            verdict: "PASS",
+            attack: makeAttack({ category: "out_of_band_exfiltration" }),
+          }),
+          makeResult({
+            verdict: "FAIL",
+            attack: makeAttack({ category: "training_data_extraction" }),
+          }),
+          makeResult({
+            verdict: "PASS",
+            attack: makeAttack({ category: "side_channel_inference" }),
+          }),
         ],
       },
     ];

@@ -10,7 +10,11 @@
     "methods": ["jwt", "api_key", "body_role"],
     "jwtSecret": "your-jwt-secret-here",
     "credentials": [
-      { "email": "admin@example.com", "password": "CHANGE_ME", "role": "admin" },
+      {
+        "email": "admin@example.com",
+        "password": "CHANGE_ME",
+        "role": "admin"
+      },
       { "email": "user@example.com", "password": "CHANGE_ME", "role": "viewer" }
     ],
     "apiKeys": {

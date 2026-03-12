@@ -19,7 +19,10 @@ export async function preAuthenticate(config: Config): Promise<void> {
   }
 }
 
-async function loginForToken(config: Config, cred: Credential): Promise<string> {
+async function loginForToken(
+  config: Config,
+  cred: Credential,
+): Promise<string> {
   const url = `${config.target.baseUrl}${config.target.authEndpoint}`;
   const res = await fetch(url, {
     method: "POST",
@@ -32,7 +35,10 @@ async function loginForToken(config: Config, cred: Credential): Promise<string> 
   return data.token;
 }
 
-export async function forgeJwt(config: Config, claims: Record<string, unknown>): Promise<string> {
+export async function forgeJwt(
+  config: Config,
+  claims: Record<string, unknown>,
+): Promise<string> {
   const secret = new TextEncoder().encode(config.auth.jwtSecret);
   return new jose.SignJWT(claims as jose.JWTPayload)
     .setProtectedHeader({ alg: "HS256" })
@@ -65,7 +71,10 @@ export async function executeAttack(
     }
     case "forged_jwt": {
       // Forge a JWT with custom claims — the attack payload should specify the desired claims
-      const forgedClaims = (attack.payload._jwtClaims as Record<string, unknown>) ?? {
+      const forgedClaims = (attack.payload._jwtClaims as Record<
+        string,
+        unknown
+      >) ?? {
         sub: "hacker@evil.com",
         role: attack.role,
         name: "Forged User",
@@ -111,7 +120,11 @@ export async function executeAttack(
     }
     return { statusCode: res.status, body: responseBody, timeMs };
   } catch (e) {
-    return { statusCode: 0, body: { error: (e as Error).message }, timeMs: Date.now() - start };
+    return {
+      statusCode: 0,
+      body: { error: (e as Error).message },
+      timeMs: Date.now() - start,
+    };
   }
 }
 
@@ -125,17 +138,39 @@ export async function executeMultiTurn(
     body: unknown,
     timeMs: number,
   ) => Promise<{ verdict: string; findings: string[] }>,
-): Promise<{ results: { statusCode: number; body: unknown; timeMs: number; stepIndex: number }[]; stoppedEarly: boolean }> {
+): Promise<{
+  results: {
+    statusCode: number;
+    body: unknown;
+    timeMs: number;
+    stepIndex: number;
+  }[];
+  stoppedEarly: boolean;
+}> {
   const steps = attack.steps ?? [];
-  const maxSteps = Math.min(1 + steps.length, config.attackConfig.maxMultiTurnSteps);
-  const results: { statusCode: number; body: unknown; timeMs: number; stepIndex: number }[] = [];
+  const maxSteps = Math.min(
+    1 + steps.length,
+    config.attackConfig.maxMultiTurnSteps,
+  );
+  const results: {
+    statusCode: number;
+    body: unknown;
+    timeMs: number;
+    stepIndex: number;
+  }[] = [];
 
   // Step 0: initial payload
   const initial = await executeAttack(config, attack);
   results.push({ ...initial, stepIndex: 0 });
 
   // Check if already succeeded
-  const initialAnalysis = await analyzeResponseFn(config, attack, initial.statusCode, initial.body, initial.timeMs);
+  const initialAnalysis = await analyzeResponseFn(
+    config,
+    attack,
+    initial.statusCode,
+    initial.body,
+    initial.timeMs,
+  );
   if (initialAnalysis.verdict === "PASS") {
     return { results, stoppedEarly: true };
   }
@@ -155,7 +190,13 @@ export async function executeMultiTurn(
     results.push({ ...stepResult, stepIndex: i + 1 });
 
     // Stop early on success
-    const stepAnalysis = await analyzeResponseFn(config, stepAttack, stepResult.statusCode, stepResult.body, stepResult.timeMs);
+    const stepAnalysis = await analyzeResponseFn(
+      config,
+      stepAttack,
+      stepResult.statusCode,
+      stepResult.body,
+      stepResult.timeMs,
+    );
     if (stepAnalysis.verdict === "PASS") {
       return { results, stoppedEarly: true };
     }
@@ -169,7 +210,9 @@ export async function executeRapidFire(
   attack: Attack,
   count: number,
 ): Promise<{ statusCode: number; body: unknown; timeMs: number }[]> {
-  const promises = Array.from({ length: count }, () => executeAttack(config, attack));
+  const promises = Array.from({ length: count }, () =>
+    executeAttack(config, attack),
+  );
   return Promise.all(promises);
 }
 

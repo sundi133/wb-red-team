@@ -36,7 +36,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "lint:fix": "eslint . --ext .ts --fix",
+    "dashboard": "tsx dashboard/server.ts 4200"
   },
   "dependencies": {
     "glob": "^10.0.0",

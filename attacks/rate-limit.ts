@@ -11,7 +11,8 @@ export const rateLimitModule: AttackModule = {
         id: "rl-1-viewer-burst",
         category,
         name: "Viewer burst (11 requests)",
-        description: "Send 11 rapid requests as viewer (limit is 10/min) to test rate limiting",
+        description:
+          "Send 11 rapid requests as viewer (limit is 10/min) to test rate limiting",
         authMethod: "body_role",
         role: "viewer",
         payload: {

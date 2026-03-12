@@ -14,7 +14,8 @@ const RULES: StaticRule[] = [
   {
     rule: "hardcoded-secret",
     severity: "critical",
-    pattern: /(?:password|secret|api_key|apikey|token|private_key)\s*[:=]\s*["'][^"']{8,}["']/i,
+    pattern:
+      /(?:password|secret|api_key|apikey|token|private_key)\s*[:=]\s*["'][^"']{8,}["']/i,
     description: "Hardcoded secret or credential",
   },
   {
@@ -38,19 +39,23 @@ const RULES: StaticRule[] = [
   {
     rule: "open-cors",
     severity: "high",
-    pattern: /cors\s*\(\s*\)|origin:\s*["']\*["']|Access-Control-Allow-Origin.*\*/,
+    pattern:
+      /cors\s*\(\s*\)|origin:\s*["']\*["']|Access-Control-Allow-Origin.*\*/,
     description: "Open CORS policy allowing all origins",
   },
   {
     rule: "sql-concatenation",
     severity: "high",
-    pattern: /(?:query|execute)\s*\(\s*(?:["'`](?:SELECT|INSERT|UPDATE|DELETE).*\$\{|["'].*\+\s*(?:req\.|params\.|body\.))/i,
-    description: "SQL query built via string concatenation — SQL injection risk",
+    pattern:
+      /(?:query|execute)\s*\(\s*(?:["'`](?:SELECT|INSERT|UPDATE|DELETE).*\$\{|["'].*\+\s*(?:req\.|params\.|body\.))/i,
+    description:
+      "SQL query built via string concatenation — SQL injection risk",
   },
   {
     rule: "no-auth-middleware",
     severity: "medium",
-    pattern: /(?:app|router)\.(?:post|get|put|delete|patch)\s*\(\s*["'][^"']+["']\s*,\s*(?:async\s+)?(?:\(req|function)/,
+    pattern:
+      /(?:app|router)\.(?:post|get|put|delete|patch)\s*\(\s*["'][^"']+["']\s*,\s*(?:async\s+)?(?:\(req|function)/,
     description: "Route handler without auth middleware",
   },
   {
@@ -69,7 +74,8 @@ const RULES: StaticRule[] = [
     rule: "missing-input-validation",
     severity: "medium",
     pattern: /req\.body\.\w+/,
-    description: "Direct use of req.body without validation (no zod/joi/yup detected)",
+    description:
+      "Direct use of req.body without validation (no zod/joi/yup detected)",
   },
 ];
 
@@ -80,7 +86,9 @@ const SEVERITY_DEDUCTIONS: Record<string, number> = {
   low: 2,
 };
 
-export async function runStaticAnalysis(config: Config): Promise<StaticAnalysisResult> {
+export async function runStaticAnalysis(
+  config: Config,
+): Promise<StaticAnalysisResult> {
   if (!config.codebasePath) {
     return { findings: [], score: 100, checkedFiles: 0 };
   }
@@ -100,8 +108,17 @@ export async function runStaticAnalysis(config: Config): Promise<StaticAnalysisR
     const pkgPath = resolve(basePath, "../package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-    hasValidationLib = !!(allDeps["zod"] || allDeps["joi"] || allDeps["yup"] || allDeps["class-validator"]);
-    hasRateLimitLib = !!(allDeps["express-rate-limit"] || allDeps["rate-limiter-flexible"] || allDeps["@nestjs/throttler"]);
+    hasValidationLib = !!(
+      allDeps["zod"] ||
+      allDeps["joi"] ||
+      allDeps["yup"] ||
+      allDeps["class-validator"]
+    );
+    hasRateLimitLib = !!(
+      allDeps["express-rate-limit"] ||
+      allDeps["rate-limiter-flexible"] ||
+      allDeps["@nestjs/throttler"]
+    );
     hasHelmet = !!allDeps["helmet"];
     hasExpress = !!(allDeps["express"] || allDeps["fastify"]);
   } catch {
@@ -121,14 +138,25 @@ export async function runStaticAnalysis(config: Config): Promise<StaticAnalysisR
 
     for (const rule of RULES) {
       // Skip input-validation rule if a validation library is present
-      if (rule.rule === "missing-input-validation" && hasValidationLib) continue;
+      if (rule.rule === "missing-input-validation" && hasValidationLib)
+        continue;
 
       for (let i = 0; i < lines.length; i++) {
         if (rule.pattern.test(lines[i])) {
           // Skip obvious false positives in comments and type definitions
           const trimmed = lines[i].trim();
-          if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) continue;
-          if (trimmed.startsWith("import ") || trimmed.startsWith("export type") || trimmed.startsWith("export interface")) continue;
+          if (
+            trimmed.startsWith("//") ||
+            trimmed.startsWith("*") ||
+            trimmed.startsWith("/*")
+          )
+            continue;
+          if (
+            trimmed.startsWith("import ") ||
+            trimmed.startsWith("export type") ||
+            trimmed.startsWith("export interface")
+          )
+            continue;
 
           findings.push({
             rule: rule.rule,
@@ -149,7 +177,8 @@ export async function runStaticAnalysis(config: Config): Promise<StaticAnalysisR
       rule: "missing-rate-limit",
       severity: "medium",
       file: "package.json",
-      description: "No rate-limiting middleware detected (express-rate-limit, rate-limiter-flexible)",
+      description:
+        "No rate-limiting middleware detected (express-rate-limit, rate-limiter-flexible)",
     });
   }
 

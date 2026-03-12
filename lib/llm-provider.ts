@@ -44,7 +44,10 @@ class AnthropicProvider implements LlmProvider {
 
   constructor() {
     const key = process.env.ANTHROPIC_API_KEY;
-    if (!key) throw new Error("ANTHROPIC_API_KEY environment variable is required for anthropic provider");
+    if (!key)
+      throw new Error(
+        "ANTHROPIC_API_KEY environment variable is required for anthropic provider",
+      );
     this.apiKey = key;
   }
 
@@ -57,7 +60,10 @@ class AnthropicProvider implements LlmProvider {
       model: options.model,
       max_tokens: options.maxTokens ?? 4096,
       temperature: options.temperature ?? 0,
-      messages: nonSystemMsgs.map((m) => ({ role: m.role, content: m.content })),
+      messages: nonSystemMsgs.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
     };
     if (systemMsg) {
       body.system = systemMsg.content;
@@ -78,7 +84,9 @@ class AnthropicProvider implements LlmProvider {
       throw new Error(`Anthropic API error ${response.status}: ${err}`);
     }
 
-    const data = (await response.json()) as { content: { type: string; text: string }[] };
+    const data = (await response.json()) as {
+      content: { type: string; text: string }[];
+    };
     const textBlock = data.content.find((b) => b.type === "text");
     return textBlock?.text?.trim() ?? "";
   }
@@ -91,7 +99,10 @@ class OpenRouterProvider implements LlmProvider {
 
   constructor() {
     const key = process.env.OPENROUTER_API_KEY;
-    if (!key) throw new Error("OPENROUTER_API_KEY environment variable is required for openrouter provider");
+    if (!key)
+      throw new Error(
+        "OPENROUTER_API_KEY environment variable is required for openrouter provider",
+      );
     this.client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: key,
@@ -132,7 +143,9 @@ export function getLlmProvider(config: Config): LlmProvider {
       cachedProvider = new OpenRouterProvider();
       break;
     default:
-      throw new Error(`Unknown LLM provider: "${providerName}". Use "openai", "anthropic", or "openrouter".`);
+      throw new Error(
+        `Unknown LLM provider: "${providerName}". Use "openai", "anthropic", or "openrouter".`,
+      );
   }
 
   cachedProviderName = providerName;

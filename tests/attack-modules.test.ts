@@ -31,7 +31,13 @@ const ALL_MODULES: AttackModule[] = [
 ];
 
 const mockAnalysis: CodebaseAnalysis = {
-  tools: [{ name: "read_file", description: "Read a file", parameters: "path: string" }],
+  tools: [
+    {
+      name: "read_file",
+      description: "Read a file",
+      parameters: "path: string",
+    },
+  ],
   roles: [{ name: "admin", permissions: ["*"] }],
   guardrailPatterns: [],
   sensitiveData: [{ type: "api_key", location: ".env", example: "sk-..." }],
@@ -60,12 +66,22 @@ describe("Attack modules", () => {
           expect(attack.category).toBe(mod.category);
           expect(attack.name).toBeTruthy();
           expect(attack.description).toBeTruthy();
-          expect(["jwt", "api_key", "body_role", "none", "forged_jwt"]).toContain(attack.authMethod);
+          expect([
+            "jwt",
+            "api_key",
+            "body_role",
+            "none",
+            "forged_jwt",
+          ]).toContain(attack.authMethod);
           expect(attack.role).toBeTruthy();
           expect(attack.payload).toBeDefined();
-          expect(attack.payload.message || attack.payload._rapidFire).toBeTruthy();
+          expect(
+            attack.payload.message || attack.payload._rapidFire,
+          ).toBeTruthy();
           expect(attack.expectation).toBeTruthy();
-          expect(["critical", "high", "medium", "low"]).toContain(attack.severity);
+          expect(["critical", "high", "medium", "low"]).toContain(
+            attack.severity,
+          );
           expect(attack.isLlmGenerated).toBe(false);
         }
       });
@@ -90,7 +106,9 @@ describe("Attack modules", () => {
   });
 
   it("all seed attack IDs are globally unique", () => {
-    const allIds = ALL_MODULES.flatMap((m) => m.getSeedAttacks().map((a) => a.id));
+    const allIds = ALL_MODULES.flatMap((m) =>
+      m.getSeedAttacks().map((a) => a.id),
+    );
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 });

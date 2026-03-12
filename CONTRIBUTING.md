@@ -52,7 +52,11 @@ export const myCategoryModule: AttackModule = {
     return `You are a red-team attacker specializing in ...
 
 AVAILABLE TOOLS:
-${JSON.stringify(analysis.tools.map((t) => ({ name: t.name, description: t.description })), null, 2)}
+${JSON.stringify(
+  analysis.tools.map((t) => ({ name: t.name, description: t.description })),
+  null,
+  2,
+)}
 
 Generate attacks that:
 1. ...

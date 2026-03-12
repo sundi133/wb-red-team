@@ -1,6 +1,12 @@
 import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
-import type { AttackCategory, AttackResult, RoundResult, Report, StaticAnalysisResult } from "./types.js";
+import type {
+  AttackCategory,
+  AttackResult,
+  RoundResult,
+  Report,
+  StaticAnalysisResult,
+} from "./types.js";
 
 const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   auth_bypass: 15,
@@ -100,7 +106,11 @@ const CATEGORIES: AttackCategory[] = [
   "cross_session_injection",
 ];
 
-export function generateReport(targetUrl: string, rounds: RoundResult[], staticAnalysis?: StaticAnalysisResult): Report {
+export function generateReport(
+  targetUrl: string,
+  rounds: RoundResult[],
+  staticAnalysis?: StaticAnalysisResult,
+): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
   const byCategory = {} as Report["summary"]["byCategory"];
@@ -159,7 +169,10 @@ export function generateReport(targetUrl: string, rounds: RoundResult[], staticA
   return report;
 }
 
-export function writeReport(report: Report): { jsonPath: string; mdPath: string } {
+export function writeReport(report: Report): {
+  jsonPath: string;
+  mdPath: string;
+} {
   const dir = resolve("report");
   mkdirSync(dir, { recursive: true });
 
@@ -222,7 +235,9 @@ function buildMarkdown(report: Report): string {
     lines.push("| Rule | Severity | File | Line | Description |");
     lines.push("|------|----------|------|------|-------------|");
     for (const f of report.staticAnalysis.findings) {
-      lines.push(`| ${f.rule} | ${f.severity} | ${f.file} | ${f.line ?? "-"} | ${f.description} |`);
+      lines.push(
+        `| ${f.rule} | ${f.severity} | ${f.file} | ${f.line ?? "-"} | ${f.description} |`,
+      );
     }
     lines.push("");
   }
@@ -242,7 +257,8 @@ function buildMarkdown(report: Report): string {
   lines.push(`|----------|-------|-------------|-----------|`);
   for (const cat of CATEGORIES) {
     const c = report.summary.byCategory[cat];
-    const rate = c.total > 0 ? `${Math.round((c.passed / c.total) * 100)}%` : "N/A";
+    const rate =
+      c.total > 0 ? `${Math.round((c.passed / c.total) * 100)}%` : "N/A";
     lines.push(`| ${cat} | ${c.total} | ${c.passed} | ${rate} |`);
   }
   lines.push("");
@@ -266,13 +282,26 @@ function buildMarkdown(report: Report): string {
     lines.push(`## Round ${round.round} Details`);
     lines.push("");
     for (const r of round.results) {
-      const emoji = r.verdict === "PASS" ? "!!" : r.verdict === "PARTIAL" ? "~" : r.verdict === "ERROR" ? "?" : "";
+      const emoji =
+        r.verdict === "PASS"
+          ? "!!"
+          : r.verdict === "PARTIAL"
+            ? "~"
+            : r.verdict === "ERROR"
+              ? "?"
+              : "";
       lines.push(`### ${emoji} ${r.attack.name}`);
       lines.push(`- **Category:** ${r.attack.category}`);
-      lines.push(`- **Verdict:** ${r.verdict} | **Status:** ${r.statusCode} | **Time:** ${r.responseTimeMs}ms`);
-      lines.push(`- **Severity:** ${r.attack.severity} | **Auth:** ${r.attack.authMethod} (${r.attack.role})`);
+      lines.push(
+        `- **Verdict:** ${r.verdict} | **Status:** ${r.statusCode} | **Time:** ${r.responseTimeMs}ms`,
+      );
+      lines.push(
+        `- **Severity:** ${r.attack.severity} | **Auth:** ${r.attack.authMethod} (${r.attack.role})`,
+      );
       if (r.attack.strategyName) {
-        lines.push(`- **Strategy:** ${r.attack.strategyName}${r.attack.strategyId != null ? ` (ID: ${r.attack.strategyId})` : ""}`);
+        lines.push(
+          `- **Strategy:** ${r.attack.strategyName}${r.attack.strategyId != null ? ` (ID: ${r.attack.strategyId})` : ""}`,
+        );
       }
       if (r.findings.length > 0) {
         lines.push(`- **Findings:** ${r.findings.join("; ")}`);
@@ -309,7 +338,10 @@ function buildMarkdown(report: Report): string {
 
 function truncateBody(body: unknown, maxLen: number): unknown {
   if (body == null) return null;
-  if (typeof body === "string") return body.length <= maxLen ? body : body.slice(0, maxLen) + "... [truncated]";
+  if (typeof body === "string")
+    return body.length <= maxLen
+      ? body
+      : body.slice(0, maxLen) + "... [truncated]";
   try {
     const str = JSON.stringify(body);
     if (str.length <= maxLen) return body;
@@ -336,7 +368,9 @@ export function printConsoleSummary(report: Report): void {
   console.log("=".repeat(60));
   console.log(`  Target: ${report.targetUrl}`);
   if (report.staticAnalysis) {
-    console.log(`  Static Score: ${report.staticAnalysis.score}/100 (${report.staticAnalysis.findings.length} issues)`);
+    console.log(
+      `  Static Score: ${report.staticAnalysis.score}/100 (${report.staticAnalysis.findings.length} issues)`,
+    );
   }
   console.log(`  Score:  ${report.summary.score}/100`);
   console.log(`  Total:  ${report.summary.totalAttacks} attacks`);
@@ -356,7 +390,9 @@ export function printConsoleSummary(report: Report): void {
   if (report.findings.length > 0) {
     console.log("\n  KEY FINDINGS:");
     for (const f of report.findings.slice(0, 10)) {
-      console.log(`    [${f.severity.toUpperCase()}] ${f.attack}: ${f.description.slice(0, 80)}`);
+      console.log(
+        `    [${f.severity.toUpperCase()}] ${f.attack}: ${f.description.slice(0, 80)}`,
+      );
     }
     if (report.findings.length > 10) {
       console.log(`    ... and ${report.findings.length - 10} more`);

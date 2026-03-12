@@ -10,17 +10,33 @@ function writeTestConfig(dir: string, config: Record<string, unknown>): string {
   return path;
 }
 
-function makeValidConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function makeValidConfig(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
-    target: { baseUrl: "http://localhost:3000", agentEndpoint: "/api/agent", authEndpoint: "/api/login" },
+    target: {
+      baseUrl: "http://localhost:3000",
+      agentEndpoint: "/api/agent",
+      authEndpoint: "/api/login",
+    },
     auth: {
       methods: ["jwt"],
       jwtSecret: "test-secret",
       credentials: [{ email: "a@b.com", password: "pass", role: "admin" }],
       apiKeys: {},
     },
-    requestSchema: { messageField: "message", roleField: "role", apiKeyField: "api_key", guardrailModeField: "guardrail_mode" },
-    responseSchema: { responsePath: "response", toolCallsPath: "tool_calls", userInfoPath: "user", guardrailsPath: "guardrails" },
+    requestSchema: {
+      messageField: "message",
+      roleField: "role",
+      apiKeyField: "api_key",
+      guardrailModeField: "guardrail_mode",
+    },
+    responseSchema: {
+      responsePath: "response",
+      toolCallsPath: "tool_calls",
+      userInfoPath: "user",
+      guardrailsPath: "guardrails",
+    },
     sensitivePatterns: ["sk-proj-"],
     ...overrides,
   };
@@ -57,9 +73,12 @@ describe("loadConfig", () => {
   });
 
   it("allows overriding attackConfig defaults", () => {
-    const path = writeTestConfig(tmpDir, makeValidConfig({
-      attackConfig: { adaptiveRounds: 5, llmModel: "gpt-4o-mini" },
-    }));
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        attackConfig: { adaptiveRounds: 5, llmModel: "gpt-4o-mini" },
+      }),
+    );
     const config = loadConfig(path);
     expect(config.attackConfig.adaptiveRounds).toBe(5);
     expect(config.attackConfig.llmModel).toBe("gpt-4o-mini");
@@ -68,23 +87,40 @@ describe("loadConfig", () => {
   });
 
   it("throws on missing baseUrl", () => {
-    const path = writeTestConfig(tmpDir, makeValidConfig({
-      target: { agentEndpoint: "/api/agent", authEndpoint: "/api/login" },
-    }));
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: { agentEndpoint: "/api/agent", authEndpoint: "/api/login" },
+      }),
+    );
     expect(() => loadConfig(path)).toThrow("target.baseUrl is required");
   });
 
   it("throws on missing agentEndpoint", () => {
-    const path = writeTestConfig(tmpDir, makeValidConfig({
-      target: { baseUrl: "http://localhost:3000", authEndpoint: "/api/login" },
-    }));
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          baseUrl: "http://localhost:3000",
+          authEndpoint: "/api/login",
+        },
+      }),
+    );
     expect(() => loadConfig(path)).toThrow("target.agentEndpoint is required");
   });
 
   it("throws on missing auth credentials and apiKeys", () => {
-    const path = writeTestConfig(tmpDir, makeValidConfig({
-      auth: { methods: ["jwt"], jwtSecret: "s", credentials: [], apiKeys: undefined },
-    }));
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        auth: {
+          methods: ["jwt"],
+          jwtSecret: "s",
+          credentials: [],
+          apiKeys: undefined,
+        },
+      }),
+    );
     expect(() => loadConfig(path)).toThrow("at least one auth method");
   });
 

@@ -8,13 +8,19 @@ export function loadConfig(configPath?: string): Config {
   const config: Config = JSON.parse(raw);
 
   // Validate required fields
-  if (!config.target?.baseUrl) throw new Error("config: target.baseUrl is required");
-  if (!config.target?.agentEndpoint) throw new Error("config: target.agentEndpoint is required");
+  if (!config.target?.baseUrl)
+    throw new Error("config: target.baseUrl is required");
+  if (!config.target?.agentEndpoint)
+    throw new Error("config: target.agentEndpoint is required");
   if (!config.auth?.credentials?.length && !config.auth?.apiKeys) {
-    throw new Error("config: at least one auth method (credentials or apiKeys) is required");
+    throw new Error(
+      "config: at least one auth method (credentials or apiKeys) is required",
+    );
   }
   if (!config.sensitivePatterns?.length) {
-    console.warn("Warning: no sensitivePatterns defined — sensitive_data checks will be limited");
+    console.warn(
+      "Warning: no sensitivePatterns defined — sensitive_data checks will be limited",
+    );
   }
 
   // Defaults
