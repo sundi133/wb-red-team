@@ -426,6 +426,9 @@ attacks/
   tool-chain-hijack.ts         # Cross-turn tool chaining to achieve unauthorized outcomes
   agent-reflection-exploit.ts  # ReAct/CoT/scratchpad injection, self-critique poisoning
   cross-session-injection.ts   # Persistent memory poisoning, shared store attacks, RAG injection
+dashboard/
+  server.ts              # Lightweight dashboard web server
+  index.html             # Self-contained SPA (no dependencies)
 tests/                   # Unit tests
 report/                  # Generated reports (JSON + Markdown)
 ```
@@ -438,6 +441,28 @@ npm test                # Run tests
 npm run test:watch      # Run tests in watch mode
 npm run lint            # Lint
 ```
+
+## Dashboard
+
+After running red team tests, view results in the built-in web dashboard:
+
+```bash
+npm run dashboard
+```
+
+Then open [http://localhost:4200](http://localhost:4200) in your browser.
+
+The dashboard provides:
+
+- **Security score** — 0-100 gauge with color-coded severity
+- **Summary stats** — total attacks, vulnerabilities found, partial leaks, defended, errors
+- **Category breakdown** — horizontal bar chart showing pass/partial/fail per attack category
+- **Top attack strategies** — which delivery strategies were most effective
+- **Findings table** — filterable by severity, category, and free-text search; expandable rows showing the attack prompt, agent response, LLM judge reasoning, and detection details
+- **Round-by-round detail** — drill into each adaptive round with full payload/response pairs
+- **Static analysis** — code-level findings with file locations and severity
+
+Use the dropdown at the top to switch between historical reports.
 
 ## Verdicts
 
