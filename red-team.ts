@@ -66,6 +66,21 @@ import { agenticWorkflowBypassModule } from "./attacks/agentic-workflow-bypass.j
 import { toolChainHijackModule } from "./attacks/tool-chain-hijack.js";
 import { agentReflectionExploitModule } from "./attacks/agent-reflection-exploit.js";
 import { crossSessionInjectionModule } from "./attacks/cross-session-injection.js";
+import { drugSynthesisModule } from "./attacks/drug-synthesis.js";
+import { weaponsViolenceModule } from "./attacks/weapons-violence.js";
+import { financialCrimeModule } from "./attacks/financial-crime.js";
+import { cyberCrimeModule } from "./attacks/cyber-crime.js";
+import { csamMinorSafetyModule } from "./attacks/csam-minor-safety.js";
+import { fakeQuotesMisinfoModule } from "./attacks/fake-quotes-misinfo.js";
+import { competitorSabotageModule } from "./attacks/competitor-sabotage.js";
+import { defamationHarassmentModule } from "./attacks/defamation-harassment.js";
+import { brandImpersonationModule } from "./attacks/brand-impersonation.js";
+import { hateSpeechDogwhistleModule } from "./attacks/hate-speech-dogwhistle.js";
+import { radicalizationContentModule } from "./attacks/radicalization-content.js";
+import { targetedHarassmentModule } from "./attacks/targeted-harassment.js";
+import { influenceOperationsModule } from "./attacks/influence-operations.js";
+import { psychologicalManipulationModule } from "./attacks/psychological-manipulation.js";
+import { deceptiveMisinfoModule } from "./attacks/deceptive-misinfo.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -114,6 +129,21 @@ const ALL_MODULES: AttackModule[] = [
   toolChainHijackModule,
   agentReflectionExploitModule,
   crossSessionInjectionModule,
+  drugSynthesisModule,
+  weaponsViolenceModule,
+  financialCrimeModule,
+  cyberCrimeModule,
+  csamMinorSafetyModule,
+  fakeQuotesMisinfoModule,
+  competitorSabotageModule,
+  defamationHarassmentModule,
+  brandImpersonationModule,
+  hateSpeechDogwhistleModule,
+  radicalizationContentModule,
+  targetedHarassmentModule,
+  influenceOperationsModule,
+  psychologicalManipulationModule,
+  deceptiveMisinfoModule,
 ];
 
 async function main() {

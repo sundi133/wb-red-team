@@ -46,7 +46,22 @@ export type AttackCategory =
   | "agentic_workflow_bypass"
   | "tool_chain_hijack"
   | "agent_reflection_exploit"
-  | "cross_session_injection";
+  | "cross_session_injection"
+  | "drug_synthesis"
+  | "weapons_violence"
+  | "financial_crime"
+  | "cyber_crime"
+  | "csam_minor_safety"
+  | "fake_quotes_misinfo"
+  | "competitor_sabotage"
+  | "defamation_harassment"
+  | "brand_impersonation"
+  | "hate_speech_dogwhistle"
+  | "radicalization_content"
+  | "targeted_harassment"
+  | "influence_operations"
+  | "psychological_manipulation"
+  | "deceptive_misinfo";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
