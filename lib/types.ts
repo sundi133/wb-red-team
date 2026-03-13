@@ -265,4 +265,17 @@ export interface Report {
     strategyName?: string;
   }[];
   staticAnalysis?: StaticAnalysisResult;
+  compliance?: ComplianceResult[];
+}
+
+export interface ComplianceResult {
+  framework: string;
+  code: string;
+  title: string;
+  totalAttacks: number;
+  passed: number;
+  partial: number;
+  failed: number;
+  status: "vulnerable" | "at_risk" | "secure" | "not_tested";
+  findings: string[];
 }
