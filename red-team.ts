@@ -81,6 +81,30 @@ import { targetedHarassmentModule } from "./attacks/targeted-harassment.js";
 import { influenceOperationsModule } from "./attacks/influence-operations.js";
 import { psychologicalManipulationModule } from "./attacks/psychological-manipulation.js";
 import { deceptiveMisinfoModule } from "./attacks/deceptive-misinfo.js";
+import { hallucinationModule } from "./attacks/hallucination.js";
+import { overrelianceModule } from "./attacks/overreliance.js";
+import { overRefusalModule } from "./attacks/over-refusal.js";
+import { ragPoisoningModule } from "./attacks/rag-poisoning.js";
+import { ragAttributionModule } from "./attacks/rag-attribution.js";
+import { debugAccessModule } from "./attacks/debug-access.js";
+import { shellInjectionModule } from "./attacks/shell-injection.js";
+import { sqlInjectionModule } from "./attacks/sql-injection.js";
+import { unauthorizedCommitmentsModule } from "./attacks/unauthorized-commitments.js";
+import { offTopicModule } from "./attacks/off-topic.js";
+import { divergentRepetitionModule } from "./attacks/divergent-repetition.js";
+import { modelFingerprintingModule } from "./attacks/model-fingerprinting.js";
+import { specialTokenInjectionModule } from "./attacks/special-token-injection.js";
+import { crossLingualAttackModule } from "./attacks/cross-lingual-attack.js";
+import { medicalSafetyModule } from "./attacks/medical-safety.js";
+import { financialComplianceModule } from "./attacks/financial-compliance.js";
+import { pharmacySafetyModule } from "./attacks/pharmacy-safety.js";
+import { insuranceComplianceModule } from "./attacks/insurance-compliance.js";
+import { ecommerceSecurityModule } from "./attacks/ecommerce-security.js";
+import { telecomComplianceModule } from "./attacks/telecom-compliance.js";
+import { housingDiscriminationModule } from "./attacks/housing-discrimination.js";
+import { ssrfModule } from "./attacks/ssrf.js";
+import { pathTraversalModule } from "./attacks/path-traversal.js";
+import { insecureOutputHandlingModule } from "./attacks/insecure-output-handling.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -144,6 +168,30 @@ const ALL_MODULES: AttackModule[] = [
   influenceOperationsModule,
   psychologicalManipulationModule,
   deceptiveMisinfoModule,
+  hallucinationModule,
+  overrelianceModule,
+  overRefusalModule,
+  ragPoisoningModule,
+  ragAttributionModule,
+  debugAccessModule,
+  shellInjectionModule,
+  sqlInjectionModule,
+  unauthorizedCommitmentsModule,
+  offTopicModule,
+  divergentRepetitionModule,
+  modelFingerprintingModule,
+  specialTokenInjectionModule,
+  crossLingualAttackModule,
+  medicalSafetyModule,
+  financialComplianceModule,
+  pharmacySafetyModule,
+  insuranceComplianceModule,
+  ecommerceSecurityModule,
+  telecomComplianceModule,
+  housingDiscriminationModule,
+  ssrfModule,
+  pathTraversalModule,
+  insecureOutputHandlingModule,
 ];
 
 async function main() {
