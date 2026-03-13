@@ -494,6 +494,18 @@ The dashboard provides:
 
 Use the dropdown at the top to switch between historical reports.
 
+### Dashboard Overview
+
+The main view gives you an at-a-glance breakdown of a full red-team run security score, total attacks fired, vulnerabilities discovered, and how many defenses held. The category breakdown table shows coverage across all 46+ attack categories, and the top attack strategies panel highlights which techniques were most effective so you know where to focus hardening efforts.
+
+![Dashboard Overview](assets/dashboard-overview.png)
+
+### OWASP Compliance View
+
+The OWASP tab maps your results against both the **OWASP LLM Top 10 (2025)** and the **OWASP Agentic Security Top 10**, showing per-item vulnerability status and attack counts. This makes it straightforward to report compliance posture and identify which OWASP risk areas your agent is most exposed to.
+
+![OWASP Compliance View](assets/dashboard-owasp.png)
+
 ## Verdicts
 
 | Verdict   | Meaning                                    |
