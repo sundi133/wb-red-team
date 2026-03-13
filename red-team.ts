@@ -9,6 +9,7 @@ import {
   executeMultiTurn,
   executeRapidFire,
   sleep,
+  runWithConcurrency,
 } from "./lib/attack-runner.js";
 import { analyzeResponse } from "./lib/response-analyzer.js";
 import {
@@ -232,10 +233,11 @@ async function main() {
     );
     console.log(`  Planned ${attacks.length} attacks`);
 
-    const roundResults: AttackResult[] = [];
+    const concurrency = config.attackConfig.concurrency || 1;
+    console.log(`  Concurrency: ${concurrency}`);
 
-    for (let i = 0; i < attacks.length; i++) {
-      const attack = attacks[i];
+    // Build a task for each attack that returns its result
+    const attackTasks = attacks.map((attack, i) => async (): Promise<AttackResult> => {
       const progress = `[${i + 1}/${attacks.length}]`;
 
       // Handle rate-limit rapid-fire attacks specially
@@ -288,8 +290,11 @@ async function main() {
         console.log(
           `    [${icon}] ${result.verdict} — ${result.findings[0] ?? ""}`,
         );
-        roundResults.push(result);
-        continue;
+
+        if (config.attackConfig.delayBetweenRequestsMs > 0) {
+          await sleep(config.attackConfig.delayBetweenRequestsMs);
+        }
+        return result;
       }
 
       // Multi-turn attack
@@ -337,45 +342,48 @@ async function main() {
           console.log(`    ${result.findings[0]}`);
         }
 
-        roundResults.push(result);
-      } else {
-        // Single-turn attack
-        process.stdout.write(`  ${progress} ${attack.name}...`);
-        const { statusCode, body, timeMs } = await executeAttack(
-          config,
-          attack,
-        );
-        const result = await analyzeResponse(
-          config,
-          attack,
-          statusCode,
-          body,
-          timeMs,
-        );
-
-        const icon =
-          result.verdict === "PASS"
-            ? "!!"
-            : result.verdict === "PARTIAL"
-              ? "~"
-              : result.verdict === "FAIL"
-                ? "OK"
-                : "??";
-        console.log(
-          ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
-        );
-        if (result.findings.length > 0) {
-          console.log(`    ${result.findings[0]}`);
+        if (config.attackConfig.delayBetweenRequestsMs > 0) {
+          await sleep(config.attackConfig.delayBetweenRequestsMs);
         }
-
-        roundResults.push(result);
+        return result;
       }
 
-      // Delay between requests
+      // Single-turn attack
+      process.stdout.write(`  ${progress} ${attack.name}...`);
+      const { statusCode, body, timeMs } = await executeAttack(
+        config,
+        attack,
+      );
+      const result = await analyzeResponse(
+        config,
+        attack,
+        statusCode,
+        body,
+        timeMs,
+      );
+
+      const icon =
+        result.verdict === "PASS"
+          ? "!!"
+          : result.verdict === "PARTIAL"
+            ? "~"
+            : result.verdict === "FAIL"
+              ? "OK"
+              : "??";
+      console.log(
+        ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
+      );
+      if (result.findings.length > 0) {
+        console.log(`    ${result.findings[0]}`);
+      }
+
       if (config.attackConfig.delayBetweenRequestsMs > 0) {
         await sleep(config.attackConfig.delayBetweenRequestsMs);
       }
-    }
+      return result;
+    });
+
+    const roundResults = await runWithConcurrency(attackTasks, concurrency);
 
     rounds.push({ round, results: roundResults });
     allPreviousResults = allPreviousResults.concat(roundResults);
