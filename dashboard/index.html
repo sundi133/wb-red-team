@@ -41,8 +41,161 @@
         text-decoration: none;
       }
 
-      /* Layout */
-      .header {
+      /* Layout — sidebar + main */
+      .layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        height: 100vh;
+      }
+      @media (max-width: 1000px) {
+        .layout {
+          grid-template-columns: 260px 1fr;
+        }
+      }
+
+      /* Sidebar */
+      .sidebar {
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .sidebar-header h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .sidebar-search {
+        width: 100%;
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+      .sidebar-search::placeholder {
+        color: var(--text2);
+      }
+
+      /* Trend chart */
+      .trend-section {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .trend-label {
+        font-size: 11px;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
+      .trend-canvas {
+        width: 100%;
+        height: 48px;
+      }
+
+      /* Report list */
+      .report-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+      }
+      .report-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background 0.15s;
+      }
+      .report-item:hover {
+        background: var(--surface2);
+      }
+      .report-item.active {
+        background: rgba(88, 166, 255, 0.08);
+        border-left-color: var(--accent);
+      }
+      .report-item-score {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        border: 2px solid;
+      }
+      .report-item-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .report-item-date {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .report-item-target {
+        font-size: 11px;
+        color: var(--text2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .report-item-stats {
+        font-size: 10px;
+        color: var(--text2);
+        display: flex;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      .report-item-stats .ri-vuln {
+        color: var(--red);
+      }
+      .report-item-stats .ri-safe {
+        color: var(--green);
+      }
+
+      /* Pagination */
+      .sidebar-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .sidebar-pagination button {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .sidebar-pagination button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      /* Main area */
+      .main {
+        overflow-y: auto;
+      }
+      .main-header {
         background: var(--surface);
         border-bottom: 1px solid var(--border);
         padding: 12px 24px;
@@ -53,29 +206,13 @@
         top: 0;
         z-index: 10;
       }
-      .header h1 {
-        font-size: 18px;
-        font-weight: 600;
-        white-space: nowrap;
-      }
-      .header select {
-        background: var(--surface2);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 13px;
-        min-width: 340px;
-        cursor: pointer;
-      }
-      .header .meta {
+      .main-header .meta {
         margin-left: auto;
         color: var(--text2);
         font-size: 13px;
         display: flex;
         gap: 16px;
       }
-
       .container {
         max-width: 1400px;
         margin: 0 auto;
@@ -480,6 +617,218 @@
         border-left: 3px solid var(--purple);
       }
 
+      /* OWASP Compliance */
+      .owasp-trigger {
+        text-align: center;
+        padding: 32px;
+      }
+      .owasp-btn {
+        background: linear-gradient(135deg, var(--accent), var(--purple));
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 28px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .owasp-btn:hover {
+        opacity: 0.85;
+      }
+      .owasp-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .owasp-progress {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .owasp-progress-bar {
+        height: 4px;
+        background: var(--surface2);
+        border-radius: 2px;
+        margin-top: 6px;
+        overflow: hidden;
+      }
+      .owasp-progress-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+        transition: width 0.3s;
+      }
+      .compliance-grid {
+        display: grid;
+        gap: 10px;
+      }
+      .compliance-card {
+        background: var(--surface2);
+        border-radius: 8px;
+        border-left: 4px solid var(--border);
+        overflow: hidden;
+      }
+      .compliance-card.status-vulnerable {
+        border-left-color: var(--red);
+      }
+      .compliance-card.status-at_risk {
+        border-left-color: var(--orange);
+      }
+      .compliance-card.status-secure {
+        border-left-color: var(--green);
+      }
+      .compliance-card.status-not_tested {
+        border-left-color: var(--text2);
+        opacity: 0.6;
+      }
+      .compliance-card.status-error {
+        border-left-color: var(--text2);
+      }
+      .compliance-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .compliance-header:hover {
+        background: rgba(88, 166, 255, 0.04);
+      }
+      .compliance-code {
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--accent);
+        min-width: 90px;
+        flex-shrink: 0;
+      }
+      .compliance-title {
+        font-size: 13px;
+        flex: 1;
+      }
+      .compliance-meta {
+        font-size: 11px;
+        color: var(--text2);
+        min-width: 100px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .compliance-meta .c-vuln {
+        color: var(--red);
+        font-weight: 600;
+      }
+      .compliance-meta .c-partial {
+        color: var(--orange);
+      }
+      .compliance-meta .c-safe {
+        color: var(--green);
+      }
+      .compliance-status {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 10px;
+        white-space: nowrap;
+      }
+      .compliance-status.vulnerable {
+        background: rgba(248, 81, 73, 0.15);
+        color: var(--red);
+      }
+      .compliance-status.at_risk {
+        background: rgba(210, 153, 34, 0.15);
+        color: var(--orange);
+      }
+      .compliance-status.secure {
+        background: rgba(63, 185, 80, 0.15);
+        color: var(--green);
+      }
+      .compliance-status.not_tested {
+        background: rgba(139, 148, 158, 0.15);
+        color: var(--text2);
+      }
+      .compliance-status.error {
+        background: rgba(139, 148, 158, 0.15);
+        color: var(--text2);
+      }
+      .compliance-expand {
+        font-size: 12px;
+        color: var(--text2);
+        width: 20px;
+        text-align: center;
+      }
+      .compliance-body {
+        display: none;
+        padding: 0 16px 16px;
+        border-top: 1px solid var(--border);
+      }
+      .compliance-body.open {
+        display: block;
+      }
+      .compliance-summary-text {
+        font-size: 13px;
+        color: var(--text);
+        margin: 12px 0;
+        line-height: 1.6;
+      }
+      .compliance-details {
+        font-size: 12px;
+        color: var(--text2);
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--bg);
+        border-radius: 6px;
+        padding: 12px;
+        max-height: 300px;
+        overflow: auto;
+        margin: 8px 0;
+        line-height: 1.6;
+      }
+      .compliance-recs {
+        margin: 8px 0;
+        padding-left: 20px;
+      }
+      .compliance-recs li {
+        font-size: 12px;
+        color: var(--text);
+        margin: 4px 0;
+        line-height: 1.5;
+      }
+      .compliance-findings {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 8px;
+      }
+      .compliance-finding-tag {
+        display: inline-block;
+        background: rgba(248, 81, 73, 0.1);
+        color: var(--red);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .owasp-summary-bar {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+      .owasp-summary-item {
+        text-align: center;
+        padding: 8px 16px;
+        background: var(--bg);
+        border-radius: 6px;
+      }
+      .owasp-summary-item .os-num {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .owasp-summary-item .os-label {
+        font-size: 11px;
+        color: var(--text2);
+        text-transform: uppercase;
+      }
+
       .empty {
         color: var(--text2);
         text-align: center;
@@ -500,60 +849,239 @@
     </style>
   </head>
   <body>
-    <div class="header">
-      <h1>Red Team Dashboard</h1>
-      <select id="reportSelect">
-        <option value="">Loading reports...</option>
-      </select>
-      <div class="meta">
-        <span id="metaTarget"></span>
-        <span id="metaDate"></span>
+    <div class="layout">
+      <!-- Sidebar: Report Browser -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h1>Red Team Dashboard</h1>
+          <input
+            class="sidebar-search"
+            id="reportSearch"
+            placeholder="Search reports..."
+          />
+        </div>
+        <div class="trend-section">
+          <div class="trend-label">Score Trend</div>
+          <canvas class="trend-canvas" id="trendCanvas"></canvas>
+        </div>
+        <div class="report-list" id="reportList">
+          <div class="loading" style="padding: 24px">Loading...</div>
+        </div>
+        <div class="sidebar-pagination" id="pagination"></div>
       </div>
-    </div>
 
-    <div class="container" id="app">
-      <div class="loading" id="loadingMsg">Select a report to view results</div>
+      <!-- Main content -->
+      <div class="main">
+        <div class="main-header">
+          <span
+            id="metaTarget"
+            style="font-weight: 600; font-size: 14px"
+          ></span>
+          <div class="meta">
+            <span id="metaDate"></span>
+            <span id="metaScore"></span>
+          </div>
+        </div>
+        <div class="container" id="app">
+          <div class="loading">Select a report from the sidebar</div>
+        </div>
+      </div>
     </div>
 
     <script>
       const $ = (s) => document.querySelector(s);
       const app = $("#app");
-      const reportSelect = $("#reportSelect");
       let report = null;
-      let activeRound = 0; // 0 = all rounds
+      let activeRound = 0;
+      let currentFile = null;
+      let reportsMeta = [];
+      let trendData = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      let searchTerm = "";
+      let searchTimeout = null;
 
       // ── Bootstrap ──
       (async () => {
-        const res = await fetch("/api/reports");
-        const files = await res.json();
-        reportSelect.innerHTML = files.length
-          ? files
-              .map(
-                (f, i) =>
-                  `<option value="${f}" ${i === 0 ? "selected" : ""}>${formatFilename(f)}</option>`,
-              )
-              .join("")
-          : '<option value="">No reports found</option>';
-        if (files.length) loadReport(files[0]);
+        await loadReportsMeta();
       })();
 
-      reportSelect.addEventListener("change", () => {
-        if (reportSelect.value) loadReport(reportSelect.value);
+      // Search with debounce
+      $("#reportSearch").addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchTerm = e.target.value;
+          currentPage = 1;
+          loadReportsMeta();
+        }, 300);
       });
 
-      function formatFilename(f) {
-        const m = f.match(/report-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
-        if (!m) return f;
-        return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}`;
+      async function loadReportsMeta(page) {
+        if (page) currentPage = page;
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: "50",
+        });
+        if (searchTerm) params.set("search", searchTerm);
+
+        const res = await fetch(`/api/reports-meta?${params}`);
+        const data = await res.json();
+        reportsMeta = data.items || [];
+        totalPages = data.totalPages || 1;
+        trendData = data.trend || [];
+
+        renderReportList();
+        renderTrend();
+        renderPagination();
+
+        // Auto-select first report if none selected
+        if (!currentFile && reportsMeta.length > 0) {
+          selectReport(reportsMeta[0].filename);
+        }
       }
 
-      async function loadReport(filename) {
+      function scoreColor(score) {
+        return score >= 70
+          ? "var(--green)"
+          : score >= 40
+            ? "var(--orange)"
+            : "var(--red)";
+      }
+
+      function renderReportList() {
+        const el = $("#reportList");
+        if (!reportsMeta.length) {
+          el.innerHTML =
+            '<div class="loading" style="padding:24px">No reports found</div>';
+          return;
+        }
+        el.innerHTML = reportsMeta
+          .map((m) => {
+            const d = new Date(m.timestamp);
+            const dateStr = m.timestamp
+              ? d.toLocaleDateString() +
+                " " +
+                d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : m.filename;
+            const color = scoreColor(m.score);
+            const active = m.filename === currentFile ? " active" : "";
+            return `<div class="report-item${active}" data-file="${m.filename}" onclick="selectReport('${m.filename}')">
+            <div class="report-item-score" style="color:${color};border-color:${color}">${m.score}</div>
+            <div class="report-item-info">
+              <div class="report-item-date">${esc(dateStr)}</div>
+              <div class="report-item-target" title="${esc(m.targetUrl)}">${esc(m.targetUrl || "unknown")}</div>
+              <div class="report-item-stats">
+                <span>${m.totalAttacks} attacks</span>
+                <span class="ri-vuln">${m.passed} vuln</span>
+                <span class="ri-safe">${m.failed} safe</span>
+              </div>
+            </div>
+          </div>`;
+          })
+          .join("");
+      }
+
+      function renderPagination() {
+        const el = $("#pagination");
+        if (totalPages <= 1) {
+          el.innerHTML = `<span>${reportsMeta.length ? reportsMeta.length + " reports" : ""}</span>`;
+          return;
+        }
+        el.innerHTML = `
+          <button onclick="loadReportsMeta(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""}>Prev</button>
+          <span>${currentPage} / ${totalPages}</span>
+          <button onclick="loadReportsMeta(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""}>Next</button>
+        `;
+      }
+
+      function renderTrend() {
+        const canvas = $("#trendCanvas");
+        const ctx = canvas.getContext("2d");
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.offsetWidth;
+        const h = canvas.offsetHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        if (trendData.length < 2) {
+          ctx.fillStyle = "var(--text2)";
+          ctx.font = "11px sans-serif";
+          ctx.fillText(trendData.length ? "1 run" : "No data", 4, h / 2 + 4);
+          return;
+        }
+
+        const scores = trendData.map((d) => d.score);
+        const min = Math.min(...scores, 0);
+        const max = Math.max(...scores, 100);
+        const range = max - min || 1;
+        const pad = 2;
+
+        // Draw grid lines
+        ctx.strokeStyle = "#30363d";
+        ctx.lineWidth = 0.5;
+        for (const y of [0, 25, 50, 75, 100]) {
+          const py = h - pad - ((y - min) / range) * (h - pad * 2);
+          ctx.beginPath();
+          ctx.moveTo(0, py);
+          ctx.lineTo(w, py);
+          ctx.stroke();
+        }
+
+        // Draw line
+        ctx.strokeStyle = "#58a6ff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        scores.forEach((s, i) => {
+          const x = (i / (scores.length - 1)) * (w - pad * 2) + pad;
+          const y = h - pad - ((s - min) / range) * (h - pad * 2);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Draw fill
+        const lastX =
+          ((scores.length - 1) / (scores.length - 1)) * (w - pad * 2) + pad;
+        ctx.lineTo(lastX, h);
+        ctx.lineTo(pad, h);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(88,166,255,0.08)";
+        ctx.fill();
+
+        // Draw dots for latest and lowest
+        const latestIdx = scores.length - 1;
+        const lowestIdx = scores.indexOf(Math.min(...scores));
+        for (const idx of [latestIdx, lowestIdx]) {
+          const x = (idx / (scores.length - 1)) * (w - pad * 2) + pad;
+          const y = h - pad - ((scores[idx] - min) / range) * (h - pad * 2);
+          ctx.fillStyle = scoreColor(scores[idx]);
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      async function selectReport(filename) {
+        currentFile = filename;
+        // Highlight in sidebar
+        document.querySelectorAll(".report-item").forEach((el) => {
+          el.classList.toggle("active", el.dataset.file === filename);
+        });
+
         app.innerHTML = '<div class="loading">Loading report...</div>';
         const res = await fetch(`/api/report/${filename}`);
         report = await res.json();
         activeRound = 0;
         render();
       }
+
+      // Keep old name for backward compat
+      const reportSelect = {
+        get value() {
+          return currentFile;
+        },
+      };
 
       // ── Rendering ──
       function render() {
@@ -562,13 +1090,10 @@
 
         $("#metaTarget").textContent = r.targetUrl;
         $("#metaDate").textContent = new Date(r.timestamp).toLocaleString();
+        $("#metaScore").textContent = `Score: ${s.score}/100`;
+        $("#metaScore").style.color = scoreColor(s.score);
 
-        const scoreColor =
-          s.score >= 70
-            ? "var(--green)"
-            : s.score >= 40
-              ? "var(--orange)"
-              : "var(--red)";
+        const ringColor = scoreColor(s.score);
         const circum = 2 * Math.PI * 52;
         const dashOffset = circum * (1 - s.score / 100);
 
@@ -579,10 +1104,10 @@
         <div class="score-ring">
           <svg width="120" height="120" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
+            <circle cx="60" cy="60" r="52" fill="none" stroke="${ringColor}" stroke-width="10"
               stroke-dasharray="${circum}" stroke-dashoffset="${dashOffset}" stroke-linecap="round"/>
           </svg>
-          <div class="value" style="color:${scoreColor}">${s.score}</div>
+          <div class="value" style="color:${ringColor}">${s.score}</div>
         </div>
         <div class="score-label">Security Score</div>
       </div>
@@ -606,6 +1131,32 @@
       <div class="section">
         <h2>Top Attack Strategies</h2>
         <div id="strategySection"></div>
+      </div>
+    </div>
+
+    <!-- OWASP Compliance -->
+    <div class="section">
+      <h2>OWASP Compliance Mapping</h2>
+      <div id="owaspTrigger" class="owasp-trigger">
+        <button class="owasp-btn" id="owaspAnalyzeBtn" onclick="runOwaspAnalysis()">Run OWASP Mapping Analysis</button>
+        <div class="owasp-progress" id="owaspProgress" style="display:none">
+          <span id="owaspProgressText">Analyzing...</span>
+          <div class="owasp-progress-bar"><div class="owasp-progress-fill" id="owaspProgressFill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div id="owaspResults" style="display:none">
+        <div class="two-col">
+          <div>
+            <h3 style="font-size:15px;margin-bottom:12px;">OWASP LLM Top 10 (2025)</h3>
+            <div id="owaspLlmSummary" class="owasp-summary-bar"></div>
+            <div id="owaspLlm" class="compliance-grid"></div>
+          </div>
+          <div>
+            <h3 style="font-size:15px;margin-bottom:12px;">OWASP Agentic Security Top 10</h3>
+            <div id="owaspAgenticSummary" class="owasp-summary-bar"></div>
+            <div id="owaspAgentic" class="compliance-grid"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -728,6 +1279,182 @@
               `<span class="strategy-chip">${esc(name)}<span class="s-count">${count}</span></span>`,
           )
           .join("");
+      }
+
+      let owaspResults = [];
+      let owaspAnalyzing = false;
+
+      async function runOwaspAnalysis() {
+        if (owaspAnalyzing || !reportSelect.value) return;
+        owaspAnalyzing = true;
+
+        const btn = $("#owaspAnalyzeBtn");
+        const progress = $("#owaspProgress");
+        const progressText = $("#owaspProgressText");
+        const progressFill = $("#owaspProgressFill");
+
+        // Reset everything for a fresh run
+        owaspResults = [];
+        $("#owaspResults").style.display = "none";
+        $("#owaspLlm").innerHTML = "";
+        $("#owaspAgentic").innerHTML = "";
+        $("#owaspLlmSummary").innerHTML = "";
+        $("#owaspAgenticSummary").innerHTML = "";
+
+        btn.disabled = true;
+        btn.textContent = "Analyzing with LLM...";
+        progress.style.display = "block";
+        progressFill.style.width = "0%";
+
+        const totalItems = 20; // 10 LLM + 10 Agentic
+        let completed = 0;
+
+        try {
+          const res = await fetch("/api/owasp-analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reportFile: reportSelect.value }),
+          });
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const item = JSON.parse(line);
+                owaspResults.push(item);
+                completed++;
+                progressText.textContent = `Analyzing ${item.code} — ${item.title}... (${completed}/${totalItems})`;
+                progressFill.style.width = `${(completed / totalItems) * 100}%`;
+                renderOwaspResults();
+              } catch {}
+            }
+          }
+
+          // Process remaining buffer
+          if (buffer.trim()) {
+            try {
+              owaspResults.push(JSON.parse(buffer));
+              renderOwaspResults();
+            } catch {}
+          }
+
+          btn.textContent = "Re-run OWASP Analysis";
+          progressText.textContent = `Analysis complete — ${owaspResults.length} item${owaspResults.length !== 1 ? "s" : ""} analyzed`;
+          progressFill.style.width = "100%";
+        } catch (err) {
+          progressText.textContent = `Error: ${err.message}`;
+          btn.textContent = "Retry OWASP Analysis";
+        }
+
+        btn.disabled = false;
+        owaspAnalyzing = false;
+      }
+
+      function renderOwaspResults() {
+        const resultsEl = $("#owaspResults");
+        resultsEl.style.display = "block";
+
+        const llmItems = owaspResults.filter((r) =>
+          r.framework.includes("LLM"),
+        );
+        const agenticItems = owaspResults.filter((r) =>
+          r.framework.includes("Agentic"),
+        );
+
+        renderOwaspSummaryBar($("#owaspLlmSummary"), llmItems);
+        renderOwaspSummaryBar($("#owaspAgenticSummary"), agenticItems);
+        renderOwaspCards($("#owaspLlm"), llmItems);
+        renderOwaspCards($("#owaspAgentic"), agenticItems);
+      }
+
+      function renderOwaspSummaryBar(el, items) {
+        if (!items.length) {
+          el.innerHTML = "";
+          return;
+        }
+        const vuln = items.filter((i) => i.status === "vulnerable").length;
+        const risk = items.filter((i) => i.status === "at_risk").length;
+        const secure = items.filter((i) => i.status === "secure").length;
+        const notTested = items.filter((i) => i.status === "not_tested").length;
+        el.innerHTML = `
+          <div class="owasp-summary-item"><div class="os-num" style="color:var(--red)">${vuln}</div><div class="os-label">Vulnerable</div></div>
+          <div class="owasp-summary-item"><div class="os-num" style="color:var(--orange)">${risk}</div><div class="os-label">At Risk</div></div>
+          <div class="owasp-summary-item"><div class="os-num" style="color:var(--green)">${secure}</div><div class="os-label">Secure</div></div>
+          <div class="owasp-summary-item"><div class="os-num" style="color:var(--text2)">${notTested}</div><div class="os-label">Not Tested</div></div>
+        `;
+      }
+
+      function renderOwaspCards(el, items) {
+        el.innerHTML = items
+          .map(
+            (item, i) => `
+          <div class="compliance-card status-${item.status}">
+            <div class="compliance-header" onclick="toggleOwaspCard(this)">
+              <span class="compliance-expand">+</span>
+              <span class="compliance-code">${esc(item.code)}</span>
+              <span class="compliance-title">${esc(item.title)}</span>
+              <span class="compliance-meta">
+                ${item.attacksAnalyzed > 0 ? `<span class="c-vuln">${item.vulnerabilitiesFound}</span>/<span>${item.attacksAnalyzed}</span> attacks` : "—"}
+              </span>
+              <span class="compliance-status ${item.status}">${fmtStatus(item.status)}</span>
+            </div>
+            <div class="compliance-body">
+              <div class="compliance-summary-text">${esc(item.summary)}</div>
+              ${item.details ? `<div class="compliance-details">${esc(item.details)}</div>` : ""}
+              ${
+                item.recommendations && item.recommendations.length
+                  ? `
+                <div style="margin-top:8px"><strong style="font-size:12px;color:var(--accent);">Recommendations:</strong></div>
+                <ol class="compliance-recs">${item.recommendations.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>
+              `
+                  : ""
+              }
+              ${
+                item.relevantFindings && item.relevantFindings.length
+                  ? `
+                <div style="margin-top:8px"><strong style="font-size:12px;color:var(--accent);">Findings:</strong></div>
+                <div class="compliance-findings">${item.relevantFindings.map((f) => `<span class="compliance-finding-tag">${esc(f)}</span>`).join("")}</div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      function toggleOwaspCard(header) {
+        const body = header.nextElementSibling;
+        const expand = header.querySelector(".compliance-expand");
+        if (body.classList.contains("open")) {
+          body.classList.remove("open");
+          expand.textContent = "+";
+        } else {
+          body.classList.add("open");
+          expand.textContent = "−";
+        }
+      }
+
+      function fmtStatus(s) {
+        return s === "at_risk"
+          ? "At Risk"
+          : s === "not_tested"
+            ? "Not Tested"
+            : s === "error"
+              ? "Error"
+              : s.charAt(0).toUpperCase() + s.slice(1);
       }
 
       function buildFindingsIndex() {

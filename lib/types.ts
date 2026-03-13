@@ -61,7 +61,31 @@ export type AttackCategory =
   | "targeted_harassment"
   | "influence_operations"
   | "psychological_manipulation"
-  | "deceptive_misinfo";
+  | "deceptive_misinfo"
+  | "hallucination"
+  | "overreliance"
+  | "over_refusal"
+  | "rag_poisoning"
+  | "rag_attribution"
+  | "debug_access"
+  | "shell_injection"
+  | "sql_injection"
+  | "unauthorized_commitments"
+  | "off_topic"
+  | "divergent_repetition"
+  | "model_fingerprinting"
+  | "special_token_injection"
+  | "cross_lingual_attack"
+  | "medical_safety"
+  | "financial_compliance"
+  | "pharmacy_safety"
+  | "insurance_compliance"
+  | "ecommerce_security"
+  | "telecom_compliance"
+  | "housing_discrimination"
+  | "ssrf"
+  | "path_traversal"
+  | "insecure_output_handling";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
@@ -241,4 +265,17 @@ export interface Report {
     strategyName?: string;
   }[];
   staticAnalysis?: StaticAnalysisResult;
+  compliance?: ComplianceResult[];
+}
+
+export interface ComplianceResult {
+  framework: string;
+  code: string;
+  title: string;
+  totalAttacks: number;
+  passed: number;
+  partial: number;
+  failed: number;
+  status: "vulnerable" | "at_risk" | "secure" | "not_tested";
+  findings: string[];
 }
