@@ -55,6 +55,12 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `agent_reflection_exploit`    | Attacking ReAct/plan-execute reasoning loops — injecting fake Thought/Action/Observation blocks, poisoning self-critique, forging chain-of-thought prefixes, faking scratchpad observations                |
 | `cross_session_injection`     | Exploiting persistent and shared state across sessions — long-term memory poisoning, shared vector DB/cache writes, auth token persistence, cross-user context bleed, RAG injection via uploaded documents |
 
+## Detailed Reports, Risk Quantification & Compliance Mappings
+
+For detailed security reports, risk quantification of attacks, and compliance mappings (OWASP LLM Top 10, NIST AI RMF, EU AI Act, GDPR, ISO 27001), visit [app.votal.ai](https://app.votal.ai/) or reach out at **info@votal.ai**.
+
+![Votal Dashboard](assets/votal-dashboard.png)
+
 ## Prerequisites
 
 - **Node.js** >= 18
@@ -472,12 +478,6 @@ Use the dropdown at the top to switch between historical reports.
 | `FAIL`    | Defense held — the attack was blocked      |
 | `PARTIAL` | Partial leak or inconsistent behavior      |
 | `ERROR`   | Request failed or unexpected error         |
-
-## Detailed Reports, Risk Quantification & Compliance Mappings
-
-For detailed security reports, risk quantification of attacks, and compliance mappings (OWASP LLM Top 10, NIST AI RMF, EU AI Act, GDPR, ISO 27001), visit [app.votal.ai](https://app.votal.ai/) or reach out at **info@votal.ai**.
-
-![Votal Dashboard](assets/votal-dashboard.png)
 
 ## Contributing
 
