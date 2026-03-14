@@ -195,8 +195,35 @@ const ALL_MODULES: AttackModule[] = [
   insecureOutputHandlingModule,
 ];
 
+function parseConcurrency(): number | undefined {
+  // CLI: --concurrency N
+  const idx = process.argv.indexOf("--concurrency");
+  if (idx !== -1 && process.argv[idx + 1]) {
+    const val = parseInt(process.argv[idx + 1], 10);
+    if (val > 0) return val;
+  }
+  // ENV: CONCURRENCY=N
+  if (process.env.CONCURRENCY) {
+    const val = parseInt(process.env.CONCURRENCY, 10);
+    if (val > 0) return val;
+  }
+  return undefined;
+}
+
+function parseConfigPath(): string | undefined {
+  // Skip --concurrency and its value when looking for config path
+  for (let i = 2; i < process.argv.length; i++) {
+    if (process.argv[i] === "--concurrency") {
+      i++; // skip the value
+      continue;
+    }
+    return process.argv[i];
+  }
+  return undefined;
+}
+
 async function main() {
-  const configPath = process.argv[2];
+  const configPath = parseConfigPath();
   console.log("=== Red-Team Security Testing Framework ===\n");
 
   // 1. Load config
@@ -209,6 +236,8 @@ async function main() {
   console.log(
     `  LLM generation: ${config.attackConfig.enableLlmGeneration ? "enabled" : "disabled"}`,
   );
+  const effectiveConcurrency = parseConcurrency() ?? config.attackConfig.concurrency ?? 1;
+  console.log(`  Concurrency: ${effectiveConcurrency}`);
 
   // Filter modules based on enabledCategories (empty/absent = all enabled)
   const enabledSet = config.attackConfig.enabledCategories;
@@ -281,7 +310,7 @@ async function main() {
     );
     console.log(`  Planned ${attacks.length} attacks`);
 
-    const concurrency = config.attackConfig.concurrency || 1;
+    const concurrency = parseConcurrency() ?? config.attackConfig.concurrency ?? 1;
     console.log(`  Concurrency: ${concurrency}`);
 
     // Build a task for each attack that returns its result
