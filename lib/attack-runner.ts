@@ -104,13 +104,21 @@ export async function executeAttack(
   const body = { ...attack.payload };
   delete body._jwtClaims;
 
+  const retryAttempts = config.attackConfig.retryAttempts ?? 3;
+  const retryDelayMs = config.attackConfig.retryDelayMs ?? 500;
+
   const start = Date.now();
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+    const res = await fetchWithRetry(
+      url,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      },
+      retryAttempts,
+      retryDelayMs,
+    );
     const timeMs = Date.now() - start;
     let responseBody: unknown;
     try {
@@ -218,4 +226,41 @@ export async function executeRapidFire(
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry a fetch call with exponential backoff.
+ * Retries on network errors (statusCode 0) and server errors (5xx).
+ */
+export async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retryAttempts: number,
+  retryDelayMs: number,
+): Promise<Response> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      // Don't retry client errors (4xx) — those are intentional responses
+      if (response.status < 500) {
+        return response;
+      }
+
+      // Server error — retry if we have attempts left
+      lastError = new Error(`Server error: ${response.status}`);
+    } catch (e) {
+      // Network error (timeout, DNS, connection refused) — retry
+      lastError = e as Error;
+    }
+
+    if (attempt < retryAttempts) {
+      const delay = retryDelayMs * Math.pow(2, attempt);
+      await sleep(delay);
+    }
+  }
+
+  throw lastError!;
 }

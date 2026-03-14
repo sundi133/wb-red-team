@@ -120,27 +120,86 @@ class OpenRouterProvider implements LlmProvider {
   }
 }
 
+// ── Retry wrapper ──
+
+function isRetryableError(e: unknown): boolean {
+  if (e instanceof Error) {
+    const msg = e.message.toLowerCase();
+    // Rate limits, server errors, timeouts, network failures
+    return (
+      msg.includes("429") ||
+      msg.includes("500") ||
+      msg.includes("502") ||
+      msg.includes("503") ||
+      msg.includes("529") ||
+      msg.includes("timeout") ||
+      msg.includes("econnreset") ||
+      msg.includes("econnrefused") ||
+      msg.includes("fetch failed") ||
+      msg.includes("network")
+    );
+  }
+  return false;
+}
+
+class RetryingProvider implements LlmProvider {
+  constructor(
+    private inner: LlmProvider,
+    private retryAttempts: number,
+    private retryDelayMs: number,
+  ) {}
+
+  async chat(options: ChatOptions): Promise<string> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+      try {
+        return await this.inner.chat(options);
+      } catch (e) {
+        lastError = e as Error;
+        if (!isRetryableError(e) || attempt === this.retryAttempts) {
+          throw lastError;
+        }
+        const delay = this.retryDelayMs * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError!;
+  }
+}
+
 // ── Factory ──
 
 let cachedProvider: LlmProvider | null = null;
 let cachedProviderName: string | null = null;
+let cachedRetryAttempts: number | null = null;
+let cachedRetryDelayMs: number | null = null;
 
 export function getLlmProvider(config: Config): LlmProvider {
   const providerName = config.attackConfig.llmProvider;
+  const retryAttempts = config.attackConfig.retryAttempts ?? 3;
+  const retryDelayMs = config.attackConfig.retryDelayMs ?? 500;
 
-  if (cachedProvider && cachedProviderName === providerName) {
+  if (
+    cachedProvider &&
+    cachedProviderName === providerName &&
+    cachedRetryAttempts === retryAttempts &&
+    cachedRetryDelayMs === retryDelayMs
+  ) {
     return cachedProvider;
   }
 
+  let inner: LlmProvider;
   switch (providerName) {
     case "openai":
-      cachedProvider = new OpenAIProvider();
+      inner = new OpenAIProvider();
       break;
     case "anthropic":
-      cachedProvider = new AnthropicProvider();
+      inner = new AnthropicProvider();
       break;
     case "openrouter":
-      cachedProvider = new OpenRouterProvider();
+      inner = new OpenRouterProvider();
       break;
     default:
       throw new Error(
@@ -148,6 +207,9 @@ export function getLlmProvider(config: Config): LlmProvider {
       );
   }
 
+  cachedProvider = new RetryingProvider(inner, retryAttempts, retryDelayMs);
   cachedProviderName = providerName;
+  cachedRetryAttempts = retryAttempts;
+  cachedRetryDelayMs = retryDelayMs;
   return cachedProvider;
 }
