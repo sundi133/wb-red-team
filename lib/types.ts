@@ -140,6 +140,10 @@ export interface Config {
     enabledStrategies?: string[];
     /** How many strategies to sample per category per round (default: 5). */
     strategiesPerRound?: number;
+    /** Number of retry attempts for failed network/API calls (default: 3). */
+    retryAttempts?: number;
+    /** Initial delay in ms between retries, doubles each attempt (default: 500). */
+    retryDelayMs?: number;
   };
 }
 
