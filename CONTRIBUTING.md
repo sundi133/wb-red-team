@@ -96,4 +96,4 @@ The runner stops early if any step gets a `PASS` verdict.
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/jyotirmoysundi/red-team-ai/issues). For security vulnerabilities in this framework itself, please email directly rather than opening a public issue.
+Use [GitHub Issues](https://github.com/sundi133/wb-red-team/issues). For security vulnerabilities in this framework itself, please email directly rather than opening a public issue.

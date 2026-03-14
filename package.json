@@ -1,17 +1,17 @@
 {
-  "name": "red-team-ai",
+  "name": "wb-red-team",
   "version": "1.0.0",
-  "description": "White-box red-teaming framework for agentic AI apps — analyzes source code, generates LLM-powered attacks across 12 categories, and produces scored security reports",
+  "description": "White-box red-teaming framework for agentic AI apps — analyzes source code, generates LLM-powered attacks across 60 categories, and produces scored security reports",
   "type": "module",
   "license": "MIT",
   "author": "Jyotirmoy Sundi",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jyotirmoysundi/red-team-ai"
+    "url": "https://github.com/sundi133/wb-red-team"
   },
-  "homepage": "https://github.com/jyotirmoysundi/red-team-ai#readme",
+  "homepage": "https://github.com/sundi133/wb-red-team#readme",
   "bugs": {
-    "url": "https://github.com/jyotirmoysundi/red-team-ai/issues"
+    "url": "https://github.com/sundi133/wb-red-team/issues"
   },
   "keywords": [
     "red-team",
