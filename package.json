@@ -1,7 +1,7 @@
 {
   "name": "wb-red-team",
   "version": "1.0.0",
-  "description": "White-box red-teaming framework for agentic AI apps — analyzes source code, generates LLM-powered attacks across 60 categories, and produces scored security reports",
+  "description": "White-box red-teaming framework for agentic AI apps — analyzes source code, generates LLM-powered attacks across 85+ categories, and produces scored security reports",
   "type": "module",
   "license": "MIT",
   "author": "Jyotirmoy Sundi",
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "red-team",
+    "white-box",
     "security",
     "testing",
     "llm",
@@ -28,7 +29,7 @@
     "node": ">=18.0.0"
   },
   "bin": {
-    "red-team-ai": "./red-team.ts"
+    "wb-red-team": "./red-team.ts"
   },
   "scripts": {
     "start": "tsx red-team.ts",
