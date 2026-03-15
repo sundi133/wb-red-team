@@ -29,18 +29,15 @@ class OpenAIProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const params: Record<string, unknown> = {
+    const response = await this.client.chat.completions.create({
       model: options.model,
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
-    };
-    if (options.responseFormat) {
-      params.response_format = { type: options.responseFormat };
-    }
-    const response = await this.client.chat.completions.create(
-      params as Parameters<typeof this.client.chat.completions.create>[0],
-    );
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
+    });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
 }
@@ -118,18 +115,15 @@ class OpenRouterProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const params: Record<string, unknown> = {
+    const response = await this.client.chat.completions.create({
       model: options.model,
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
-    };
-    if (options.responseFormat) {
-      params.response_format = { type: options.responseFormat };
-    }
-    const response = await this.client.chat.completions.create(
-      params as Parameters<typeof this.client.chat.completions.create>[0],
-    );
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
+    });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
 }
