@@ -11,6 +11,8 @@ export interface ChatOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  /** Request JSON output from the model (OpenAI/OpenRouter only). */
+  responseFormat?: "json_object";
 }
 
 export interface LlmProvider {
@@ -27,12 +29,18 @@ class OpenAIProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const response = await this.client.chat.completions.create({
+    const params: Record<string, unknown> = {
       model: options.model,
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
+    if (options.responseFormat) {
+      params.response_format = { type: options.responseFormat };
+    }
+    const response = await this.client.chat.completions.create(
+      params as Parameters<typeof this.client.chat.completions.create>[0],
+    );
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
 }
@@ -110,12 +118,18 @@ class OpenRouterProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const response = await this.client.chat.completions.create({
+    const params: Record<string, unknown> = {
       model: options.model,
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
+    if (options.responseFormat) {
+      params.response_format = { type: options.responseFormat };
+    }
+    const response = await this.client.chat.completions.create(
+      params as Parameters<typeof this.client.chat.completions.create>[0],
+    );
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
 }
