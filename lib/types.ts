@@ -140,6 +140,8 @@ export interface Config {
     enabledStrategies?: string[];
     /** How many strategies to sample per category per round (default: 5). */
     strategiesPerRound?: number;
+    /** Max PARTIAL results to refine per category per round (default: 10). */
+    maxRefinementsPerCategory?: number;
   };
 }
 
