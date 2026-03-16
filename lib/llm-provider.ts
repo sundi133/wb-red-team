@@ -11,6 +11,8 @@ export interface ChatOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  /** Request JSON output from the model (OpenAI/OpenRouter only). */
+  responseFormat?: "json_object";
 }
 
 export interface LlmProvider {
@@ -32,6 +34,9 @@ class OpenAIProvider implements LlmProvider {
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
     });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
@@ -115,6 +120,9 @@ class OpenRouterProvider implements LlmProvider {
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
     });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
