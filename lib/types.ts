@@ -172,6 +172,10 @@ export interface Config {
     strategiesPerRound?: number;
     /** Max PARTIAL results to refine per category per round (default: 10). */
     maxRefinementsPerCategory?: number;
+    /** Character budget per analysis batch (default: 100_000). */
+    contextBudgetChars?: number;
+    /** Max LLM calls for codebase analysis batching (default: 3). */
+    maxAnalysisBatches?: number;
   };
 }
 
