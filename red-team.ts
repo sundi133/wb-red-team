@@ -2,7 +2,7 @@
 
 import { loadConfig } from "./lib/config-loader.js";
 import { analyzeCodebase } from "./lib/codebase-analyzer.js";
-import { planAttacks } from "./lib/attack-planner.js";
+import { planAttacks, refinePartialAttacks } from "./lib/attack-planner.js";
 import {
   preAuthenticate,
   executeAttack,
@@ -431,6 +431,118 @@ async function main() {
       // Delay between requests
       if (config.attackConfig.delayBetweenRequestsMs > 0) {
         await sleep(config.attackConfig.delayBetweenRequestsMs);
+      }
+    }
+
+    // ── Refinement pass: convert PARTIALs from this round ──
+    const roundPartials = roundResults.filter((r) => r.verdict === "PARTIAL");
+    if (roundPartials.length > 0 && config.attackConfig.enableLlmGeneration) {
+      console.log(
+        `\n  ── Refining ${roundPartials.length} PARTIAL results ──`,
+      );
+      const refinedAttacks = await refinePartialAttacks(
+        config,
+        analysis,
+        roundResults,
+        round,
+      );
+
+      if (refinedAttacks.length > 0) {
+        console.log(`  Executing ${refinedAttacks.length} refined attacks`);
+        for (let i = 0; i < refinedAttacks.length; i++) {
+          const attack = refinedAttacks[i];
+          const progress = `[R${i + 1}/${refinedAttacks.length}]`;
+
+          if (attack.steps && attack.steps.length > 0) {
+            const totalSteps = 1 + attack.steps.length;
+            process.stdout.write(
+              `  ${progress} ${attack.name} (${totalSteps} steps)...`,
+            );
+
+            const { results: stepResults, stoppedEarly } =
+              await executeMultiTurn(
+                config,
+                attack,
+                async (cfg, atk, sc, b, t) => {
+                  const r = await analyzeResponse(cfg, atk, sc, b, t);
+                  return { verdict: r.verdict, findings: r.findings };
+                },
+              );
+
+            const lastStep = stepResults[stepResults.length - 1];
+            const result = await analyzeResponse(
+              config,
+              attack,
+              lastStep.statusCode,
+              lastStep.body,
+              lastStep.timeMs,
+            );
+            result.stepIndex = lastStep.stepIndex;
+            result.totalSteps = stepResults.length;
+
+            const icon =
+              result.verdict === "PASS"
+                ? "!!"
+                : result.verdict === "PARTIAL"
+                  ? "~"
+                  : result.verdict === "FAIL"
+                    ? "OK"
+                    : "??";
+            const earlyTag = stoppedEarly
+              ? ` (stopped at step ${lastStep.stepIndex + 1})`
+              : "";
+            console.log(
+              ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
+            );
+            if (result.findings.length > 0) {
+              console.log(`    ${result.findings[0]}`);
+            }
+            roundResults.push(result);
+          } else {
+            process.stdout.write(`  ${progress} ${attack.name}...`);
+            const { statusCode, body, timeMs } = await executeAttack(
+              config,
+              attack,
+            );
+            const result = await analyzeResponse(
+              config,
+              attack,
+              statusCode,
+              body,
+              timeMs,
+            );
+
+            const icon =
+              result.verdict === "PASS"
+                ? "!!"
+                : result.verdict === "PARTIAL"
+                  ? "~"
+                  : result.verdict === "FAIL"
+                    ? "OK"
+                    : "??";
+            console.log(
+              ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
+            );
+            if (result.findings.length > 0) {
+              console.log(`    ${result.findings[0]}`);
+            }
+            roundResults.push(result);
+          }
+
+          if (config.attackConfig.delayBetweenRequestsMs > 0) {
+            await sleep(config.attackConfig.delayBetweenRequestsMs);
+          }
+        }
+
+        const refinedPasses = roundResults
+          .slice(-refinedAttacks.length)
+          .filter((r) => r.verdict === "PASS").length;
+        const refinedPartials = roundResults
+          .slice(-refinedAttacks.length)
+          .filter((r) => r.verdict === "PARTIAL").length;
+        console.log(
+          `  Refinement: ${refinedPasses} converted to PASS, ${refinedPartials} still PARTIAL`,
+        );
       }
     }
 
