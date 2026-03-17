@@ -1,6 +1,6 @@
 {
   "target": {
-    "baseUrl": "http://localhost:3000",
+    "baseUrl": "http://localhost:3001",
     "agentEndpoint": "/api/exfil-test-agent",
     "authEndpoint": "/api/auth/login"
   },
@@ -56,9 +56,9 @@
     "maxAttacksPerCategory": 15,
     "concurrency": 3,
     "delayBetweenRequestsMs": 200,
-    "llmProvider": "openai",
-    "llmModel": "gpt-4o",
-    "judgeModel": "gpt-4o-mini",
+    "llmProvider": "anthropic",
+    "llmModel": "claude-opus-4-5-20251101",
+    "judgeModel": "claude-sonnet-4-20250514",
     "enableLlmGeneration": true,
     "maxMultiTurnSteps": 8,
     "strategiesPerRound": 5,
