@@ -89,6 +89,31 @@ export type AttackCategory =
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
+export type DefenseType =
+  | "guardrail_keyword"
+  | "polite_refusal"
+  | "content_filter"
+  | "role_denial"
+  | "tool_avoidance"
+  | "topic_deflection"
+  | "partial_compliance"
+  | "unknown";
+
+export interface CategoryDefenseProfile {
+  category: AttackCategory;
+  totalAttempts: number;
+  blocked: number;
+  passed: number;
+  partial: number;
+  blockRate: number;
+  defenseBreakdown: Record<string, number>;
+  dominantDefense: DefenseType;
+  failedStrategyIds: number[];
+  passedStrategyIds: number[];
+  refusalPatterns: string[];
+  guardrailTriggers: string[];
+}
+
 export interface Credential {
   email: string;
   password: string;

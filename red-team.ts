@@ -17,7 +17,14 @@ import {
   printConsoleSummary,
 } from "./lib/report-generator.js";
 import { runStaticAnalysis } from "./lib/static-analyzer.js";
-import type { AttackModule, AttackResult, RoundResult } from "./lib/types.js";
+import { analyzeRound } from "./lib/round-analyzer.js";
+import type {
+  AttackModule,
+  AttackResult,
+  AttackCategory,
+  CategoryDefenseProfile,
+  RoundResult,
+} from "./lib/types.js";
 
 // Import attack modules
 import { authBypassModule } from "./attacks/auth-bypass.js";
@@ -264,19 +271,21 @@ async function main() {
   console.log("\n[4/5] Running attacks...");
   const rounds: RoundResult[] = [];
   let allPreviousResults: AttackResult[] = [];
+  let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
 
   for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
     console.log(
       `\n  ── Round ${round}/${config.attackConfig.adaptiveRounds} ──`,
     );
 
-    // Plan attacks for this round
+    // Plan attacks for this round (with defense profiles from prior rounds)
     const attacks = await planAttacks(
       config,
       analysis,
       activeModules,
       allPreviousResults,
       round,
+      defenseProfiles,
     );
     console.log(`  Planned ${attacks.length} attacks`);
 
@@ -427,9 +436,33 @@ async function main() {
 
     rounds.push({ round, results: roundResults });
     allPreviousResults = allPreviousResults.concat(roundResults);
+
+    const passCount = roundResults.filter((r) => r.verdict === "PASS").length;
+    const failCount = roundResults.filter((r) => r.verdict === "FAIL").length;
     console.log(
-      `  Round ${round}: ${roundResults.filter((r) => r.verdict === "PASS").length} vulns found`,
+      `  Round ${round}: ${passCount} vulns found, ${failCount} blocked`,
     );
+
+    // Analyze round results to build per-category defense profiles for next round
+    if (round < config.attackConfig.adaptiveRounds) {
+      defenseProfiles = analyzeRound(roundResults, config, defenseProfiles);
+
+      const blockedCategories = [...defenseProfiles.values()]
+        .filter((p) => p.blockRate > 0)
+        .sort((a, b) => b.blockRate - a.blockRate);
+
+      if (blockedCategories.length > 0) {
+        console.log(`\n  Defense analysis (${blockedCategories.length} categories with blocks):`);
+        for (const p of blockedCategories.slice(0, 10)) {
+          console.log(
+            `    ${p.category}: ${p.blockRate}% blocked → dominant defense: ${p.dominantDefense}`,
+          );
+        }
+        if (blockedCategories.length > 10) {
+          console.log(`    ... and ${blockedCategories.length - 10} more`);
+        }
+      }
+    }
   }
 
   // 5. Generate report
