@@ -23,7 +23,7 @@ if (existsSync(envPath)) {
     if (!process.env[key]) process.env[key] = val;
   }
 }
-import { getLlmProvider } from "../lib/llm-provider.js";
+import { getJudgeProvider } from "../lib/llm-provider.js";
 import {
   OWASP_LLM_TOP_10,
   OWASP_AGENTIC_TOP_10,
@@ -253,7 +253,7 @@ const server = createServer(async (req, res) => {
       });
 
       const config = loadConfig();
-      const llm = getLlmProvider(config);
+      const llm = getJudgeProvider(config);
       const model =
         config.attackConfig.judgeModel || config.attackConfig.llmModel;
       const allResults = reportData.rounds.flatMap(
@@ -349,7 +349,7 @@ interface OwaspAnalysisResult {
 }
 
 async function analyzeOwaspItem(
-  llm: ReturnType<typeof getLlmProvider>,
+  llm: ReturnType<typeof getJudgeProvider>,
   model: string,
   frameworkName: string,
   item: ComplianceItem,

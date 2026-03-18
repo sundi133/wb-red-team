@@ -97,6 +97,7 @@ export type DefenseType =
   | "tool_avoidance"
   | "topic_deflection"
   | "partial_compliance"
+  | "safe_response"
   | "unknown";
 
 export interface CategoryDefenseProfile {
@@ -158,6 +159,8 @@ export interface Config {
     delayBetweenRequestsMs: number;
     llmProvider: "openai" | "anthropic" | "openrouter";
     llmModel: string;
+    /** LLM provider for the judge (defaults to llmProvider if not set). */
+    judgeProvider?: "openai" | "anthropic" | "openrouter";
     judgeModel?: string;
     enableLlmGeneration: boolean;
     maxMultiTurnSteps: number;
@@ -237,6 +240,15 @@ export interface AttackResult {
   responseTimeMs: number;
   findings: string[];
   llmReasoning?: string;
+  /** The resolved judge policy used for this evaluation. */
+  policyUsed?: {
+    name: string;
+    pass_criteria: string[];
+    fail_criteria: string[];
+    partial_criteria: string[];
+    instructions: string;
+    severity_override?: string | null;
+  };
   /** For multi-turn attacks: which step produced the result (0 = initial). */
   stepIndex?: number;
   /** Total steps executed (1 = single-turn). */
