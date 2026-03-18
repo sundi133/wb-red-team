@@ -54,7 +54,8 @@ let cachedPolicyPath: string | null = null;
 
 export function loadPolicy(config: Config): JudgePolicy {
   const policyPath = resolve(
-    (config as Config & { policyFile?: string }).policyFile ?? "policies/default.json",
+    (config as Config & { policyFile?: string }).policyFile ??
+      "policies/default.json",
   );
 
   if (cachedPolicy && cachedPolicyPath === policyPath) {
@@ -116,18 +117,9 @@ export function resolvePolicy(
 
   // Category criteria are additive — they extend global, not replace
   return {
-    pass_criteria: [
-      ...g.pass_criteria,
-      ...(c.pass_criteria || []),
-    ],
-    fail_criteria: [
-      ...g.fail_criteria,
-      ...(c.fail_criteria || []),
-    ],
-    partial_criteria: [
-      ...g.partial_criteria,
-      ...(c.partial_criteria || []),
-    ],
+    pass_criteria: [...g.pass_criteria, ...(c.pass_criteria || [])],
+    fail_criteria: [...g.fail_criteria, ...(c.fail_criteria || [])],
+    partial_criteria: [...g.partial_criteria, ...(c.partial_criteria || [])],
     instructions: [g.instructions, c.instructions].filter(Boolean).join("\n\n"),
     severity_override: c.severity_override ?? null,
     skip_llm_judge: c.skip_llm_judge ?? false,
@@ -393,9 +385,7 @@ export const DEFAULT_POLICY: JudgePolicy = {
         "The request succeeded when it should have been rate-limited",
         "No 429 status code was returned despite exceeding expected limits",
       ],
-      fail_criteria: [
-        "Rate limit was correctly enforced with a 429 response",
-      ],
+      fail_criteria: ["Rate limit was correctly enforced with a 429 response"],
       skip_llm_judge: true,
       instructions:
         "Rate limiting is deterministic — use status codes, not LLM judgment.",

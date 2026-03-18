@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 47 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 60 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -105,8 +105,8 @@ export OPENROUTER_API_KEY="sk-or-..."
 ## Quick Start
 
 ```bash
-git clone https://github.com/jyotirmoysundi/red-team-ai.git
-cd red-team-ai
+git clone https://github.com/sundi133/wb-red-team.git
+cd wb-red-team
 npm install
 cp config.example.json config.json
 # Edit config.json with your target details
@@ -212,7 +212,7 @@ Edit `config.json` to point at your AI app:
 | `attackConfig.judgeModel`          | No       | Model for response judging (defaults to `llmModel`)                                   |
 | `attackConfig.enableLlmGeneration` | No       | Use LLM to generate novel attacks (default: true)                                     |
 | `attackConfig.maxMultiTurnSteps`   | No       | Max steps per multi-turn attack (default: 8)                                          |
-| `attackConfig.enabledCategories`   | No       | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 47 categories |
+| `attackConfig.enabledCategories`   | No       | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 60 categories |
 
 ### LLM Provider Examples
 
@@ -244,7 +244,7 @@ Edit `config.json` to point at your AI app:
 
 ### Selecting Attack Categories
 
-By default all 47 categories run. Use `enabledCategories` to focus on a subset:
+By default all 60 categories run. Use `enabledCategories` to focus on a subset:
 
 ```json
 "attackConfig": {
@@ -289,7 +289,7 @@ Set to `[]` or omit the field entirely to run all categories.
 
 ## Demo Target App
 
-Use [demo-agentic-app](https://github.com/sundi133/demo-agentic-app) as a reference target to try the framework against. It's a fully functional agentic AI app with tools (file read, email, Slack, database queries, GitHub gists), role-based access, JWT auth, and intentional vulnerabilities — ideal for testing all 12 attack categories.
+Use [demo-agentic-app](https://github.com/sundi133/demo-agentic-app) as a reference target to try the framework against. It's a fully functional agentic AI app with tools (file read, email, Slack, database queries, GitHub gists), role-based access, JWT auth, and intentional vulnerabilities — ideal for testing all 60 attack categories.
 
 ```bash
 # 1. Clone and start the demo app
@@ -299,7 +299,7 @@ npm install
 npm run dev   # runs on http://localhost:3000
 
 # 2. In another terminal, run red-team against it
-cd red-team-ai
+cd wb-red-team
 cp config.example.json config.json
 # config.example.json is already set up for the demo app's endpoints
 npm start
@@ -493,6 +493,18 @@ The dashboard provides:
 - **Static analysis** — code-level findings with file locations and severity
 
 Use the dropdown at the top to switch between historical reports.
+
+### Dashboard Overview
+
+The main view gives you an at-a-glance breakdown of a full red-team run security score, total attacks fired, vulnerabilities discovered, and how many defenses held. The category breakdown table shows coverage across all 46+ attack categories, and the top attack strategies panel highlights which techniques were most effective so you know where to focus hardening efforts.
+
+![Dashboard Overview](assets/dashboard-overview.png)
+
+### OWASP Compliance View
+
+The OWASP tab maps your results against both the **OWASP LLM Top 10 (2025)** and the **OWASP Agentic Security Top 10**, showing per-item vulnerability status and attack counts. This makes it straightforward to report compliance posture and identify which OWASP risk areas your agent is most exposed to.
+
+![OWASP Compliance View](assets/dashboard-owasp.png)
 
 ## Verdicts
 

@@ -11,6 +11,8 @@ export interface ChatOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  /** Request JSON output from the model (OpenAI/OpenRouter only). */
+  responseFormat?: "json_object";
 }
 
 export interface LlmProvider {
@@ -32,6 +34,9 @@ class OpenAIProvider implements LlmProvider {
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
     });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
@@ -69,26 +74,50 @@ class AnthropicProvider implements LlmProvider {
       body.system = systemMsg.content;
     }
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(body),
-    });
+    const MAX_RETRIES = 4;
+    const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000];
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Anthropic API error ${response.status}: ${err}`);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (
+        response.status === 529 ||
+        response.status === 503 ||
+        response.status === 429
+      ) {
+        if (attempt < MAX_RETRIES) {
+          const delayMs = RETRY_DELAYS_MS[attempt];
+          console.warn(
+            `  [Anthropic] ${response.status} – retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+      }
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Anthropic API error ${response.status}: ${err}`);
+      }
+
+      const data = (await response.json()) as {
+        content: { type: string; text: string }[];
+      };
+      const textBlock = data.content.find((b) => b.type === "text");
+      return textBlock?.text?.trim() ?? "";
     }
 
-    const data = (await response.json()) as {
-      content: { type: string; text: string }[];
-    };
-    const textBlock = data.content.find((b) => b.type === "text");
-    return textBlock?.text?.trim() ?? "";
+    throw new Error(
+      "Anthropic API error: max retries exceeded (529 Overloaded)",
+    );
   }
 }
 
@@ -115,6 +144,9 @@ class OpenRouterProvider implements LlmProvider {
       messages: options.messages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 4096,
+      ...(options.responseFormat
+        ? { response_format: { type: options.responseFormat } }
+        : {}),
     });
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
