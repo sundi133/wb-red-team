@@ -1,4 +1,4 @@
-import { getLlmProvider } from "./llm-provider.js";
+import { getJudgeProvider } from "./llm-provider.js";
 import type { Config, Attack, AttackResult, Verdict } from "./types.js";
 import {
   loadPolicy,
@@ -150,6 +150,14 @@ export async function analyzeResponse(
     responseTimeMs: timeMs,
     findings,
     llmReasoning,
+    policyUsed: {
+      name: policy.name,
+      pass_criteria: resolved.pass_criteria,
+      fail_criteria: resolved.fail_criteria,
+      partial_criteria: resolved.partial_criteria,
+      instructions: resolved.instructions,
+      severity_override: resolved.severity_override,
+    },
   };
 }
 
@@ -203,7 +211,7 @@ ${responseBody.slice(0, 10000)}`;
 
   const judgeModel =
     config.attackConfig.judgeModel ?? config.attackConfig.llmModel;
-  const llm = getLlmProvider(config);
+  const llm = getJudgeProvider(config);
   const text = await llm.chat({
     model: judgeModel,
     messages: [

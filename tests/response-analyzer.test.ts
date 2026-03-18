@@ -4,10 +4,10 @@ import type { Config, Attack } from "../lib/types.js";
 
 // Mock the LLM provider so tests don't make real API calls
 vi.mock("../lib/llm-provider.js", () => ({
-  getLlmProvider: vi.fn(),
+  getJudgeProvider: vi.fn(),
 }));
 
-import { getLlmProvider } from "../lib/llm-provider.js";
+import { getJudgeProvider } from "../lib/llm-provider.js";
 
 function makeConfig(overrides: Partial<Config> = {}): Config {
   return {
@@ -152,16 +152,14 @@ describe("analyzeResponse", () => {
 
     it("downgrades PASS to PARTIAL when response contains [REDACTED] and no clear leak", async () => {
       // Set up: LLM judge returns PASS but body has [REDACTED]
-      const mockChat = vi
-        .fn()
-        .mockResolvedValue(
-          JSON.stringify({
-            attack_succeeded: true,
-            partial: false,
-            reasoning: "Data was exposed",
-          }),
-        );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      const mockChat = vi.fn().mockResolvedValue(
+        JSON.stringify({
+          attack_succeeded: true,
+          partial: false,
+          reasoning: "Data was exposed",
+        }),
+      );
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "[REDACTED] some info" };
       const result = await analyzeResponse(
@@ -190,7 +188,7 @@ describe("analyzeResponse", () => {
           reasoning: "The agent followed the injected instruction",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "Sure, I will do that for you" };
       const result = await analyzeResponse(
@@ -218,7 +216,7 @@ describe("analyzeResponse", () => {
           reasoning: "Partial data leakage occurred",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "Here is some info" };
       const result = await analyzeResponse(
@@ -242,7 +240,7 @@ describe("analyzeResponse", () => {
           reasoning: "The agent fully defended against the attack",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "I cannot help with that" };
       const result = await analyzeResponse(
@@ -258,7 +256,7 @@ describe("analyzeResponse", () => {
 
     it("skips LLM judge when enableLlmGeneration is false", async () => {
       const mockChat = vi.fn();
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const config = makeConfig({
         attackConfig: {
@@ -274,7 +272,7 @@ describe("analyzeResponse", () => {
 
     it("skips LLM judge on non-200 status codes", async () => {
       const mockChat = vi.fn();
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       await analyzeResponse(makeConfig(), makeAttack(), 403, {}, 100);
       expect(mockChat).not.toHaveBeenCalled();
@@ -282,7 +280,7 @@ describe("analyzeResponse", () => {
 
     it("handles LLM judge failure gracefully", async () => {
       const mockChat = vi.fn().mockRejectedValue(new Error("API error"));
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "Some response" };
       const result = await analyzeResponse(
@@ -305,7 +303,7 @@ describe("analyzeResponse", () => {
           reasoning: "Defended",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       await analyzeResponse(
         makeConfig(),
@@ -332,7 +330,7 @@ describe("analyzeResponse", () => {
           reasoning: "Defended",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       await analyzeResponse(makeConfig(), makeAttack(), 200, longBody, 100);
 
@@ -355,7 +353,7 @@ describe("analyzeResponse", () => {
             "Agent refused the direct request but complied with the indirect prompt injection",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = {
         response: "I can't do that directly, but here's the info...",
@@ -383,7 +381,7 @@ describe("analyzeResponse", () => {
             "Agent blocked the request but leaked sensitive data in the error response",
         }),
       );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const body = { response: "Error: blocked — debug info: ..." };
       const result = await analyzeResponse(
@@ -404,7 +402,7 @@ describe("analyzeResponse", () => {
         .mockResolvedValue(
           '```json\n{"attack_succeeded": true, "partial": false, "reasoning": "Success"}\n```',
         );
-      vi.mocked(getLlmProvider).mockReturnValue({ chat: mockChat });
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
       const result = await analyzeResponse(
         makeConfig(),

@@ -135,6 +135,11 @@ class OpenRouterProvider implements LlmProvider {
     this.client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: key,
+      defaultHeaders: {
+        "HTTP-Referer":
+          process.env.OPENROUTER_SITE_URL || "https://github.com/red-team-ai",
+        "X-OpenRouter-Title": process.env.OPENROUTER_SITE_NAME || "Red Team AI",
+      },
     });
   }
 
@@ -154,32 +159,42 @@ class OpenRouterProvider implements LlmProvider {
 
 // ── Factory ──
 
-let cachedProvider: LlmProvider | null = null;
-let cachedProviderName: string | null = null;
+const providerCache = new Map<string, LlmProvider>();
 
-export function getLlmProvider(config: Config): LlmProvider {
-  const providerName = config.attackConfig.llmProvider;
-
-  if (cachedProvider && cachedProviderName === providerName) {
-    return cachedProvider;
+function createProvider(name: string): LlmProvider {
+  if (providerCache.has(name)) {
+    return providerCache.get(name)!;
   }
 
-  switch (providerName) {
+  let provider: LlmProvider;
+  switch (name) {
     case "openai":
-      cachedProvider = new OpenAIProvider();
+      provider = new OpenAIProvider();
       break;
     case "anthropic":
-      cachedProvider = new AnthropicProvider();
+      provider = new AnthropicProvider();
       break;
     case "openrouter":
-      cachedProvider = new OpenRouterProvider();
+      provider = new OpenRouterProvider();
       break;
     default:
       throw new Error(
-        `Unknown LLM provider: "${providerName}". Use "openai", "anthropic", or "openrouter".`,
+        `Unknown LLM provider: "${name}". Use "openai", "anthropic", or "openrouter".`,
       );
   }
 
-  cachedProviderName = providerName;
-  return cachedProvider;
+  providerCache.set(name, provider);
+  return provider;
+}
+
+/** Get the LLM provider for attack generation. */
+export function getLlmProvider(config: Config): LlmProvider {
+  return createProvider(config.attackConfig.llmProvider);
+}
+
+/** Get the LLM provider for the judge. Falls back to the attack provider if judgeProvider is not set. */
+export function getJudgeProvider(config: Config): LlmProvider {
+  const judgeName =
+    config.attackConfig.judgeProvider ?? config.attackConfig.llmProvider;
+  return createProvider(judgeName);
 }

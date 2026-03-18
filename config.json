@@ -1,12 +1,12 @@
 {
   "target": {
-    "baseUrl": "http://localhost:3001",
+    "baseUrl": "http://localhost:3000",
     "agentEndpoint": "/api/exfil-test-agent",
     "authEndpoint": "/api/auth/login"
   },
   "codebasePath": "../demo-agentic-app/src",
   "codebaseGlob": "**/*.ts",
-  "policyFile": "policies/default.json",
+  "policyFile": "policies/strict.json",
   "auth": {
     "methods": ["jwt", "api_key", "body_role"],
     "jwtSecret": "demo-agentic-app-jwt-secret-key-change-in-prod",
@@ -53,13 +53,14 @@
     "$450M"
   ],
   "attackConfig": {
-    "adaptiveRounds": 3,
+    "adaptiveRounds": 1,
     "maxAttacksPerCategory": 15,
-    "concurrency": 3,
+    "concurrency": 2,
     "delayBetweenRequestsMs": 200,
     "llmProvider": "anthropic",
     "llmModel": "claude-opus-4-5-20251101",
-    "judgeModel": "claude-sonnet-4-20250514",
+    "judgeProvider": "openai",
+    "judgeModel": "gpt-4o",
     "enableLlmGeneration": true,
     "maxMultiTurnSteps": 8,
     "strategiesPerRound": 5,

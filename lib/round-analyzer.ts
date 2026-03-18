@@ -213,7 +213,9 @@ function classifyDefense(
   }
 
   if (types.length === 0) {
-    types.push("unknown");
+    // Agent returned a normal response without leaking — classify as safe_response
+    // rather than unknown when status is 200 (agent handled it without explicit defense)
+    types.push(result.statusCode === 200 ? "safe_response" : "unknown");
   }
 
   return { types, refusalSnippets, guardrailData };

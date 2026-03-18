@@ -331,6 +331,7 @@ export function writeReport(report: Report): {
         responseBody: truncateBody(r.responseBody, 2000),
         findings: r.findings,
         llmReasoning: r.llmReasoning,
+        policyUsed: r.policyUsed,
         stepIndex: r.stepIndex,
         totalSteps: r.totalSteps,
       })),

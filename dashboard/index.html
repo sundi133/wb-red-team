@@ -1553,6 +1553,20 @@
       </div>
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Detection Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
+      ${
+        result?.policyUsed
+          ? `<div style="margin-top:12px"><div class="detail-label">Judge Policy: ${esc(result.policyUsed.name)}</div>
+        <details open><summary style="cursor:pointer;font-size:11px;color:var(--text2);margin-top:4px">View criteria</summary>
+          <div style="margin-top:6px;font-size:11px;color:var(--text2)">
+            ${result.policyUsed.pass_criteria?.length ? `<div style="margin-bottom:4px"><strong style="color:var(--red)">PASS if:</strong>${result.policyUsed.pass_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${result.policyUsed.fail_criteria?.length ? `<div style="margin-bottom:4px"><strong style="color:var(--green)">FAIL if:</strong>${result.policyUsed.fail_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${result.policyUsed.partial_criteria?.length ? `<div style="margin-bottom:4px"><strong style="color:var(--orange)">PARTIAL if:</strong>${result.policyUsed.partial_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${result.policyUsed.instructions ? `<div style="margin-top:4px;font-style:italic">${esc(result.policyUsed.instructions)}</div>` : ""}
+          </div>
+        </details>
+      </div>`
+          : ""
+      }
     </div></td>`;
           tbody.appendChild(detailTr);
         });
@@ -1655,8 +1669,24 @@
         <strong>Response:</strong>
         <pre>${esc(JSON.stringify(r.responseBody, null, 2).slice(0, 3000))}${JSON.stringify(r.responseBody, null, 2).length > 3000 ? "\n... (truncated)" : ""}</pre>
       </div>
-      ${r.attack.strategyName ? `<div><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}
-      ${r.attack.steps ? `<div><strong>Multi-turn:</strong> Step ${r.stepIndex ?? 0 + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
+      ${r.attack.strategyName ? `<div style="margin-bottom:8px"><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}
+      ${r.attack.steps ? `<div style="margin-bottom:8px"><strong>Multi-turn:</strong> Step ${r.stepIndex ?? 0 + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
+      ${
+        r.policyUsed
+          ? `<div style="margin-bottom:8px">
+        <strong>Judge Policy:</strong> <span style="color:var(--accent)">${esc(r.policyUsed.name)}</span>
+        ${r.policyUsed.severity_override ? `<span class="sev sev-${r.policyUsed.severity_override}" style="margin-left:8px">${r.policyUsed.severity_override} (override)</span>` : ""}
+        <details open style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--text2)">View criteria</summary>
+          <div style="margin-top:6px;font-size:11px;color:var(--text2)">
+            ${r.policyUsed.pass_criteria.length ? `<div style="margin-bottom:4px"><strong style="color:var(--red)">PASS if:</strong> ${r.policyUsed.pass_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${r.policyUsed.fail_criteria.length ? `<div style="margin-bottom:4px"><strong style="color:var(--green)">FAIL if:</strong> ${r.policyUsed.fail_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${r.policyUsed.partial_criteria.length ? `<div style="margin-bottom:4px"><strong style="color:var(--orange)">PARTIAL if:</strong> ${r.policyUsed.partial_criteria.map((c) => `<div style="margin-left:12px">• ${esc(c)}</div>`).join("")}</div>` : ""}
+            ${r.policyUsed.instructions ? `<div style="margin-top:4px;font-style:italic">${esc(r.policyUsed.instructions)}</div>` : ""}
+          </div>
+        </details>
+      </div>`
+          : ""
+      }
     </div></td>`;
           tbody.appendChild(detailTr);
         });
