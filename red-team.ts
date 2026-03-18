@@ -437,9 +437,7 @@ async function main() {
     // ── Refinement pass: convert PARTIALs from this round ──
     const roundPartials = roundResults.filter((r) => r.verdict === "PARTIAL");
     if (roundPartials.length > 0 && config.attackConfig.enableLlmGeneration) {
-      console.log(
-        `\n  ── Refining ${roundPartials.length} PARTIAL results ──`,
-      );
+      console.log(`\n  ── Refining ${roundPartials.length} PARTIAL results ──`);
       const refinedAttacks = await refinePartialAttacks(
         config,
         analysis,
@@ -564,7 +562,9 @@ async function main() {
         .sort((a, b) => b.blockRate - a.blockRate);
 
       if (blockedCategories.length > 0) {
-        console.log(`\n  Defense analysis (${blockedCategories.length} categories with blocks):`);
+        console.log(
+          `\n  Defense analysis (${blockedCategories.length} categories with blocks):`,
+        );
         for (const p of blockedCategories.slice(0, 10)) {
           console.log(
             `    ${p.category}: ${p.blockRate}% blocked → dominant defense: ${p.dominantDefense}`,

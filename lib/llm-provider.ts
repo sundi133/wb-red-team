@@ -88,10 +88,16 @@ class AnthropicProvider implements LlmProvider {
         body: JSON.stringify(body),
       });
 
-      if (response.status === 529 || response.status === 503 || response.status === 429) {
+      if (
+        response.status === 529 ||
+        response.status === 503 ||
+        response.status === 429
+      ) {
         if (attempt < MAX_RETRIES) {
           const delayMs = RETRY_DELAYS_MS[attempt];
-          console.warn(`  [Anthropic] ${response.status} – retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+          console.warn(
+            `  [Anthropic] ${response.status} – retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+          );
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
@@ -109,7 +115,9 @@ class AnthropicProvider implements LlmProvider {
       return textBlock?.text?.trim() ?? "";
     }
 
-    throw new Error("Anthropic API error: max retries exceeded (529 Overloaded)");
+    throw new Error(
+      "Anthropic API error: max retries exceeded (529 Overloaded)",
+    );
   }
 }
 

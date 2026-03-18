@@ -119,7 +119,11 @@ function extractPath(obj: unknown, path: string): unknown {
 function classifyDefense(
   result: AttackResult,
   config: Config,
-): { types: DefenseType[]; refusalSnippets: string[]; guardrailData: string[] } {
+): {
+  types: DefenseType[];
+  refusalSnippets: string[];
+  guardrailData: string[];
+} {
   const types: DefenseType[] = [];
   const refusalSnippets: string[] = [];
   const guardrailData: string[] = [];
@@ -193,8 +197,7 @@ function classifyDefense(
       result.responseBody,
       config.responseSchema.toolCallsPath,
     );
-    const hasToolCalls =
-      Array.isArray(toolCalls) && toolCalls.length > 0;
+    const hasToolCalls = Array.isArray(toolCalls) && toolCalls.length > 0;
     if (!hasToolCalls) {
       types.push("tool_avoidance");
     }
@@ -264,7 +267,10 @@ export function analyzeRound(
       const stratId = r.attack.strategyId;
 
       if (r.verdict === "FAIL" || r.verdict === "PARTIAL") {
-        const { types, refusalSnippets, guardrailData } = classifyDefense(r, config);
+        const { types, refusalSnippets, guardrailData } = classifyDefense(
+          r,
+          config,
+        );
         for (const t of types) {
           defenseBreakdown[t] = (defenseBreakdown[t] ?? 0) + 1;
         }
@@ -302,9 +308,10 @@ export function analyzeRound(
       blocked: cumulativeBlocked,
       passed: cumulativePassed,
       partial: cumulativePartial,
-      blockRate: cumulativeTotal > 0
-        ? Math.round((cumulativeBlocked / cumulativeTotal) * 100)
-        : 0,
+      blockRate:
+        cumulativeTotal > 0
+          ? Math.round((cumulativeBlocked / cumulativeTotal) * 100)
+          : 0,
       defenseBreakdown,
       dominantDefense,
       failedStrategyIds: [...failedStrategyIds],

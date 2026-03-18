@@ -258,7 +258,9 @@ export function selectStrategiesForCategory(
   add(shuffle(failedCounter));
 
   if (selected.length < count) {
-    const remaining = pool.filter((s) => !selected.some((sel) => sel.id === s.id));
+    const remaining = pool.filter(
+      (s) => !selected.some((sel) => sel.id === s.id),
+    );
     add(shuffle(remaining));
   }
 
