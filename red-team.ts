@@ -81,6 +81,10 @@ import { targetedHarassmentModule } from "./attacks/targeted-harassment.js";
 import { influenceOperationsModule } from "./attacks/influence-operations.js";
 import { psychologicalManipulationModule } from "./attacks/psychological-manipulation.js";
 import { deceptiveMisinfoModule } from "./attacks/deceptive-misinfo.js";
+import { insuranceClaimsFraudModule } from "./attacks/insurance-claims-fraud.js";
+import { insuranceUnderwritingLeakModule } from "./attacks/insurance-underwriting-leak.js";
+import { insuranceCoverageMisrepModule } from "./attacks/insurance-coverage-misrep.js";
+import { insuranceRegulatoryViolationModule } from "./attacks/insurance-regulatory-violation.js";
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -144,6 +148,10 @@ const ALL_MODULES: AttackModule[] = [
   influenceOperationsModule,
   psychologicalManipulationModule,
   deceptiveMisinfoModule,
+  insuranceClaimsFraudModule,
+  insuranceUnderwritingLeakModule,
+  insuranceCoverageMisrepModule,
+  insuranceRegulatoryViolationModule,
 ];
 
 async function main() {

@@ -210,7 +210,11 @@
       "agentic_workflow_bypass",
       "tool_chain_hijack",
       "agent_reflection_exploit",
-      "cross_session_injection"
+      "cross_session_injection",
+      "insurance_claims_fraud",
+      "insurance_underwriting_leak",
+      "insurance_coverage_misrep",
+      "insurance_regulatory_violation"
     ]
   }
 }

@@ -13,6 +13,10 @@ import { steganographicExfiltrationModule } from "../attacks/steganographic-exfi
 import { outOfBandExfiltrationModule } from "../attacks/out-of-band-exfiltration.js";
 import { trainingDataExtractionModule } from "../attacks/training-data-extraction.js";
 import { sideChannelInferenceModule } from "../attacks/side-channel-inference.js";
+import { insuranceClaimsFraudModule } from "../attacks/insurance-claims-fraud.js";
+import { insuranceUnderwritingLeakModule } from "../attacks/insurance-underwriting-leak.js";
+import { insuranceCoverageMisrepModule } from "../attacks/insurance-coverage-misrep.js";
+import { insuranceRegulatoryViolationModule } from "../attacks/insurance-regulatory-violation.js";
 import type { AttackModule, CodebaseAnalysis } from "../lib/types.js";
 
 const ALL_MODULES: AttackModule[] = [
@@ -28,6 +32,10 @@ const ALL_MODULES: AttackModule[] = [
   outOfBandExfiltrationModule,
   trainingDataExtractionModule,
   sideChannelInferenceModule,
+  insuranceClaimsFraudModule,
+  insuranceUnderwritingLeakModule,
+  insuranceCoverageMisrepModule,
+  insuranceRegulatoryViolationModule,
 ];
 
 const mockAnalysis: CodebaseAnalysis = {
@@ -44,6 +52,8 @@ const mockAnalysis: CodebaseAnalysis = {
   authMechanisms: ["jwt"],
   knownWeaknesses: [],
   systemPromptHints: [],
+  detectedFrameworks: [],
+  toolChains: [],
 };
 
 describe("Attack modules", () => {
@@ -76,7 +86,7 @@ describe("Attack modules", () => {
           expect(attack.role).toBeTruthy();
           expect(attack.payload).toBeDefined();
           expect(
-            attack.payload.message || attack.payload._rapidFire,
+            attack.payload.message || attack.payload.prompt || attack.payload._rapidFire,
           ).toBeTruthy();
           expect(attack.expectation).toBeTruthy();
           expect(["critical", "high", "medium", "low"]).toContain(

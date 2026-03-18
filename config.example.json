@@ -2,7 +2,8 @@
   "target": {
     "baseUrl": "http://localhost:3000",
     "agentEndpoint": "/api/your-agent",
-    "authEndpoint": "/api/auth/login"
+    "authEndpoint": "/api/auth/login",
+    "agentTriggerEndpoint": null
   },
   "codebasePath": "../your-app/src",
   "codebaseGlob": "**/*.ts",

@@ -61,7 +61,11 @@ export type AttackCategory =
   | "targeted_harassment"
   | "influence_operations"
   | "psychological_manipulation"
-  | "deceptive_misinfo";
+  | "deceptive_misinfo"
+  | "insurance_claims_fraud"
+  | "insurance_underwriting_leak"
+  | "insurance_coverage_misrep"
+  | "insurance_regulatory_violation";
 
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
@@ -75,7 +79,9 @@ export interface Config {
   target: {
     baseUrl: string;
     agentEndpoint: string;
-    authEndpoint: string;
+    authEndpoint: string | null;
+    /** For two-step image pipelines: endpoint to POST after imageDescriptor sets global state. */
+    agentTriggerEndpoint?: string;
   };
   codebasePath: string;
   codebaseGlob: string;
@@ -162,6 +168,8 @@ export interface Attack {
   authMethod: "jwt" | "api_key" | "body_role" | "none" | "forged_jwt";
   role: string;
   payload: Record<string, unknown>;
+  /** How to serialize the payload. Defaults to "json". Use "multipart_image" for image-first pipelines. */
+  requestFormat?: "json" | "multipart_image";
   headers?: Record<string, string>;
   expectation: string;
   severity: "critical" | "high" | "medium" | "low";

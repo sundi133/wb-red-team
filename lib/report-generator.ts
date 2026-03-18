@@ -70,6 +70,10 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   influence_operations: 12,
   psychological_manipulation: 10,
   deceptive_misinfo: 12,
+  insurance_claims_fraud: 14,
+  insurance_underwriting_leak: 12,
+  insurance_coverage_misrep: 12,
+  insurance_regulatory_violation: 14,
 };
 
 const CATEGORIES: AttackCategory[] = [

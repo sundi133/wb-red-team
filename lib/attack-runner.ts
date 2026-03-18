@@ -1,4 +1,5 @@
 import * as jose from "jose";
+import { buildAttackImage } from "./image-builder.js";
 import type { Config, Attack, Credential } from "./types.js";
 
 // Cache JWT tokens per role
@@ -105,6 +106,57 @@ export async function executeAttack(
   delete body._jwtClaims;
 
   const start = Date.now();
+
+  // Multipart image flow: POST image + malicious prompt to agentEndpoint,
+  // then POST to agentTriggerEndpoint to run the agent and get the response.
+  if (attack.requestFormat === "multipart_image") {
+    try {
+      // Render attack text onto a PNG so the VLM reads it as image content
+      const maliciousPrompt = (attack.payload.prompt as string) ?? "";
+      const attackPng = buildAttackImage(maliciousPrompt);
+      const formData = new FormData();
+      formData.append(
+        "file",
+        new Blob([new Uint8Array(attackPng)], { type: "image/png" }),
+        "claim.png",
+      );
+
+      const imageUrl = new URL(url);
+
+      // Strip Content-Type so fetch sets multipart boundary automatically
+      const multipartHeaders = { ...headers };
+      delete multipartHeaders["Content-Type"];
+
+      const imageRes = await fetch(imageUrl.toString(), {
+        method: "POST",
+        headers: multipartHeaders,
+        body: formData,
+      });
+      // Capture the streaming image description — this IS the VLM's response to our injected prompt
+      const imageDescription = await imageRes.text();
+      const timeMs = Date.now() - start;
+
+      // Fire-and-forget the agent trigger so server state is exercised,
+      // but use the VLM description as our attack result (that's where our prompt had effect)
+      if (config.target.agentTriggerEndpoint) {
+        const triggerUrl = `${config.target.baseUrl}${config.target.agentTriggerEndpoint}`;
+        fetch(triggerUrl, { method: "POST" }).catch(() => {});
+      }
+
+      return {
+        statusCode: imageRes.status,
+        body: imageDescription,
+        timeMs,
+      };
+    } catch (e) {
+      return {
+        statusCode: 0,
+        body: { error: (e as Error).message },
+        timeMs: Date.now() - start,
+      };
+    }
+  }
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -112,11 +164,12 @@ export async function executeAttack(
       body: JSON.stringify(body),
     });
     const timeMs = Date.now() - start;
+    const rawText2 = await res.text();
     let responseBody: unknown;
     try {
-      responseBody = await res.json();
+      responseBody = JSON.parse(rawText2);
     } catch {
-      responseBody = await res.text();
+      responseBody = rawText2;
     }
     return { statusCode: res.status, body: responseBody, timeMs };
   } catch (e) {

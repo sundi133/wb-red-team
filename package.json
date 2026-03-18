@@ -40,17 +40,18 @@
     "dashboard": "tsx dashboard/server.ts 4200"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.97",
     "glob": "^10.0.0",
     "jose": "^5.0.0",
     "openai": "^4.50.0"
   },
   "devDependencies": {
-    "tsx": "^4.0.0",
-    "typescript": "^5.5.0",
     "@types/node": "^20.0.0",
-    "vitest": "^3.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0"
+    "eslint": "^9.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0"
   }
 }
