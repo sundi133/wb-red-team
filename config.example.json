@@ -55,6 +55,8 @@
     "maxMultiTurnSteps": 8,
     "strategiesPerRound": 5,
     "enabledStrategies": [],
-    "enabledCategories": []
+    "enabledCategories": [],
+    "contextBudgetChars": 100000,
+    "maxAnalysisBatches": 3
   }
 }
