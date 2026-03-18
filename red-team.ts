@@ -1,5 +1,6 @@
 #!/usr/bin/env npx tsx
 
+import { createInterface } from "node:readline/promises";
 import { loadConfig } from "./lib/config-loader.js";
 import { analyzeCodebase } from "./lib/codebase-analyzer.js";
 import { planAttacks, refinePartialAttacks } from "./lib/attack-planner.js";
@@ -20,9 +21,11 @@ import { runStaticAnalysis } from "./lib/static-analyzer.js";
 import { analyzeRound } from "./lib/round-analyzer.js";
 import type {
   AttackModule,
+  Attack,
   AttackResult,
   AttackCategory,
   CategoryDefenseProfile,
+  CodebaseAnalysis,
   RoundResult,
 } from "./lib/types.js";
 
@@ -201,6 +204,70 @@ const ALL_MODULES: AttackModule[] = [
   insecureOutputHandlingModule,
 ];
 
+function summarizeAffectedFiles(
+  analysis: CodebaseAnalysis,
+  category: AttackCategory,
+  max = 3,
+): string {
+  const files = analysis.affectedFiles?.[category] ?? [];
+  if (files.length === 0) return "none mapped";
+  const shown = files
+    .slice(0, max)
+    .map((f) => (f.line ? `${f.file}:${f.line}` : f.file));
+  const suffix = files.length > max ? ` (+${files.length - max} more)` : "";
+  return `${shown.join(", ")}${suffix}`;
+}
+
+function printPlannedAttackReview(
+  round: number,
+  attacks: Attack[],
+  analysis: CodebaseAnalysis,
+  label = "planned",
+): void {
+  console.log(`\n  Attack review for round ${round} (${label}):`);
+  for (let i = 0; i < attacks.length; i++) {
+    const a = attacks[i];
+    const msg = (a.payload as Record<string, unknown>)?.message;
+    const preview =
+      typeof msg === "string"
+        ? msg.replace(/\s+/g, " ").slice(0, 140)
+        : "(no message)";
+    console.log(
+      `    ${i + 1}. [${a.severity}] ${a.category} :: ${a.name} (${a.authMethod}/${a.role})`,
+    );
+    console.log(
+      `       files: ${summarizeAffectedFiles(analysis, a.category)} | prompt: ${preview}${preview.length >= 140 ? "..." : ""}`,
+    );
+  }
+}
+
+async function confirmAttackExecution(
+  promptText: string,
+  requireConfirmation: boolean,
+): Promise<boolean> {
+  if (!requireConfirmation) {
+    return true;
+  }
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    console.log(
+      "  Non-interactive terminal detected — auto-approving attack execution.",
+    );
+    return true;
+  }
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  try {
+    const answer = (await rl.question(`${promptText} [y/N]: `))
+      .trim()
+      .toLowerCase();
+    return answer === "y" || answer === "yes";
+  } finally {
+    rl.close();
+  }
+}
+
 async function main() {
   const configPath = process.argv[2];
   console.log("=== Red-Team Security Testing Framework ===\n");
@@ -313,6 +380,12 @@ async function main() {
   const rounds: RoundResult[] = [];
   let allPreviousResults: AttackResult[] = [];
   let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
+  let cancelledByUser = false;
+  const requireReviewConfirmation =
+    config.attackConfig.requireReviewConfirmation ?? true;
+  console.log(
+    `  Review confirmation: ${requireReviewConfirmation ? "enabled" : "disabled"}`,
+  );
 
   for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
     console.log(
@@ -320,6 +393,7 @@ async function main() {
     );
 
     // Plan attacks for this round (with defense profiles from prior rounds)
+    console.log("  Planning attacks with LLM... this may take a while.");
     const attacks = await planAttacks(
       config,
       analysis,
@@ -329,6 +403,16 @@ async function main() {
       defenseProfiles,
     );
     console.log(`  Planned ${attacks.length} attacks`);
+    printPlannedAttackReview(round, attacks, analysis, "initial");
+    const approved = await confirmAttackExecution(
+      "  Proceed with these planned attacks?",
+      requireReviewConfirmation,
+    );
+    if (!approved) {
+      console.log("  Attack execution cancelled by user after review.");
+      cancelledByUser = true;
+      break;
+    }
 
     const roundResults: AttackResult[] = [];
 
@@ -490,110 +574,120 @@ async function main() {
       );
 
       if (refinedAttacks.length > 0) {
+        console.log("  Refinement planning complete.");
         console.log(`  Executing ${refinedAttacks.length} refined attacks`);
-        for (let i = 0; i < refinedAttacks.length; i++) {
-          const attack = refinedAttacks[i];
-          const progress = `[R${i + 1}/${refinedAttacks.length}]`;
+        printPlannedAttackReview(round, refinedAttacks, analysis, "refined");
+        const refineApproved = await confirmAttackExecution(
+          "  Proceed with refined attacks?",
+          requireReviewConfirmation,
+        );
+        if (!refineApproved) {
+          console.log("  Skipping refined attacks (user declined).");
+        } else {
+          for (let i = 0; i < refinedAttacks.length; i++) {
+            const attack = refinedAttacks[i];
+            const progress = `[R${i + 1}/${refinedAttacks.length}]`;
 
-          if (attack.steps && attack.steps.length > 0) {
-            const totalSteps = 1 + attack.steps.length;
-            process.stdout.write(
-              `  ${progress} ${attack.name} (${totalSteps} steps)...`,
-            );
-
-            const { results: stepResults, stoppedEarly } =
-              await executeMultiTurn(
-                config,
-                attack,
-                async (cfg, atk, sc, b, t) => {
-                  const r = await analyzeResponse(
-                    cfg,
-                    atk,
-                    sc,
-                    b,
-                    t,
-                    appContext,
-                  );
-                  return { verdict: r.verdict, findings: r.findings };
-                },
+            if (attack.steps && attack.steps.length > 0) {
+              const totalSteps = 1 + attack.steps.length;
+              process.stdout.write(
+                `  ${progress} ${attack.name} (${totalSteps} steps)...`,
               );
 
-            const lastStep = stepResults[stepResults.length - 1];
-            const result = await analyzeResponse(
-              config,
-              attack,
-              lastStep.statusCode,
-              lastStep.body,
-              lastStep.timeMs,
-              appContext,
-            );
-            result.stepIndex = lastStep.stepIndex;
-            result.totalSteps = stepResults.length;
+              const { results: stepResults, stoppedEarly } =
+                await executeMultiTurn(
+                  config,
+                  attack,
+                  async (cfg, atk, sc, b, t) => {
+                    const r = await analyzeResponse(
+                      cfg,
+                      atk,
+                      sc,
+                      b,
+                      t,
+                      appContext,
+                    );
+                    return { verdict: r.verdict, findings: r.findings };
+                  },
+                );
 
-            const icon =
-              result.verdict === "PASS"
-                ? "!!"
-                : result.verdict === "PARTIAL"
-                  ? "~"
-                  : result.verdict === "FAIL"
-                    ? "OK"
-                    : "??";
-            const earlyTag = stoppedEarly
-              ? ` (stopped at step ${lastStep.stepIndex + 1})`
-              : "";
-            console.log(
-              ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
-            );
-            if (result.findings.length > 0) {
-              console.log(`    ${result.findings[0]}`);
-            }
-            roundResults.push(result);
-          } else {
-            process.stdout.write(`  ${progress} ${attack.name}...`);
-            const { statusCode, body, timeMs } = await executeAttack(
-              config,
-              attack,
-            );
-            const result = await analyzeResponse(
-              config,
-              attack,
-              statusCode,
-              body,
-              timeMs,
-              appContext,
-            );
+              const lastStep = stepResults[stepResults.length - 1];
+              const result = await analyzeResponse(
+                config,
+                attack,
+                lastStep.statusCode,
+                lastStep.body,
+                lastStep.timeMs,
+                appContext,
+              );
+              result.stepIndex = lastStep.stepIndex;
+              result.totalSteps = stepResults.length;
 
-            const icon =
-              result.verdict === "PASS"
-                ? "!!"
-                : result.verdict === "PARTIAL"
-                  ? "~"
-                  : result.verdict === "FAIL"
-                    ? "OK"
-                    : "??";
-            console.log(
-              ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
-            );
-            if (result.findings.length > 0) {
-              console.log(`    ${result.findings[0]}`);
+              const icon =
+                result.verdict === "PASS"
+                  ? "!!"
+                  : result.verdict === "PARTIAL"
+                    ? "~"
+                    : result.verdict === "FAIL"
+                      ? "OK"
+                      : "??";
+              const earlyTag = stoppedEarly
+                ? ` (stopped at step ${lastStep.stepIndex + 1})`
+                : "";
+              console.log(
+                ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
+              );
+              if (result.findings.length > 0) {
+                console.log(`    ${result.findings[0]}`);
+              }
+              roundResults.push(result);
+            } else {
+              process.stdout.write(`  ${progress} ${attack.name}...`);
+              const { statusCode, body, timeMs } = await executeAttack(
+                config,
+                attack,
+              );
+              const result = await analyzeResponse(
+                config,
+                attack,
+                statusCode,
+                body,
+                timeMs,
+                appContext,
+              );
+
+              const icon =
+                result.verdict === "PASS"
+                  ? "!!"
+                  : result.verdict === "PARTIAL"
+                    ? "~"
+                    : result.verdict === "FAIL"
+                      ? "OK"
+                      : "??";
+              console.log(
+                ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
+              );
+              if (result.findings.length > 0) {
+                console.log(`    ${result.findings[0]}`);
+              }
+              roundResults.push(result);
             }
-            roundResults.push(result);
+
+            if (config.attackConfig.delayBetweenRequestsMs > 0) {
+              await sleep(config.attackConfig.delayBetweenRequestsMs);
+            }
           }
 
-          if (config.attackConfig.delayBetweenRequestsMs > 0) {
-            await sleep(config.attackConfig.delayBetweenRequestsMs);
-          }
+          const refinedPasses = roundResults
+            .slice(-refinedAttacks.length)
+            .filter((r) => r.verdict === "PASS").length;
+          const refinedPartials = roundResults
+            .slice(-refinedAttacks.length)
+            .filter((r) => r.verdict === "PARTIAL").length;
+          console.log(
+            `  Refinement: ${refinedPasses} converted to PASS, ${refinedPartials} still PARTIAL`,
+          );
         }
-
-        const refinedPasses = roundResults
-          .slice(-refinedAttacks.length)
-          .filter((r) => r.verdict === "PASS").length;
-        const refinedPartials = roundResults
-          .slice(-refinedAttacks.length)
-          .filter((r) => r.verdict === "PARTIAL").length;
-        console.log(
-          `  Refinement: ${refinedPasses} converted to PASS, ${refinedPartials} still PARTIAL`,
-        );
       }
     }
 
@@ -632,6 +726,11 @@ async function main() {
 
   // 5. Generate report
   console.log("\n[5/5] Generating report...");
+  if (cancelledByUser) {
+    console.log(
+      "  Report includes results from rounds executed before cancellation.",
+    );
+  }
   const targetUrl = `${config.target.baseUrl}${config.target.agentEndpoint}`;
   const report = generateReport(
     targetUrl,

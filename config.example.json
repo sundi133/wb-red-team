@@ -81,6 +81,7 @@
     "maxMultiTurnSteps": 8,
     "judgeConfidenceThreshold": 70,
     "skipIrrelevantCategories": true,
+    "requireReviewConfirmation": true,
     "strategiesPerRound": 5,
     "contextBudgetChars": 100000,
     "maxAnalysisBatches": 3,

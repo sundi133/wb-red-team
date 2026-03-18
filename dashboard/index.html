@@ -471,6 +471,15 @@
         margin: 2px;
         font-size: 11px;
       }
+      .detail-content .file-tag {
+        display: inline-block;
+        background: rgba(88, 166, 255, 0.12);
+        color: var(--accent);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 11px;
+      }
 
       /* Round tabs */
       .round-tabs {
@@ -1489,6 +1498,17 @@
         return JSON.stringify(body);
       }
 
+      function formatAffectedFiles(files) {
+        if (!Array.isArray(files) || !files.length) return "";
+        return files
+          .map((af) => {
+            const loc = af?.line ? `${af.file}:${af.line}` : af?.file;
+            const reason = af?.reason ? ` — ${af.reason}` : "";
+            return `<span class="file-tag">${esc(loc || "unknown")}${esc(reason)}</span>`;
+          })
+          .join("");
+      }
+
       function renderFindings() {
         const sev = $("#filterSev")?.value || "";
         const cat = $("#filterCat")?.value || "";
@@ -1526,6 +1546,7 @@
           const prompt = extractPrompt(result);
           const response = extractResponse(result);
           const reasoning = result?.llmReasoning || "";
+          const affectedFilesHtml = formatAffectedFiles(f.affectedFiles);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -1553,6 +1574,7 @@
       </div>
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Detection Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
+      ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
       ${
         result?.policyUsed
           ? `<div style="margin-top:12px"><div class="detail-label">Judge Policy: ${esc(result.policyUsed.name)}</div>
@@ -1658,12 +1680,14 @@
           const detailTr = document.createElement("tr");
           detailTr.classList.add("detail-row");
           detailTr.style.display = "none";
+          const roundAffectedFilesHtml = formatAffectedFiles(r.affectedFiles);
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
       <div style="margin-bottom:8px">
         <strong>Payload:</strong>
         <pre>${esc(JSON.stringify(r.attack.payload, null, 2))}</pre>
       </div>
       ${r.findings.length ? `<div style="margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
+      ${roundAffectedFilesHtml ? `<div style="margin-bottom:8px"><strong>Affected Files:</strong><br>${roundAffectedFilesHtml}</div>` : ""}
       ${r.llmReasoning ? `<div style="margin-bottom:8px"><strong>LLM Reasoning:</strong><pre>${esc(r.llmReasoning)}</pre></div>` : ""}
       <div style="margin-bottom:8px">
         <strong>Response:</strong>

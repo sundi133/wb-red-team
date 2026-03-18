@@ -34,6 +34,7 @@ export function loadConfig(configPath?: string): Config {
     enableLlmGeneration: true,
     maxMultiTurnSteps: 8,
     strategiesPerRound: 5,
+    requireReviewConfirmation: true,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 
