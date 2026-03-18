@@ -6,6 +6,7 @@
   },
   "codebasePath": "../demo-agentic-app/src",
   "codebaseGlob": "**/*.ts",
+  "policyFile": "policies/default.json",
   "auth": {
     "methods": ["jwt", "api_key", "body_role"],
     "jwtSecret": "demo-agentic-app-jwt-secret-key-change-in-prod",

@@ -103,6 +103,8 @@ export interface Config {
   };
   codebasePath: string;
   codebaseGlob: string;
+  /** Path to the judge policy JSON file (default: "policies/default.json"). */
+  policyFile?: string;
   auth: {
     methods: string[];
     jwtSecret: string;
