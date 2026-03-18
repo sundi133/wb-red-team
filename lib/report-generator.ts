@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 import type {
   AttackCategory,
+  AffectedFile,
   AttackResult,
   RoundResult,
   Report,
@@ -190,6 +191,7 @@ export function generateReport(
   targetUrl: string,
   rounds: RoundResult[],
   staticAnalysis?: StaticAnalysisResult,
+  affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>,
 ): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
@@ -227,6 +229,7 @@ export function generateReport(
       attack: r.attack.name,
       strategyId: r.attack.strategyId,
       strategyName: r.attack.strategyName,
+      affectedFiles: affectedFiles?.[r.attack.category],
     }));
 
   const compliance = computeCompliance(allResults);
@@ -247,6 +250,7 @@ export function generateReport(
     findings,
     staticAnalysis,
     compliance,
+    affectedFiles,
   };
 
   return report;
@@ -325,12 +329,14 @@ export function writeReport(report: Report): {
           strategyId: r.attack.strategyId,
           strategyName: r.attack.strategyName,
         },
+        affectedFiles: report.affectedFiles?.[r.attack.category],
         verdict: r.verdict,
         statusCode: r.statusCode,
         responseTimeMs: r.responseTimeMs,
         responseBody: truncateBody(r.responseBody, 2000),
         findings: r.findings,
         llmReasoning: r.llmReasoning,
+        judgeConfidence: r.judgeConfidence,
         policyUsed: r.policyUsed,
         stepIndex: r.stepIndex,
         totalSteps: r.totalSteps,
@@ -340,13 +346,16 @@ export function writeReport(report: Report): {
   writeFileSync(jsonPath, JSON.stringify(jsonReport, null, 2));
 
   // Markdown report
-  const md = buildMarkdown(report);
+  const md = buildMarkdown(report, report.affectedFiles);
   writeFileSync(mdPath, md);
 
   return { jsonPath, mdPath };
 }
 
-function buildMarkdown(report: Report): string {
+function buildMarkdown(
+  report: Report,
+  affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>,
+): string {
   const lines: string[] = [];
   lines.push(`# Red-Team Security Report`);
   lines.push(`**Target:** ${report.targetUrl}`);
@@ -431,6 +440,13 @@ function buildMarkdown(report: Report): string {
         lines.push(`- **Strategy:** ${f.strategyName}`);
       }
       lines.push(`- **Details:** ${f.description}`);
+      if (f.affectedFiles && f.affectedFiles.length > 0) {
+        lines.push(`- **Affected Source Files:**`);
+        for (const af of f.affectedFiles) {
+          const loc = af.line ? `${af.file}:${af.line}` : af.file;
+          lines.push(`  - \`${loc}\` — ${af.reason}`);
+        }
+      }
       lines.push("");
     }
   }
@@ -463,6 +479,17 @@ function buildMarkdown(report: Report): string {
       }
       if (r.findings.length > 0) {
         lines.push(`- **Findings:** ${r.findings.join("; ")}`);
+      }
+      // Show affected files for PASS/PARTIAL results
+      if (
+        (r.verdict === "PASS" || r.verdict === "PARTIAL") &&
+        affectedFiles?.[r.attack.category]?.length
+      ) {
+        lines.push("- **Affected Source Files:**");
+        for (const af of affectedFiles[r.attack.category]!) {
+          const loc = af.line ? `${af.file}:${af.line}` : af.file;
+          lines.push(`  - \`${loc}\` — ${af.reason}`);
+        }
       }
       lines.push("");
 
@@ -551,9 +578,46 @@ export function printConsoleSummary(report: Report): void {
       console.log(
         `    [${f.severity.toUpperCase()}] ${f.attack}: ${f.description.slice(0, 80)}`,
       );
+      if (f.affectedFiles && f.affectedFiles.length > 0) {
+        for (const af of f.affectedFiles.slice(0, 3)) {
+          const loc = af.line ? `${af.file}:${af.line}` : af.file;
+          console.log(`      → ${loc} (${af.reason})`);
+        }
+        if (f.affectedFiles.length > 3) {
+          console.log(
+            `      → ... and ${f.affectedFiles.length - 3} more files`,
+          );
+        }
+      }
     }
     if (report.findings.length > 10) {
       console.log(`    ... and ${report.findings.length - 10} more`);
+    }
+  }
+
+  // Print affected files summary by category
+  const allAffectedFiles = new Map<string, Set<string>>();
+  for (const f of report.findings) {
+    if (f.affectedFiles) {
+      for (const af of f.affectedFiles) {
+        const loc = af.line ? `${af.file}:${af.line}` : af.file;
+        if (!allAffectedFiles.has(loc)) allAffectedFiles.set(loc, new Set());
+        allAffectedFiles.get(loc)!.add(f.category);
+      }
+    }
+  }
+  if (allAffectedFiles.size > 0) {
+    console.log("\n  AFFECTED SOURCE FILES:");
+    const sorted = [...allAffectedFiles.entries()].sort(
+      (a, b) => b[1].size - a[1].size,
+    );
+    for (const [file, cats] of sorted.slice(0, 15)) {
+      console.log(
+        `    ${file} (${cats.size} categories: ${[...cats].slice(0, 4).join(", ")}${cats.size > 4 ? "..." : ""})`,
+      );
+    }
+    if (sorted.length > 15) {
+      console.log(`    ... and ${sorted.length - 15} more files`);
     }
   }
   console.log("=".repeat(60));

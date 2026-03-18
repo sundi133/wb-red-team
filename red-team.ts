@@ -10,7 +10,7 @@ import {
   executeRapidFire,
   sleep,
 } from "./lib/attack-runner.js";
-import { analyzeResponse } from "./lib/response-analyzer.js";
+import { analyzeResponse, type AppContext } from "./lib/response-analyzer.js";
 import {
   generateReport,
   writeReport,
@@ -251,6 +251,47 @@ async function main() {
       console.log(`    - ${w}`);
     }
   }
+  if (
+    analysis.affectedFiles &&
+    Object.keys(analysis.affectedFiles).length > 0
+  ) {
+    const totalFiles = new Set(
+      Object.values(analysis.affectedFiles)
+        .flat()
+        .map((f) => f.file),
+    ).size;
+    console.log(
+      `  Mapped ${Object.keys(analysis.affectedFiles).length} attack categories to ${totalFiles} target source files`,
+    );
+  }
+
+  // 2.25. Category applicability gating — skip categories with no relevant source files
+  const skipIrrelevant = config.attackConfig.skipIrrelevantCategories ?? true;
+  let relevantModules = activeModules;
+  if (
+    skipIrrelevant &&
+    analysis.affectedFiles &&
+    Object.keys(analysis.affectedFiles).length > 0
+  ) {
+    const before = relevantModules.length;
+    relevantModules = relevantModules.filter((m) => {
+      const files = analysis.affectedFiles?.[m.category];
+      return files && files.length > 0;
+    });
+    const skipped = before - relevantModules.length;
+    if (skipped > 0) {
+      console.log(
+        `  Applicability gating: skipped ${skipped} categories with no relevant source files`,
+      );
+    }
+  }
+
+  // Build app context for the LLM judge (reduces false positives)
+  const appContext: AppContext = {
+    tools: analysis.tools,
+    roles: analysis.roles,
+    systemPromptHints: analysis.systemPromptHints,
+  };
 
   // 2.5. Static analysis
   let staticResult;
@@ -282,7 +323,7 @@ async function main() {
     const attacks = await planAttacks(
       config,
       analysis,
-      activeModules,
+      relevantModules,
       allPreviousResults,
       round,
       defenseProfiles,
@@ -322,6 +363,7 @@ async function main() {
           lastResponse.statusCode,
           lastResponse.body,
           lastResponse.timeMs,
+          appContext,
         );
 
         if (!got429 && allOk) {
@@ -360,7 +402,7 @@ async function main() {
           config,
           attack,
           async (cfg, atk, sc, b, t) => {
-            const r = await analyzeResponse(cfg, atk, sc, b, t);
+            const r = await analyzeResponse(cfg, atk, sc, b, t, appContext);
             return { verdict: r.verdict, findings: r.findings };
           },
         );
@@ -372,6 +414,7 @@ async function main() {
           lastStep.statusCode,
           lastStep.body,
           lastStep.timeMs,
+          appContext,
         );
         result.stepIndex = lastStep.stepIndex;
         result.totalSteps = stepResults.length;
@@ -408,6 +451,7 @@ async function main() {
           statusCode,
           body,
           timeMs,
+          appContext,
         );
 
         const icon =
@@ -462,7 +506,14 @@ async function main() {
                 config,
                 attack,
                 async (cfg, atk, sc, b, t) => {
-                  const r = await analyzeResponse(cfg, atk, sc, b, t);
+                  const r = await analyzeResponse(
+                    cfg,
+                    atk,
+                    sc,
+                    b,
+                    t,
+                    appContext,
+                  );
                   return { verdict: r.verdict, findings: r.findings };
                 },
               );
@@ -474,6 +525,7 @@ async function main() {
               lastStep.statusCode,
               lastStep.body,
               lastStep.timeMs,
+              appContext,
             );
             result.stepIndex = lastStep.stepIndex;
             result.totalSteps = stepResults.length;
@@ -508,6 +560,7 @@ async function main() {
               statusCode,
               body,
               timeMs,
+              appContext,
             );
 
             const icon =
@@ -580,7 +633,12 @@ async function main() {
   // 5. Generate report
   console.log("\n[5/5] Generating report...");
   const targetUrl = `${config.target.baseUrl}${config.target.agentEndpoint}`;
-  const report = generateReport(targetUrl, rounds, staticResult);
+  const report = generateReport(
+    targetUrl,
+    rounds,
+    staticResult,
+    analysis.affectedFiles,
+  );
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);
   console.log(`  Markdown: ${mdPath}`);
