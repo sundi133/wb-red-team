@@ -180,6 +180,8 @@ export interface Config {
     contextBudgetChars?: number;
     /** Max LLM calls for codebase analysis batching (default: 3). */
     maxAnalysisBatches?: number;
+    /** Require interactive user confirmation before executing planned/refined attacks. Default: true. */
+    requireReviewConfirmation?: boolean;
   };
 }
 
