@@ -172,6 +172,10 @@ export interface Config {
     strategiesPerRound?: number;
     /** Max PARTIAL results to refine per category per round (default: 10). */
     maxRefinementsPerCategory?: number;
+    /** Minimum LLM judge confidence (0–100) required to keep a PASS verdict. Below this, PASS is downgraded to PARTIAL. Default: 70. */
+    judgeConfidenceThreshold?: number;
+    /** Skip attack categories whose surface area is not found in the target codebase. Default: true. */
+    skipIrrelevantCategories?: boolean;
   };
 }
 
@@ -193,6 +197,12 @@ export interface ToolChain {
   description: string;
 }
 
+export interface AffectedFile {
+  file: string;
+  line?: number;
+  reason: string;
+}
+
 export interface CodebaseAnalysis {
   tools: { name: string; description: string; parameters: string }[];
   roles: { name: string; permissions: string[] }[];
@@ -203,6 +213,8 @@ export interface CodebaseAnalysis {
   systemPromptHints: string[];
   detectedFrameworks: FrameworkDetection[];
   toolChains: ToolChain[];
+  /** Maps attack categories to the target source files they affect. */
+  affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
 }
 
 export interface AttackStep {
@@ -240,6 +252,8 @@ export interface AttackResult {
   responseTimeMs: number;
   findings: string[];
   llmReasoning?: string;
+  /** Confidence score (0–100) from the LLM judge. Absent for deterministic verdicts. */
+  judgeConfidence?: number;
   /** The resolved judge policy used for this evaluation. */
   policyUsed?: {
     name: string;
@@ -304,9 +318,12 @@ export interface Report {
     attack: string;
     strategyId?: number;
     strategyName?: string;
+    affectedFiles?: AffectedFile[];
   }[];
   staticAnalysis?: StaticAnalysisResult;
   compliance?: ComplianceResult[];
+  /** Maps attack categories to the target source files they affect. */
+  affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
 }
 
 export interface ComplianceResult {

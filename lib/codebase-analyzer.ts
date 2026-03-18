@@ -7,6 +7,8 @@ import type {
   CodebaseAnalysis,
   FrameworkDetection,
   ToolChain,
+  AttackCategory,
+  AffectedFile,
 } from "./types.js";
 
 // ── Feature 1: Framework Auto-Detection ──
@@ -239,7 +241,7 @@ export async function analyzeCodebase(
   config: Config,
 ): Promise<CodebaseAnalysis> {
   const basePath = resolve(config.codebasePath);
-  const pattern = config.codebaseGlob || "**/*.ts";
+  const pattern = config.codebaseGlob || "**/*";
   const files = await glob(pattern, { cwd: basePath, nodir: true });
 
   // Read all source files, truncating very large ones
@@ -337,5 +339,461 @@ ${sourceBundle.join("\n\n")}`;
   // Feature 2: Generate tool chain attack graphs
   analysis.toolChains = generateToolChains(analysis.tools);
 
+  // Feature 3: Map attack categories to affected source files
+  analysis.affectedFiles = mapCategoriesToFiles(basePath, files);
+
   return analysis;
+}
+
+// ── Feature 3: Map Attack Categories to Affected Source Files ──
+
+interface FilePattern {
+  /** Regex tested against relative file path (case-insensitive). */
+  pathPattern: RegExp;
+  /** Content patterns to match inside the file — if any matches, the file is relevant. */
+  contentPatterns: RegExp[];
+  /** Reason this file is relevant to the category. */
+  reason: string;
+}
+
+const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
+  prompt_injection: [
+    {
+      pathPattern: /guardrail|scanner|filter|moderat/i,
+      contentPatterns: [/regex|pattern|block|scan|risk/i],
+      reason: "Input guardrail / prompt filter",
+    },
+    {
+      pathPattern: /route|handler|endpoint|agent/i,
+      contentPatterns: [
+        /system.*prompt|buildSystem|systemMessage|role.*system/i,
+      ],
+      reason: "System prompt definition",
+    },
+    {
+      pathPattern: /prompt|template/i,
+      contentPatterns: [/system|instruction|assistant/i],
+      reason: "Prompt template",
+    },
+  ],
+  indirect_prompt_injection: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [
+        /browse_url|fetch|read_file|read_inbox|read_slack|tool/i,
+      ],
+      reason: "Tool that processes external content",
+    },
+    {
+      pathPattern: /guardrail|scanner|filter/i,
+      contentPatterns: [/scan|input|output|content/i],
+      reason: "Content scanner (may not detect embedded injection)",
+    },
+  ],
+  data_exfiltration: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/send_email|gist_create|slack_dm|webhook|http|fetch/i],
+      reason: "Sink tool (can send data externally)",
+    },
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/read_file|db_query|read_inbox|read_repo/i],
+      reason: "Source tool (reads sensitive data)",
+    },
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|sensitive|pattern|scan/i],
+      reason: "Output guardrail (DLP)",
+    },
+    {
+      pathPattern: /fake[-_]env|secret|credential|data/i,
+      contentPatterns: [/api.?key|password|secret|ssn|token/i],
+      reason: "Sensitive data store",
+    },
+  ],
+  steganographic_exfiltration: [
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|sensitive|pattern/i],
+      reason: "Output scanner (may miss encoded/steganographic data)",
+    },
+  ],
+  out_of_band_exfiltration: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/browse_url|fetch|http|send_email|gist|webhook/i],
+      reason: "Tool enabling outbound requests",
+    },
+    {
+      pathPattern: /gateway|rbac|permission/i,
+      contentPatterns: [/allow|permitted|role/i],
+      reason: "Tool permission check (no destination allowlist)",
+    },
+  ],
+  auth_bypass: [
+    {
+      pathPattern: /auth|jwt|token|login|session/i,
+      contentPatterns: [/verify|sign|bearer|secret|password/i],
+      reason: "Authentication logic",
+    },
+    {
+      pathPattern: /middleware|resolver|identity/i,
+      contentPatterns: [/role|user|auth|resolve/i],
+      reason: "User identity resolution",
+    },
+  ],
+  rbac_bypass: [
+    {
+      pathPattern: /rbac|permission|role|access/i,
+      contentPatterns: [/role|permission|allow|can.*use|restrict/i],
+      reason: "RBAC permission definitions",
+    },
+    {
+      pathPattern: /gateway|middleware/i,
+      contentPatterns: [/role|permission|filter.*tool|check/i],
+      reason: "Permission enforcement layer",
+    },
+  ],
+  tool_misuse: [
+    {
+      pathPattern: /gateway|route|handler|agent/i,
+      contentPatterns: [/execute.*tool|tool.*call|function.*call/i],
+      reason: "Tool execution handler",
+    },
+    {
+      pathPattern: /rbac|permission/i,
+      contentPatterns: [/restrict|data.*restrict|block/i],
+      reason: "Tool data restrictions",
+    },
+  ],
+  tool_chain_hijack: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/tool_call|function.*call|MAX_ITERATION|agent.*loop/i],
+      reason: "Agent tool loop (allows multi-tool chaining)",
+    },
+    {
+      pathPattern: /gateway/i,
+      contentPatterns: [/execute|allowed|result/i],
+      reason: "Tool gateway (no cross-tool policy)",
+    },
+  ],
+  rogue_agent: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/system.*prompt|persona|instruction|role.*system/i],
+      reason: "Agent persona / system prompt",
+    },
+    {
+      pathPattern: /guardrail|scanner|filter/i,
+      contentPatterns: [/jailbreak|DAN|unrestrict/i],
+      reason: "Jailbreak detection",
+    },
+  ],
+  goal_hijack: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/system.*prompt|buildSystem/i],
+      reason: "System prompt (goal definition)",
+    },
+    {
+      pathPattern: /guardrail|scanner/i,
+      contentPatterns: [/scan|input|risk/i],
+      reason: "Input scanner (may miss disguised goal hijack)",
+    },
+  ],
+  identity_privilege: [
+    {
+      pathPattern: /auth|middleware|resolver/i,
+      contentPatterns: [/body.*role|role.*body|resolve.*user|priority/i],
+      reason: "Identity resolution (accepts role from body)",
+    },
+    {
+      pathPattern: /jwt|token/i,
+      contentPatterns: [/verify|sign|claim|payload/i],
+      reason: "JWT verification",
+    },
+  ],
+  multi_agent_delegation: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/tool|function.*call|agent/i],
+      reason: "Agent endpoint (no inter-agent auth)",
+    },
+    {
+      pathPattern: /auth|middleware/i,
+      contentPatterns: [/resolve|user|role/i],
+      reason: "Auth layer (no agent-to-agent trust model)",
+    },
+  ],
+  agent_reflection_exploit: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/tool_call|message|completion|agent.*loop/i],
+      reason: "Agent reasoning loop",
+    },
+    {
+      pathPattern: /guardrail|scanner/i,
+      contentPatterns: [/scan|pattern|regex/i],
+      reason: "Input scanner (no ReAct/CoT format detection)",
+    },
+  ],
+  memory_poisoning: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/message|context|history|memory/i],
+      reason: "Conversation context management",
+    },
+    {
+      pathPattern: /data|store|vector|rag/i,
+      contentPatterns: [/store|save|embed|knowledge/i],
+      reason: "Data/knowledge store",
+    },
+  ],
+  guardrail_timing: [
+    {
+      pathPattern: /guardrail|scanner/i,
+      contentPatterns: [/scan|check|async|await/i],
+      reason: "Guardrail timing (sync vs async)",
+    },
+    {
+      pathPattern: /rate[-_]limit/i,
+      contentPatterns: [/limit|window|bucket|throttle/i],
+      reason: "Rate limiter",
+    },
+  ],
+  cascading_failure: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/MAX_ITERATION|loop|iteration/i],
+      reason: "Agent loop (recursion boundary)",
+    },
+    {
+      pathPattern: /rate[-_]limit/i,
+      contentPatterns: [/limit|bucket/i],
+      reason: "Rate limiter (resource exhaustion prevention)",
+    },
+  ],
+  multi_turn_escalation: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/message|user.*content|tool/i],
+      reason: "Agent endpoint (processes multi-turn)",
+    },
+    {
+      pathPattern: /guardrail|scanner/i,
+      contentPatterns: [/scan|risk|pattern/i],
+      reason: "Per-message scanner (no cross-turn analysis)",
+    },
+    {
+      pathPattern: /auth|middleware/i,
+      contentPatterns: [/role|resolve/i],
+      reason: "Auth (no re-verification between turns)",
+    },
+  ],
+  cross_session_injection: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/message|context|session/i],
+      reason: "Session/context handling",
+    },
+    {
+      pathPattern: /data|store|memory/i,
+      contentPatterns: [/store|save|persist|shared/i],
+      reason: "Persistent data store",
+    },
+  ],
+  agentic_workflow_bypass: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/tool.*call|loop|iteration|step/i],
+      reason: "Multi-step agent workflow",
+    },
+    {
+      pathPattern: /gateway/i,
+      contentPatterns: [/execute|permission|check/i],
+      reason: "Tool gateway (no workflow-level policy)",
+    },
+  ],
+  sensitive_data: [
+    {
+      pathPattern: /fake[-_]env|secret|credential|data/i,
+      contentPatterns: [/api.?key|password|secret|ssn|token|hash/i],
+      reason: "Sensitive data definitions",
+    },
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|sensitive|pattern/i],
+      reason: "Output redaction",
+    },
+  ],
+  rate_limit: [
+    {
+      pathPattern: /rate[-_]limit/i,
+      contentPatterns: [/limit|window|bucket|sliding/i],
+      reason: "Rate limiter implementation",
+    },
+  ],
+  output_evasion: [
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|scan|output|filter|sensitive/i],
+      reason: "Output scanner / DLP",
+    },
+  ],
+  session_hijacking: [
+    {
+      pathPattern: /auth|jwt|token|session/i,
+      contentPatterns: [/token|session|verify|sign/i],
+      reason: "Session/token management",
+    },
+  ],
+  cross_tenant_access: [
+    {
+      pathPattern: /auth|middleware|rbac/i,
+      contentPatterns: [/role|tenant|org|user/i],
+      reason: "Tenant isolation logic",
+    },
+  ],
+  sql_injection: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/db_query|query|sql|database/i],
+      reason: "Database query tool",
+    },
+    {
+      pathPattern: /rbac|gateway/i,
+      contentPatterns: [/data.*restrict|check.*query|block/i],
+      reason: "Query restriction logic",
+    },
+  ],
+  shell_injection: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/exec|spawn|command|shell/i],
+      reason: "Command execution capability",
+    },
+  ],
+  ssrf: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/browse_url|fetch|http|url/i],
+      reason: "URL fetching tool (no allowlist)",
+    },
+  ],
+  path_traversal: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/read_file|file.*path|path/i],
+      reason: "File reading tool",
+    },
+  ],
+  insecure_output_handling: [
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|output|html|script/i],
+      reason: "Output handling (no XSS sanitization)",
+    },
+  ],
+  pii_disclosure: [
+    {
+      pathPattern: /fake[-_]env|data/i,
+      contentPatterns: [/ssn|email|phone|address|name/i],
+      reason: "PII data store",
+    },
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|ssn|pii/i],
+      reason: "PII redaction",
+    },
+  ],
+  context_window_attack: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/message|content|system.*prompt|MAX/i],
+      reason: "Context window / message handling",
+    },
+  ],
+  slow_burn_exfiltration: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/send_email|gist|slack_dm/i],
+      reason: "Exfiltration sink tools",
+    },
+    {
+      pathPattern: /guardrail|scanner|output/i,
+      contentPatterns: [/redact|pattern/i],
+      reason: "Output scanner (may miss incremental leaks)",
+    },
+  ],
+  training_data_extraction: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/model|openai|completion/i],
+      reason: "LLM integration",
+    },
+  ],
+  side_channel_inference: [
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/tool_call|status|error|time/i],
+      reason: "Response metadata (tool calls, status codes)",
+    },
+  ],
+};
+
+function mapCategoriesToFiles(
+  basePath: string,
+  files: string[],
+): Partial<Record<AttackCategory, AffectedFile[]>> {
+  const result: Partial<Record<AttackCategory, AffectedFile[]>> = {};
+
+  // Read file contents and cache
+  const fileContents = new Map<string, string>();
+  for (const file of files) {
+    try {
+      const content = readFileSync(resolve(basePath, file), "utf-8");
+      fileContents.set(file, content);
+    } catch {
+      // skip unreadable files
+    }
+  }
+
+  for (const [category, patterns] of Object.entries(CATEGORY_FILE_PATTERNS)) {
+    const affected: AffectedFile[] = [];
+
+    for (const [file, content] of fileContents) {
+      for (const fp of patterns!) {
+        if (!fp.pathPattern.test(file)) continue;
+
+        // Check if any content pattern matches
+        const matchedContent = fp.contentPatterns.some((cp) =>
+          cp.test(content),
+        );
+        if (!matchedContent) continue;
+
+        // Find the first matching line number
+        let matchLine: number | undefined;
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          if (fp.contentPatterns.some((cp) => cp.test(lines[i]))) {
+            matchLine = i + 1;
+            break;
+          }
+        }
+
+        // Avoid duplicates
+        if (!affected.some((a) => a.file === file && a.reason === fp.reason)) {
+          affected.push({ file, line: matchLine, reason: fp.reason });
+        }
+      }
+    }
+
+    if (affected.length > 0) {
+      result[category as AttackCategory] = affected;
+    }
+  }
+
+  return result;
 }

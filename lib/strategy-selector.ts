@@ -179,6 +179,22 @@ const COUNTER_STRATEGY_MAP: Record<DefenseType, string[]> = {
     "academic_computation_disguise",
   ],
 
+  safe_response: [
+    // Pressure the model out of generic safe answers
+    "completeness_appeal",
+    "building_on_previous_context",
+    "output_format_constraint",
+    "word_count_pressure",
+    // Social pressure / authority framing
+    "authority_mimicry_security_manager",
+    "internal_qa_tool_framing",
+    "audit_compliance_requirement",
+    // Meta-prompting and contradiction traps
+    "error_correction_framing",
+    "self_evaluation_trap",
+    "contradiction_exploit",
+  ],
+
   unknown: [],
 };
 
