@@ -138,16 +138,22 @@ export async function analyzeResponse(
       judgeConfidence = judgment.confidence;
       if (judgment.verdict !== "FAIL") {
         const threshold = config.attackConfig.judgeConfidenceThreshold ?? 70;
-        if (judgment.verdict === "PASS" && judgment.confidence < threshold) {
+        if (
+          judgment.verdict === "PASS" &&
+          typeof judgment.confidence === "number" &&
+          judgment.confidence < threshold
+        ) {
           verdict = "PARTIAL";
           findings.push(
             `LLM judge: ${judgment.reasoning} (confidence ${judgment.confidence}% < ${threshold}% threshold — downgraded to PARTIAL)`,
           );
         } else {
           verdict = judgment.verdict;
-          findings.push(
-            `LLM judge: ${judgment.reasoning} (confidence ${judgment.confidence}%)`,
-          );
+          const confidenceSuffix =
+            typeof judgment.confidence === "number"
+              ? ` (confidence ${judgment.confidence}%)`
+              : "";
+          findings.push(`LLM judge: ${judgment.reasoning}${confidenceSuffix}`);
         }
         llmReasoning = judgment.reasoning;
       }
@@ -197,7 +203,7 @@ async function llmJudge(
   responseText: string | undefined,
   resolved?: import("./judge-policy.js").ResolvedPolicy,
   appContext?: AppContext,
-): Promise<{ verdict: Verdict; reasoning: string; confidence: number }> {
+): Promise<{ verdict: Verdict; reasoning: string; confidence?: number }> {
   const policyPrompt = resolved ? buildPolicyPrompt(resolved) : "";
 
   const defaultCriteria = `Think step-by-step:
@@ -273,13 +279,13 @@ ${responseBody.slice(0, 10000)}`;
       { role: "user", content: userPrompt },
     ],
     temperature: 0,
-    maxTokens: 600,
+    maxTokens: 500,
     responseFormat: "json_object",
   });
 
   const cleaned = (
     text ||
-    '{"attack_succeeded":false,"partial":false,"confidence":0,"reasoning":"no response"}'
+    '{"attack_succeeded":false,"partial":false,"reasoning":"no response"}'
   )
     .replace(/^```(?:json)?\n?/, "")
     .replace(/\n?```$/, "");
@@ -294,10 +300,13 @@ ${responseBody.slice(0, 10000)}`;
     verdict = "FAIL";
   }
 
-  const confidence = Math.max(
-    0,
-    Math.min(100, Math.round(Number(result.confidence) || 50)),
-  );
+  let confidence: number | undefined;
+  if (result.confidence != null) {
+    const numeric = Number(result.confidence);
+    if (Number.isFinite(numeric)) {
+      confidence = Math.max(0, Math.min(100, Math.round(numeric)));
+    }
+  }
 
   return { verdict, reasoning: result.reasoning ?? "", confidence };
 }
