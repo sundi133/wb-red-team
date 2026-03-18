@@ -172,10 +172,14 @@ export interface Config {
     strategiesPerRound?: number;
     /** Max PARTIAL results to refine per category per round (default: 10). */
     maxRefinementsPerCategory?: number;
-    /** Minimum LLM judge confidence (0–100) required to keep a PASS verdict. Below this, PASS is downgraded to PARTIAL. Default: 70. */
+    /** Minimum LLM judge confidence (0-100) required to keep a PASS verdict. Below this, PASS is downgraded to PARTIAL. Default: 70. */
     judgeConfidenceThreshold?: number;
     /** Skip attack categories whose surface area is not found in the target codebase. Default: true. */
     skipIrrelevantCategories?: boolean;
+    /** Character budget per analysis batch (default: 100_000). */
+    contextBudgetChars?: number;
+    /** Max LLM calls for codebase analysis batching (default: 3). */
+    maxAnalysisBatches?: number;
   };
 }
 

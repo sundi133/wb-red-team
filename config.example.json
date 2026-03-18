@@ -82,6 +82,8 @@
     "judgeConfidenceThreshold": 70,
     "skipIrrelevantCategories": true,
     "strategiesPerRound": 5,
+    "contextBudgetChars": 100000,
+    "maxAnalysisBatches": 3,
     "enabledStrategies": [
       "life_or_death_emergency",
       "critical_deadline_pressure",
