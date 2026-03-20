@@ -121,13 +121,36 @@ export interface Credential {
   role: string;
 }
 
+export type TargetType = "http_agent" | "mcp";
+export type McpTransportType = "stdio" | "sse" | "streamable_http";
+
+export interface McpTargetConfig {
+  transport: McpTransportType;
+  command?: string;
+  args?: string[];
+  url?: string;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+  allowlistedTools?: string[];
+  denylistedTools?: string[];
+  startupTimeoutMs?: number;
+  sessionTimeoutMs?: number;
+}
+
 export interface Config {
   target: {
-    baseUrl: string;
-    agentEndpoint: string;
-    authEndpoint: string;
+    /** Execution target type. Defaults to "http_agent". */
+    type?: TargetType;
+    /** Base URL of the target app (HTTP agent mode). */
+    baseUrl?: string;
+    /** Agent endpoint path to attack (HTTP agent mode). */
+    agentEndpoint?: string;
+    /** Auth endpoint path for login/JWT acquisition (HTTP agent mode). */
+    authEndpoint?: string;
     /** Free-form description of what the application does, users, workflows, and sensitive operations. */
     applicationDetails?: string;
+    /** MCP server connection details (MCP mode). */
+    mcp?: McpTargetConfig;
   };
   codebasePath: string;
   codebaseGlob: string;
@@ -252,12 +275,28 @@ export interface Attack {
   strategyName?: string;
 }
 
+export interface McpTraceEvent {
+  direction: "client->server" | "server->client" | "server->client-notify";
+  method?: string;
+  payload: unknown;
+}
+
+export interface McpExecutionTrace {
+  transport: McpTransportType;
+  operation?: string;
+  serverName?: string;
+  protocolVersion?: string;
+  transcript: McpTraceEvent[];
+  stderr?: string;
+}
+
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
   statusCode: number;
   responseBody: unknown;
   responseTimeMs: number;
+  executionTrace?: McpExecutionTrace;
   findings: string[];
   llmReasoning?: string;
   /** Confidence score (0–100) from the LLM judge. Absent for deterministic verdicts. */

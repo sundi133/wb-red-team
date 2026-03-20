@@ -11,6 +11,6 @@
     "declaration": false,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "lib/**/*.ts", "attacks/**/*.ts"],
+  "include": ["*.ts", "lib/**/*.ts", "attacks/**/*.ts", "attacks-mcp/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

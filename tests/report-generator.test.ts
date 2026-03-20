@@ -185,6 +185,36 @@ describe("generateReport", () => {
     expect(report.rounds).toHaveLength(2);
   });
 
+  it("preserves execution traces on results", () => {
+    const rounds: RoundResult[] = [
+      {
+        round: 1,
+        results: [
+          makeResult({
+            executionTrace: {
+              transport: "stdio",
+              operation: "tools/call",
+              serverName: "mock-mcp-server",
+              transcript: [
+                {
+                  direction: "client->server",
+                  method: "tools/call",
+                  payload: { name: "read_secret" },
+                },
+              ],
+            },
+          }),
+        ],
+      },
+    ];
+
+    const report = generateReport("mcp+stdio://node mock.js", rounds);
+    expect(report.rounds[0].results[0].executionTrace?.transport).toBe("stdio");
+    expect(report.rounds[0].results[0].executionTrace?.transcript).toHaveLength(
+      1,
+    );
+  });
+
   it("handles empty rounds", () => {
     const report = generateReport("http://localhost:3000/api/agent", []);
     expect(report.summary.totalAttacks).toBe(0);
