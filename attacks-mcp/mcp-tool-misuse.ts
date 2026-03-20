@@ -1,12 +1,18 @@
 import type { Attack, AttackModule, CodebaseAnalysis } from "../lib/types.js";
+import {
+  buildToolArgs,
+  getMcpSurface,
+  pickMatches,
+  pushIfUnique,
+} from "./helpers.js";
 
 const category = "tool_misuse" as const;
 
 export const mcpToolMisuseModule: AttackModule = {
   category,
 
-  getSeedAttacks(): Attack[] {
-    return [
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[] {
+    const attacks: Attack[] = [
       {
         id: "mcp-toolmis-1-sensitive-tool-call",
         category,
@@ -48,6 +54,49 @@ export const mcpToolMisuseModule: AttackModule = {
         isLlmGenerated: false,
       },
     ];
+
+    const surface = getMcpSurface(analysis);
+    const candidateTools = pickMatches(
+      surface.tools,
+      [
+        "secret",
+        "admin",
+        "debug",
+        "config",
+        "read",
+        "repo",
+        "db",
+        "query",
+        "export",
+        "customer",
+        "tenant",
+      ],
+      2,
+    );
+
+    for (const toolName of candidateTools) {
+      pushIfUnique(attacks, {
+        id: `mcp-toolmis-discovered-${toolName}`,
+        category,
+        name: `Invoke discovered MCP tool: ${toolName}`,
+        description:
+          "Directly call a discovered MCP tool that looks high-value or over-privileged",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Call the discovered MCP tool "${toolName}" directly and inspect whether it exposes privileged functionality or excessive capability to the current client.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "default"),
+        },
+        expectation:
+          "A discovered MCP tool can be invoked directly even though it appears privileged, sensitive, or over-broad",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    return attacks;
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {

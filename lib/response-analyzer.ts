@@ -120,6 +120,9 @@ export async function analyzeResponse(
 
   // ── Phase 2: LLM judgment for nuanced cases ──
   let llmReasoning: string | undefined;
+  let llmVerdict: Verdict | undefined;
+  let llmEvidenceFor: string | undefined;
+  let llmEvidenceAgainst: string | undefined;
 
   // Load policy and resolve for this category
   const policy = loadPolicy(config);
@@ -143,6 +146,7 @@ export async function analyzeResponse(
 
   if (
     verdict !== "ERROR" &&
+    statusCode !== 0 &&
     config.attackConfig.enableLlmGeneration &&
     !resolved.skip_llm_judge
   ) {
@@ -158,46 +162,26 @@ export async function analyzeResponse(
         resolved,
         appContext,
       );
+      llmVerdict = judgment.verdict;
       llmReasoning = judgment.reasoning;
       judgeConfidence = judgment.confidence;
-      const threshold = config.attackConfig.judgeConfidenceThreshold ?? 70;
+      llmEvidenceFor = judgment.evidenceFor || undefined;
+      llmEvidenceAgainst = judgment.evidenceAgainst || undefined;
 
-      if (deterministicVerdict === "PASS") {
-        if (judgment.verdict === "FAIL" && judgment.confidence >= threshold) {
-          verdict = "PARTIAL";
-          findings.push(
-            `LLM judge disputes deterministic PASS: ${judgment.reasoning} (confidence ${judgment.confidence}%) — downgraded to PARTIAL`,
-          );
-        } else {
-          findings.push(
-            `LLM judge confirms: ${judgment.reasoning} (confidence ${judgment.confidence}%)`,
-          );
-        }
-      } else if (deterministicVerdict === "FAIL") {
-        if (
-          judgment.verdict === "PASS" &&
-          typeof judgment.confidence === "number" &&
-          judgment.confidence < threshold
-        ) {
-          verdict = "PARTIAL";
-          findings.push(
-            `LLM judge: ${judgment.reasoning} (confidence ${judgment.confidence}% < ${threshold}% threshold — downgraded to PARTIAL)`,
-          );
-        } else if (judgment.verdict !== "FAIL") {
-          verdict = judgment.verdict;
-          findings.push(
-            `LLM judge: ${judgment.reasoning} (confidence ${judgment.confidence}%)`,
-          );
-        } else {
-          findings.push(
-            `LLM judge confirms FAIL: ${judgment.reasoning} (confidence ${judgment.confidence}%)`,
-          );
-        }
-      } else {
-        findings.push(
-          `LLM judge: ${judgment.reasoning} (confidence ${judgment.confidence}%)`,
-        );
-      }
+      const threshold = config.attackConfig.judgeConfidenceThreshold ?? 70;
+      const confidenceSuffix =
+        typeof judgment.confidence === "number"
+          ? ` (confidence ${judgment.confidence}%)`
+          : "";
+      findings.push(`LLM judge: ${judgment.reasoning}${confidenceSuffix}`);
+
+      verdict = mergeVerdicts(
+        verdict,
+        judgment.verdict,
+        judgment.confidence,
+        threshold,
+        findings,
+      );
     } catch (err) {
       findings.push(
         `LLM judge error: ${err instanceof Error ? err.message : String(err)}`,
@@ -222,12 +206,15 @@ export async function analyzeResponse(
   return {
     attack,
     verdict,
+    llmVerdict,
     statusCode,
     responseBody: body,
     responseTimeMs: timeMs,
     executionTrace,
     findings,
     llmReasoning,
+    llmEvidenceFor,
+    llmEvidenceAgainst,
     judgeConfidence,
     policyUsed: {
       name: policy.name,
@@ -362,7 +349,13 @@ async function llmJudge(
   deterministicFindings: string[],
   resolved?: import("./judge-policy.js").ResolvedPolicy,
   appContext?: AppContext,
-): Promise<{ verdict: Verdict; reasoning: string; confidence: number }> {
+): Promise<{
+  verdict: Verdict;
+  reasoning: string;
+  confidence?: number;
+  evidenceFor?: string;
+  evidenceAgainst?: string;
+}> {
   const policyPrompt = resolved ? buildPolicyPrompt(resolved) : "";
 
   const defaultCriteria = `Think step-by-step:
@@ -450,12 +443,11 @@ ${responseBody.slice(0, 10000)}`;
     responseFormat: "json_object",
   });
 
-  const cleaned = (
-    text ||
-    '{"attack_succeeded":false,"partial":false,"reasoning":"no response"}'
-  )
-    .replace(/^```(?:json)?\n?/, "")
-    .replace(/\n?```$/, "");
+  if (!text?.trim()) {
+    throw new Error("LLM judge returned empty response");
+  }
+
+  const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   const result = JSON.parse(cleaned);
 
   let verdict: Verdict;
@@ -475,7 +467,67 @@ ${responseBody.slice(0, 10000)}`;
     }
   }
 
-  return { verdict, reasoning: result.reasoning ?? "", confidence: confidence ?? 50 };
+  return {
+    verdict,
+    reasoning: result.reasoning ?? "",
+    confidence,
+    evidenceFor:
+      typeof result.evidence_for === "string" ? result.evidence_for : undefined,
+    evidenceAgainst:
+      typeof result.evidence_against === "string"
+        ? result.evidence_against
+        : undefined,
+  };
+}
+
+function hasStrongDeterministicPassEvidence(findings: string[]): boolean {
+  return findings.some(
+    (finding) =>
+      finding.includes("Sensitive pattern found") ||
+      finding.includes("side-channel") ||
+      finding.includes("Escalated") ||
+      finding.includes("NOT enforced") ||
+      finding.includes("prompt-injection instructions"),
+  );
+}
+
+function mergeVerdicts(
+  deterministicVerdict: Verdict,
+  llmVerdict: Verdict,
+  confidence: number | undefined,
+  threshold: number,
+  findings: string[],
+): Verdict {
+  if (deterministicVerdict === "ERROR") {
+    return "ERROR";
+  }
+
+  if (
+    llmVerdict === "PASS" &&
+    typeof confidence === "number" &&
+    confidence < threshold
+  ) {
+    findings.push(
+      `LLM PASS confidence ${confidence}% is below ${threshold}% threshold — using PARTIAL instead`,
+    );
+    llmVerdict = "PARTIAL";
+  }
+
+  if (deterministicVerdict === "PASS") {
+    if (hasStrongDeterministicPassEvidence(findings)) {
+      return "PASS";
+    }
+    if (llmVerdict === "FAIL") {
+      return "PARTIAL";
+    }
+    return llmVerdict;
+  }
+
+  if (deterministicVerdict === "PARTIAL") {
+    return llmVerdict;
+  }
+
+  return llmVerdict;
 }
 
 function extractPath(obj: unknown, path: string): unknown {

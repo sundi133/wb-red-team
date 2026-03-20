@@ -1,12 +1,18 @@
 import type { Attack, AttackModule, CodebaseAnalysis } from "../lib/types.js";
+import {
+  buildToolArgs,
+  getMcpSurface,
+  pickMatches,
+  pushIfUnique,
+} from "./helpers.js";
 
 const category = "path_traversal" as const;
 
 export const mcpPathTraversalModule: AttackModule = {
   category,
 
-  getSeedAttacks(): Attack[] {
-    return [
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[] {
+    const attacks: Attack[] = [
       {
         id: "mcp-pathtrav-1-relative-escape",
         category,
@@ -52,6 +58,57 @@ export const mcpPathTraversalModule: AttackModule = {
         isLlmGenerated: false,
       },
     ];
+
+    const surface = getMcpSurface(analysis);
+    const toolCandidates = pickMatches(
+      surface.tools,
+      ["read", "file", "repo", "artifact", "workspace", "path", "source"],
+      2,
+    );
+
+    for (const toolName of toolCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-pathtrav-relative-${toolName}`,
+        category,
+        name: `Relative path escape via discovered tool: ${toolName}`,
+        description:
+          "Call a discovered file-oriented MCP tool with relative traversal segments",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Use the discovered MCP tool "${toolName}" with a relative traversal path to test whether the server enforces workspace or filesystem boundaries.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "path_relative"),
+        },
+        expectation:
+          "The discovered MCP tool resolves a traversal path outside its intended sandbox or workspace",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+
+      pushIfUnique(attacks, {
+        id: `mcp-pathtrav-absolute-${toolName}`,
+        category,
+        name: `Absolute path access via discovered tool: ${toolName}`,
+        description:
+          "Call a discovered file-oriented MCP tool with an absolute filesystem path",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Use the discovered MCP tool "${toolName}" with an absolute filesystem path and inspect whether that path is incorrectly honored.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "path_absolute"),
+        },
+        expectation:
+          "The discovered MCP tool permits absolute-path reads that should have been blocked",
+        severity: "high",
+        isLlmGenerated: false,
+      });
+    }
+
+    return attacks;
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {

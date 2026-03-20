@@ -244,6 +244,13 @@ export interface CodebaseAnalysis {
   systemPromptHints: string[];
   detectedFrameworks: FrameworkDetection[];
   toolChains: ToolChain[];
+  mcpSurface?: {
+    serverName?: string;
+    protocolVersion?: string;
+    capabilities: string[];
+    prompts: string[];
+    resources: string[];
+  };
   /** Maps attack categories to the target source files they affect. */
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
 }
@@ -302,12 +309,15 @@ export interface ConversationStep {
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
+  llmVerdict?: Verdict;
   statusCode: number;
   responseBody: unknown;
   responseTimeMs: number;
   executionTrace?: McpExecutionTrace;
   findings: string[];
   llmReasoning?: string;
+  llmEvidenceFor?: string;
+  llmEvidenceAgainst?: string;
   /** Confidence score (0–100) from the LLM judge. Absent for deterministic verdicts. */
   judgeConfidence?: number;
   /** The resolved judge policy used for this evaluation. */
@@ -329,7 +339,7 @@ export interface AttackResult {
 
 export interface AttackModule {
   category: AttackCategory;
-  getSeedAttacks(): Attack[];
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[];
   getGenerationPrompt(analysis: CodebaseAnalysis): string;
 }
 

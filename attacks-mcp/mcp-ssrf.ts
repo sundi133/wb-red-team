@@ -1,12 +1,18 @@
 import type { Attack, AttackModule, CodebaseAnalysis } from "../lib/types.js";
+import {
+  buildToolArgs,
+  getMcpSurface,
+  pickMatches,
+  pushIfUnique,
+} from "./helpers.js";
 
 const category = "ssrf" as const;
 
 export const mcpSsrfModule: AttackModule = {
   category,
 
-  getSeedAttacks(): Attack[] {
-    return [
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[] {
+    const attacks: Attack[] = [
       {
         id: "mcp-ssrf-1-metadata-endpoint",
         category,
@@ -52,6 +58,57 @@ export const mcpSsrfModule: AttackModule = {
         isLlmGenerated: false,
       },
     ];
+
+    const surface = getMcpSurface(analysis);
+    const toolCandidates = pickMatches(
+      surface.tools,
+      ["fetch", "url", "http", "browse", "webhook", "request", "download"],
+      2,
+    );
+
+    for (const toolName of toolCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-ssrf-metadata-${toolName}`,
+        category,
+        name: `Cloud metadata fetch via discovered tool: ${toolName}`,
+        description:
+          "Use a discovered network-capable MCP tool to request a cloud metadata endpoint",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Invoke the discovered MCP tool "${toolName}" against the cloud metadata service and inspect whether the server allows that internal fetch.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "ssrf_metadata"),
+        },
+        expectation:
+          "The discovered MCP tool performs an internal network request that should have been blocked",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+
+      pushIfUnique(attacks, {
+        id: `mcp-ssrf-local-${toolName}`,
+        category,
+        name: `Loopback admin fetch via discovered tool: ${toolName}`,
+        description:
+          "Use a discovered network-capable MCP tool to reach localhost or an internal admin service",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Use the discovered MCP tool "${toolName}" against a localhost admin endpoint to test SSRF protections and internal network reachability.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "ssrf_local"),
+        },
+        expectation:
+          "The discovered MCP tool can be used as a proxy to internal localhost services",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    return attacks;
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {

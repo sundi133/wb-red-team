@@ -280,6 +280,37 @@ const CONTENT_SECURITY_PATTERNS = [
   /permission/i,
 ];
 
+const SYSTEM_PROMPT_PATTERNS = [
+  /role:\s*["']system["']/i,
+  /\bsystemPrompt\b/,
+  /buildSystemPrompt\s*\(/i,
+  /system.*instructions/i,
+  /hidden instructions/i,
+];
+
+const LLM_CALL_PATTERNS = [
+  /chat\.completions\.create\s*\(/i,
+  /responses\.create\s*\(/i,
+  /messages\.create\s*\(/i,
+  /beta\.threads\./i,
+  /assistants\.create\s*\(/i,
+  /new\s+OpenAI\s*\(/i,
+  /api\.anthropic\.com\/v1\/messages/i,
+  /@ai-sdk\//i,
+  /generateText\s*\(/i,
+  /streamText\s*\(/i,
+];
+
+const TOOL_AGENT_PATTERNS = [
+  /\btools\s*:/i,
+  /\btool_choice\s*:/i,
+  /\btool_calls?\b/i,
+  /messages\s*:\s*[a-z_][a-z0-9_]*/i,
+  /\bmessages\.push\s*\(/i,
+  /\bMAX_ITERATIONS\b/i,
+  /\bfor\s*\(let\s+i\s*=\s*0;\s*i\s*<\s*MAX_ITERATIONS/i,
+];
+
 const ENTRY_POINT_NAMES = new Set([
   "index.ts",
   "index.js",
@@ -352,6 +383,33 @@ function scoreFile(filePath: string, content: string): number {
     }
   }
   score += Math.min(contentHits * 5, 20);
+
+  // Scan the full file for prompt-bearing and model-invocation code so large
+  // route/agent files are prioritized even when the relevant lines appear well
+  // past the first couple KB of content.
+  let systemPromptHits = 0;
+  for (const pat of SYSTEM_PROMPT_PATTERNS) {
+    if (pat.test(content)) {
+      systemPromptHits++;
+    }
+  }
+  score += Math.min(systemPromptHits * 15, 45);
+
+  let llmCallHits = 0;
+  for (const pat of LLM_CALL_PATTERNS) {
+    if (pat.test(content)) {
+      llmCallHits++;
+    }
+  }
+  score += Math.min(llmCallHits * 18, 54);
+
+  let toolAgentHits = 0;
+  for (const pat of TOOL_AGENT_PATTERNS) {
+    if (pat.test(content)) {
+      toolAgentHits++;
+    }
+  }
+  score += Math.min(toolAgentHits * 8, 24);
 
   return score;
 }

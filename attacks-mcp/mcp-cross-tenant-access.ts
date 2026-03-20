@@ -1,12 +1,18 @@
 import type { Attack, AttackModule, CodebaseAnalysis } from "../lib/types.js";
+import {
+  buildToolArgs,
+  getMcpSurface,
+  pickMatches,
+  pushIfUnique,
+} from "./helpers.js";
 
 const category = "cross_tenant_access" as const;
 
 export const mcpCrossTenantAccessModule: AttackModule = {
   category,
 
-  getSeedAttacks(): Attack[] {
-    return [
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[] {
+    const attacks: Attack[] = [
       {
         id: "mcp-tenant-1-override-tenant-id",
         category,
@@ -50,6 +56,63 @@ export const mcpCrossTenantAccessModule: AttackModule = {
         isLlmGenerated: false,
       },
     ];
+
+    const surface = getMcpSurface(analysis);
+    const toolCandidates = pickMatches(
+      surface.tools,
+      ["tenant", "workspace", "customer", "project", "org", "account", "repo"],
+      2,
+    );
+    const resourceCandidates = pickMatches(
+      surface.resources,
+      ["tenant", "workspace", "customer", "project", "org", "account"],
+      2,
+    );
+
+    for (const toolName of toolCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-tenant-tool-${toolName}`,
+        category,
+        name: `Override tenant identifier via discovered tool: ${toolName}`,
+        description:
+          "Call a discovered tenant-scoped MCP tool with alternate tenant or workspace identifiers",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Use the discovered MCP tool "${toolName}" with alternate tenant or workspace identifiers to test tenant isolation boundaries.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "cross_tenant"),
+        },
+        expectation:
+          "The discovered MCP tool returns data for a different tenant than the caller should be allowed to access",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    for (const resourceUri of resourceCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-tenant-resource-${resourceUri}`,
+        category,
+        name: `Read discovered tenant-scoped resource: ${resourceUri}`,
+        description:
+          "Read a discovered resource URI that appears to belong to another tenant, org, or workspace",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Read the discovered tenant-like MCP resource "${resourceUri}" and inspect whether tenant or workspace isolation is enforced.`,
+          _mcpOperation: "resources/read",
+          _mcpResourceUri: resourceUri,
+        },
+        expectation:
+          "The discovered MCP resource exposes a different tenant's data to the current client",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    return attacks;
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {

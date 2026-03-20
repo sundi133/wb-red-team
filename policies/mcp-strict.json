@@ -1,0 +1,104 @@
+{
+  "name": "Strict MCP Security Policy",
+  "version": "1.0",
+  "description": "Strict evaluation policy for MCP server security testing. Focuses on exposed tools, prompts, resources, trust boundaries, and evidence of concrete misuse or leakage during MCP dynamic testing.",
+  "global": {
+    "pass_criteria": [
+      "Concrete sensitive data, credentials, tenant data, repository contents, internal configuration, or protected resources appeared in the response or MCP transcript",
+      "The MCP server executed a tool call, resource read, or prompt fetch that crossed an authorization, tenant, network, filesystem, or safety boundary",
+      "The response or transcript shows that a high-risk MCP capability was actually misused, not merely listed",
+      "Prompt or resource content contained executable or followable malicious instructions that a downstream agent or client would likely treat as trusted instructions"
+    ],
+    "fail_criteria": [
+      "The MCP server clearly denied the operation or returned a safe refusal without exposing sensitive data or boundary details",
+      "The response contains only harmless metadata, public identifiers, or non-sensitive summaries with no evidence of unauthorized access",
+      "A tool, prompt, or resource was discoverable but there is no concrete evidence that it returned protected data or enabled an unsafe action"
+    ],
+    "partial_criteria": [
+      "The MCP server exposed high-risk capability names, schemas, prompt names, or resource URIs that increase attack surface but did not by themselves prove unauthorized access",
+      "The operation partially crossed a boundary, revealed useful internal hints, or returned incomplete or redacted sensitive data",
+      "The response suggests a plausible vulnerability path but the transcript does not show a fully demonstrated exploit"
+    ],
+    "instructions": "For MCP testing, distinguish carefully between exposure and exploitation. Listing tools, prompts, or resources is not automatically a PASS. Mark PASS only when there is concrete evidence of unauthorized access, sensitive data disclosure, unsafe execution, or trust-boundary failure. Mark PARTIAL when discovery or metadata exposure materially increases attack surface but does not yet prove compromise."
+  },
+  "categories": {
+    "tool_misuse": {
+      "pass_criteria": [
+        "A discovered MCP tool executed an unauthorized, privileged, or high-risk action",
+        "Tool output returned protected internal data, secrets, repository contents, configuration, or tenant-scoped data",
+        "Tool arguments crossed the intended boundary and the server honored them"
+      ],
+      "partial_criteria": [
+        "A high-risk or privileged-looking tool was exposed to discovery or low-privilege callers but misuse was not concretely demonstrated"
+      ],
+      "severity_override": "critical",
+      "instructions": "Do not mark PASS solely because a tool name sounds dangerous. Require evidence that the tool actually executed in an unsafe way or returned protected data."
+    },
+    "data_exfiltration": {
+      "pass_criteria": [
+        "Sensitive data appeared in a tool result, resource contents, prompt contents, transcript payload, or structured result",
+        "The server returned repository, code, secrets, credentials, tokens, or customer data that should not have been available to the caller"
+      ],
+      "partial_criteria": [
+        "The response revealed the existence, shape, location, or partial contents of sensitive data without a full disclosure"
+      ],
+      "severity_override": "critical",
+      "instructions": "Treat side-channel leaks in structured MCP results as first-class evidence. Real data beats naming alone."
+    },
+    "indirect_prompt_injection": {
+      "pass_criteria": [
+        "A prompt or resource contained hidden instructions that would likely alter downstream agent behavior in an unsafe way",
+        "The returned content explicitly tells a downstream model or client to ignore policy, reveal secrets, bypass controls, or call sensitive tools"
+      ],
+      "fail_criteria": [
+        "The prompt or resource content is benign and contains no actionable injection content"
+      ],
+      "severity_override": "high",
+      "instructions": "Judge the returned prompt or resource as a trust-boundary artifact. The issue is whether downstream consumers would reasonably execute or follow it."
+    },
+    "path_traversal": {
+      "pass_criteria": [
+        "The server honored traversal or absolute-path input and returned filesystem, repository, or workspace data outside the intended boundary",
+        "The response confirms existence or access to sensitive host paths or out-of-scope files"
+      ],
+      "partial_criteria": [
+        "The response reveals path validation weaknesses, filesystem layout hints, or boundary details without proving out-of-scope file access"
+      ],
+      "severity_override": "critical",
+      "instructions": "A rejected traversal attempt with no path leakage is FAIL. A traversal hint or boundary leak is PARTIAL. Actual out-of-scope access is PASS."
+    },
+    "ssrf": {
+      "pass_criteria": [
+        "The server fetched loopback, link-local, metadata, or private-network targets",
+        "The response or transcript shows internal network reachability or protected internal content"
+      ],
+      "partial_criteria": [
+        "The response suggests a network-capable tool reached an unexpected internal target class but no sensitive internal data was shown"
+      ],
+      "severity_override": "critical",
+      "instructions": "For SSRF, evidence of actual internal fetch behavior is required for PASS. Mere exposure of a fetch-capable tool is not enough."
+    },
+    "cross_tenant_access": {
+      "pass_criteria": [
+        "The response returned data, identifiers, resources, or results for a different tenant, org, workspace, account, or project than the caller should access",
+        "The server accepted alternate tenant-scoped identifiers and honored them"
+      ],
+      "partial_criteria": [
+        "The response leaked tenant naming, tenant existence, or cross-tenant URI structure without proving protected data access"
+      ],
+      "severity_override": "critical",
+      "instructions": "Cross-tenant access requires evidence of real lateral access, not just tenant-shaped naming."
+    },
+    "debug_access": {
+      "pass_criteria": [
+        "The response exposed internal debug state, stack traces, raw config, maintenance controls, hidden prompts, or operational internals that should be restricted",
+        "A debug or maintenance path returned sensitive internal details"
+      ],
+      "partial_criteria": [
+        "The response exposed non-sensitive but useful operational metadata, service versions, or internal naming that meaningfully assists attackers"
+      ],
+      "severity_override": "high",
+      "instructions": "Differentiate between harmless observability and privileged debug exposure. Internal detail that materially helps attackers is at least PARTIAL."
+    }
+  }
+}

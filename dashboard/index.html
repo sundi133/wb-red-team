@@ -1580,7 +1580,10 @@
               category: result.attack.category,
               attack: result.attack.name,
               description:
-                result.findings?.join("; ") || result.attack.description || "",
+                result.llmReasoning ||
+                result.findings?.join("; ") ||
+                result.attack.description ||
+                "",
               strategyName: result.attack.strategyName || "",
               affectedFiles:
                 result.affectedFiles ||
@@ -1674,6 +1677,48 @@
         </div>`;
       }
 
+      function formatThreatAssessment(result) {
+        if (!result) return "";
+        const reasoning =
+          result.llmReasoning && result.llmReasoning !== "no response"
+            ? result.llmReasoning
+            : "";
+        const evidenceFor = result.llmEvidenceFor || "";
+        const evidenceAgainst = result.llmEvidenceAgainst || "";
+        const verdict = result.llmVerdict || "";
+        const confidence =
+          typeof result.judgeConfidence === "number"
+            ? `${result.judgeConfidence}%`
+            : "";
+
+        if (!reasoning && !evidenceFor && !evidenceAgainst && !verdict) {
+          return "";
+        }
+
+        return `<div style="margin-top:12px">
+          <div class="detail-label">Threat Assessment</div>
+          <div style="margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:12px">
+            ${
+              verdict
+                ? `<span><strong>LLM Verdict:</strong> <span class="verdict verdict-${esc(verdict)}">${esc(verdict)}</span></span>`
+                : ""
+            }
+            ${confidence ? `<span><strong>Confidence:</strong> ${esc(confidence)}</span>` : ""}
+          </div>
+          ${reasoning ? `<pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre>` : ""}
+          ${
+            evidenceFor
+              ? `<div style="margin-top:8px"><div class="detail-label">Why This Looks Risky</div><pre class="detail-pre">${esc(evidenceFor)}</pre></div>`
+              : ""
+          }
+          ${
+            evidenceAgainst
+              ? `<div style="margin-top:8px"><div class="detail-label">Why This May Be Defended</div><pre class="detail-pre">${esc(evidenceAgainst)}</pre></div>`
+              : ""
+          }
+        </div>`;
+      }
+
       function renderFindings() {
         const verdict = $("#filterVerdict")?.value || "";
         const sev = $("#filterSev")?.value || "";
@@ -1711,11 +1756,11 @@
           const result = f.result;
           const prompt = extractPrompt(result);
           const response = extractResponse(result);
-          const reasoning = result?.llmReasoning || "";
           const affectedFilesHtml = formatAffectedFiles(f.affectedFiles);
           const executionTraceHtml = formatExecutionTrace(
             result?.executionTrace,
           );
+          const threatAssessmentHtml = formatThreatAssessment(result);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -1747,7 +1792,8 @@
           <div class="detail-label">Response</div>
           <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
         </div>
-      </div>`}
+      </div>
+      ${threatAssessmentHtml}
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
@@ -1919,10 +1965,16 @@
           const roundExecutionTraceHtml = formatExecutionTrace(
             r.executionTrace,
           );
+          const roundThreatAssessmentHtml = formatThreatAssessment(r);
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
       ${r.conversation ? renderConversation(r) : renderSingleTurn(r)}
       ${r.findings.length ? `<div style="margin-top:12px;margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
       ${roundAffectedFilesHtml ? `<div style="margin-bottom:8px"><strong>Affected Files:</strong><br>${roundAffectedFilesHtml}</div>` : ""}
+      ${roundThreatAssessmentHtml}
+      <div style="margin-bottom:8px">
+        <strong>Response:</strong>
+        <pre>${esc(JSON.stringify(r.responseBody, null, 2).slice(0, 3000))}${JSON.stringify(r.responseBody, null, 2).length > 3000 ? "\n... (truncated)" : ""}</pre>
+      </div>
       ${r.llmReasoning ? `<div style="margin-bottom:8px"><strong>LLM Reasoning:</strong><pre>${esc(r.llmReasoning)}</pre></div>` : ""}
       ${roundExecutionTraceHtml}
       ${r.attack.strategyName ? `<div style="margin-bottom:8px"><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}

@@ -304,6 +304,7 @@ describe("analyzeResponse", () => {
       expect(result.llmReasoning).toBe(
         "The agent followed the injected instruction",
       );
+      expect(result.llmVerdict).toBe("PASS");
     });
 
     it("returns PARTIAL when LLM judge says partial success", async () => {
@@ -328,6 +329,7 @@ describe("analyzeResponse", () => {
       );
 
       expect(result.verdict).toBe("PARTIAL");
+      expect(result.llmVerdict).toBe("PARTIAL");
     });
 
     it("returns FAIL when LLM judge says attack failed", async () => {
@@ -355,6 +357,7 @@ describe("analyzeResponse", () => {
       expect(result.llmReasoning).toBe(
         "The agent fully defended against the attack",
       );
+      expect(result.llmVerdict).toBe("FAIL");
     });
 
     it("skips LLM judge when enableLlmGeneration is false", async () => {
@@ -373,19 +376,28 @@ describe("analyzeResponse", () => {
       expect(mockChat).not.toHaveBeenCalled();
     });
 
-    it("calls LLM judge on non-200 status codes (e.g. 403)", async () => {
+    it("runs LLM judge on non-zero non-error status codes", async () => {
       const mockChat = vi.fn().mockResolvedValue(
         JSON.stringify({
           attack_succeeded: false,
           partial: false,
           confidence: 90,
-          reasoning: "Agent blocked the request with 403",
+          reasoning: "Forbidden response indicates the attack was blocked",
         }),
       );
       vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
-      await analyzeResponse(makeConfig(), makeAttack(), 403, {}, 100);
+      const result = await analyzeResponse(
+        makeConfig(),
+        makeAttack(),
+        403,
+        { error: "forbidden" },
+        100,
+      );
       expect(mockChat).toHaveBeenCalledOnce();
+      expect(result.llmReasoning).toBe(
+        "Forbidden response indicates the attack was blocked",
+      );
     });
 
     it("handles LLM judge failure gracefully and logs error in findings", async () => {
@@ -406,6 +418,96 @@ describe("analyzeResponse", () => {
       expect(result.findings).toContainEqual(
         expect.stringContaining("LLM judge error: API error"),
       );
+    });
+
+    it("treats empty LLM judge output as unavailable", async () => {
+      const mockChat = vi.fn().mockResolvedValue("");
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
+
+      const body = { response: "Some response" };
+      const result = await analyzeResponse(
+        makeConfig(),
+        makeAttack(),
+        200,
+        body,
+        100,
+      );
+
+      expect(result.verdict).toBe("FAIL");
+      expect(result.llmReasoning).toBeUndefined();
+      expect(result.llmVerdict).toBeUndefined();
+    });
+
+    it("calls LLM judge even when deterministic checks already returned PASS", async () => {
+      const mockChat = vi.fn().mockResolvedValue(
+        JSON.stringify({
+          evidence_for: "The response contains a project-style secret token",
+          evidence_against: "",
+          attack_succeeded: true,
+          partial: false,
+          confidence: 94,
+          reasoning:
+            "This is a concrete data leak because a sensitive token pattern appears in the response.",
+        }),
+      );
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
+
+      const result = await analyzeResponse(
+        makeConfig(),
+        makeAttack(),
+        200,
+        { response: "Here is the key: sk-proj-abc123" },
+        100,
+      );
+
+      expect(mockChat).toHaveBeenCalledOnce();
+      expect(result.verdict).toBe("PASS");
+      expect(result.llmVerdict).toBe("PASS");
+      expect(result.llmEvidenceFor).toContain("secret token");
+    });
+
+    it("uses LLM judge to resolve heuristic PARTIAL MCP results", async () => {
+      const mockChat = vi.fn().mockResolvedValue(
+        JSON.stringify({
+          evidence_for: "",
+          evidence_against:
+            "The tool only listed repository names and did not expose sensitive repository contents or unauthorized data.",
+          attack_succeeded: false,
+          partial: false,
+          confidence: 91,
+          reasoning:
+            "This looks like exposed capability enumeration rather than a demonstrated security violation.",
+        }),
+      );
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
+
+      const attack = makeAttack({
+        category: "tool_misuse",
+        authMethod: "none",
+        payload: {
+          _mcpOperation: "tools/call",
+          _mcpTool: "sast_list_repositories",
+          message: "list repositories",
+        },
+      });
+      const body = {
+        operation: "tools/call",
+        result: {
+          repositories: ["repo-a", "repo-b"],
+        },
+      };
+
+      const result = await analyzeResponse(
+        makeConfig({ target: { type: "mcp" } as Config["target"] }),
+        attack,
+        200,
+        body,
+        100,
+      );
+
+      expect(result.llmVerdict).toBe("FAIL");
+      expect(result.verdict).toBe("FAIL");
+      expect(result.llmReasoning).toContain("exposed capability enumeration");
     });
 
     it("uses system + user messages for chain-of-thought prompting", async () => {
