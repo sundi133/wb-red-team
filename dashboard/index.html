@@ -1792,9 +1792,8 @@
           <div class="detail-label">Response</div>
           <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
         </div>
-      </div>
+      </div>`}
       ${threatAssessmentHtml}
-      ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
       ${executionTraceHtml}
