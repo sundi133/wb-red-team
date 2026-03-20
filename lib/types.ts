@@ -126,6 +126,8 @@ export interface Config {
     baseUrl: string;
     agentEndpoint: string;
     authEndpoint: string;
+    /** Free-form description of what the application does, users, workflows, and sensitive operations. */
+    applicationDetails?: string;
   };
   codebasePath: string;
   codebaseGlob: string;

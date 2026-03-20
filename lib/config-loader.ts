@@ -12,6 +12,13 @@ export function loadConfig(configPath?: string): Config {
     throw new Error("config: target.baseUrl is required");
   if (!config.target?.agentEndpoint)
     throw new Error("config: target.agentEndpoint is required");
+  config.target.applicationDetails = config.target.applicationDetails?.trim();
+  if (!config.target.applicationDetails) {
+    console.warn(
+      "Warning: target.applicationDetails is not set — LLM-generated attacks will be less app-specific",
+    );
+    config.target.applicationDetails = "";
+  }
   if (!config.auth?.credentials?.length && !config.auth?.apiKeys) {
     throw new Error(
       "config: at least one auth method (credentials or apiKeys) is required",

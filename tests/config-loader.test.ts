@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { loadConfig } from "../lib/config-loader.js";
 import { writeFileSync, mkdtempSync, rmSync } from "fs";
 import { join } from "path";
@@ -18,6 +18,8 @@ function makeValidConfig(
       baseUrl: "http://localhost:3000",
       agentEndpoint: "/api/agent",
       authEndpoint: "/api/login",
+      applicationDetails:
+        "Internal support assistant for order lookups and refunds.",
     },
     auth: {
       methods: ["jwt"],
@@ -58,6 +60,9 @@ describe("loadConfig", () => {
     const config = loadConfig(path);
     expect(config.target.baseUrl).toBe("http://localhost:3000");
     expect(config.target.agentEndpoint).toBe("/api/agent");
+    expect(config.target.applicationDetails).toBe(
+      "Internal support assistant for order lookups and refunds.",
+    );
   });
 
   it("applies default attackConfig values", () => {
@@ -84,6 +89,45 @@ describe("loadConfig", () => {
     expect(config.attackConfig.llmModel).toBe("gpt-4o-mini");
     // Non-overridden fields get defaults
     expect(config.attackConfig.concurrency).toBe(3);
+  });
+
+  it("preserves target.applicationDetails when provided", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          baseUrl: "http://localhost:3000",
+          agentEndpoint: "/api/agent",
+          authEndpoint: "/api/login",
+          applicationDetails:
+            "Customer support AI assistant for refunds and order lookups.",
+        },
+      }),
+    );
+    const config = loadConfig(path);
+    expect(config.target.applicationDetails).toBe(
+      "Customer support AI assistant for refunds and order lookups.",
+    );
+  });
+
+  it("defaults target.applicationDetails to empty string when omitted", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          baseUrl: "http://localhost:3000",
+          agentEndpoint: "/api/agent",
+          authEndpoint: "/api/login",
+        },
+      }),
+    );
+    const config = loadConfig(path);
+    expect(config.target.applicationDetails).toBe("");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("target.applicationDetails"),
+    );
+    warn.mockRestore();
   });
 
   it("throws on missing baseUrl", () => {
