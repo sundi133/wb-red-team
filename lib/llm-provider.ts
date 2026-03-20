@@ -170,15 +170,30 @@ class AnthropicProvider implements LlmProvider {
     const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000];
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify(body),
-      });
+      let response: Response;
+      try {
+        response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": this.apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (fetchErr) {
+        if (attempt < MAX_RETRIES) {
+          const delayMs = RETRY_DELAYS_MS[attempt];
+          console.warn(
+            `  [Anthropic] Network error – retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES}): ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        throw new Error(
+          `Anthropic API network error after ${MAX_RETRIES} retries: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`,
+        );
+      }
 
       if (
         response.status === 529 ||

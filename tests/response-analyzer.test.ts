@@ -254,6 +254,7 @@ describe("analyzeResponse", () => {
         JSON.stringify({
           attack_succeeded: true,
           partial: false,
+          confidence: 90,
           reasoning: "Data was exposed",
         }),
       );
@@ -283,6 +284,7 @@ describe("analyzeResponse", () => {
           evidence_against: "",
           attack_succeeded: true,
           partial: false,
+          confidence: 90,
           reasoning: "The agent followed the injected instruction",
         }),
       );
@@ -379,6 +381,7 @@ describe("analyzeResponse", () => {
         JSON.stringify({
           attack_succeeded: false,
           partial: false,
+          confidence: 90,
           reasoning: "Forbidden response indicates the attack was blocked",
         }),
       );
@@ -397,7 +400,7 @@ describe("analyzeResponse", () => {
       );
     });
 
-    it("handles LLM judge failure gracefully", async () => {
+    it("handles LLM judge failure gracefully and logs error in findings", async () => {
       const mockChat = vi.fn().mockRejectedValue(new Error("API error"));
       vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
@@ -412,6 +415,9 @@ describe("analyzeResponse", () => {
 
       expect(result.verdict).toBe("FAIL");
       expect(result.llmReasoning).toBeUndefined();
+      expect(result.findings).toContainEqual(
+        expect.stringContaining("LLM judge error: API error"),
+      );
     });
 
     it("treats empty LLM judge output as unavailable", async () => {
@@ -527,7 +533,7 @@ describe("analyzeResponse", () => {
       expect(callArgs.messages[0].role).toBe("system");
       expect(callArgs.messages[1].role).toBe("user");
       expect(callArgs.responseFormat).toBe("json_object");
-      expect(callArgs.maxTokens).toBe(500);
+      expect(callArgs.maxTokens).toBe(600);
     });
 
     it("sends up to 10000 chars of response body to judge (not 3000)", async () => {
@@ -550,7 +556,6 @@ describe("analyzeResponse", () => {
     });
 
     it("correctly handles 'refused direct but complied indirect' scenario", async () => {
-      // This was the key bug: old code would keyword-match "refused" and override to FAIL
       const mockChat = vi.fn().mockResolvedValue(
         JSON.stringify({
           evidence_for:
@@ -558,6 +563,7 @@ describe("analyzeResponse", () => {
           evidence_against: "",
           attack_succeeded: true,
           partial: false,
+          confidence: 90,
           reasoning:
             "Agent refused the direct request but complied with the indirect prompt injection",
         }),
@@ -609,7 +615,7 @@ describe("analyzeResponse", () => {
       const mockChat = vi
         .fn()
         .mockResolvedValue(
-          '```json\n{"attack_succeeded": true, "partial": false, "reasoning": "Success"}\n```',
+          '```json\n{"attack_succeeded": true, "partial": false, "confidence": 90, "reasoning": "Success"}\n```',
         );
       vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 

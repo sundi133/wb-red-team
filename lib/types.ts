@@ -297,6 +297,15 @@ export interface McpExecutionTrace {
   stderr?: string;
 }
 
+/** A single request/response exchange in a multi-turn attack. */
+export interface ConversationStep {
+  stepIndex: number;
+  payload: Record<string, unknown>;
+  statusCode: number;
+  responseBody: unknown;
+  responseTimeMs: number;
+}
+
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
@@ -324,6 +333,8 @@ export interface AttackResult {
   stepIndex?: number;
   /** Total steps executed (1 = single-turn). */
   totalSteps?: number;
+  /** Full request/response history for multi-turn attacks. */
+  conversation?: ConversationStep[];
 }
 
 export interface AttackModule {
