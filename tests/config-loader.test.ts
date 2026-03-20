@@ -58,6 +58,7 @@ describe("loadConfig", () => {
   it("loads a valid config file", () => {
     const path = writeTestConfig(tmpDir, makeValidConfig());
     const config = loadConfig(path);
+    expect(config.target.type).toBe("http_agent");
     expect(config.target.baseUrl).toBe("http://localhost:3000");
     expect(config.target.agentEndpoint).toBe("/api/agent");
     expect(config.target.applicationDetails).toBe(
@@ -128,6 +129,58 @@ describe("loadConfig", () => {
       expect.stringContaining("target.applicationDetails"),
     );
     warn.mockRestore();
+  });
+
+  it("loads a valid MCP target config", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          type: "mcp",
+          applicationDetails: "MCP security test target",
+          mcp: {
+            transport: "stdio",
+            command: "node",
+            args: ["server.js"],
+          },
+        },
+      }),
+    );
+    const config = loadConfig(path);
+    expect(config.target.type).toBe("mcp");
+    expect(config.target.mcp?.transport).toBe("stdio");
+    expect(config.target.mcp?.command).toBe("node");
+    expect(config.target.baseUrl).toBe("");
+    expect(config.target.agentEndpoint).toBe("");
+  });
+
+  it("throws when MCP target is missing target.mcp", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          type: "mcp",
+          applicationDetails: "MCP security test target",
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).toThrow("target.mcp is required");
+  });
+
+  it("throws when stdio MCP target is missing command", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        target: {
+          type: "mcp",
+          applicationDetails: "MCP security test target",
+          mcp: {
+            transport: "stdio",
+          },
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).toThrow("target.mcp.command is required");
   });
 
   it("throws on missing baseUrl", () => {

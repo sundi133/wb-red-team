@@ -7,11 +7,45 @@ export function loadConfig(configPath?: string): Config {
   const raw = readFileSync(fullPath, "utf-8");
   const config: Config = JSON.parse(raw);
 
+  config.target.type = config.target.type ?? "http_agent";
+
   // Validate required fields
-  if (!config.target?.baseUrl)
-    throw new Error("config: target.baseUrl is required");
-  if (!config.target?.agentEndpoint)
-    throw new Error("config: target.agentEndpoint is required");
+  if (config.target.type === "http_agent") {
+    if (!config.target?.baseUrl)
+      throw new Error("config: target.baseUrl is required");
+    if (!config.target?.agentEndpoint)
+      throw new Error("config: target.agentEndpoint is required");
+    config.target.authEndpoint = config.target.authEndpoint ?? "";
+  } else if (config.target.type === "mcp") {
+    const mcp = config.target.mcp;
+    if (!mcp)
+      throw new Error(
+        'config: target.mcp is required when target.type is "mcp"',
+      );
+    if (!mcp.transport) {
+      throw new Error(
+        'config: target.mcp.transport is required when target.type is "mcp"',
+      );
+    }
+    if (mcp.transport === "stdio" && !mcp.command) {
+      throw new Error(
+        "config: target.mcp.command is required for stdio MCP targets",
+      );
+    }
+    if (
+      (mcp.transport === "sse" || mcp.transport === "streamable_http") &&
+      !mcp.url
+    ) {
+      throw new Error(
+        "config: target.mcp.url is required for network MCP targets",
+      );
+    }
+    config.target.baseUrl = config.target.baseUrl ?? "";
+    config.target.agentEndpoint = config.target.agentEndpoint ?? "";
+    config.target.authEndpoint = config.target.authEndpoint ?? "";
+  } else {
+    throw new Error(`config: unknown target.type "${config.target.type}"`);
+  }
   config.target.applicationDetails = config.target.applicationDetails?.trim();
   if (!config.target.applicationDetails) {
     console.warn(

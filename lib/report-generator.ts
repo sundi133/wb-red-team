@@ -334,6 +334,7 @@ export function writeReport(report: Report): {
         statusCode: r.statusCode,
         responseTimeMs: r.responseTimeMs,
         responseBody: truncateBody(r.responseBody, 2000),
+        executionTrace: truncateExecutionTrace(r.executionTrace, 4000),
         findings: r.findings,
         llmReasoning: r.llmReasoning,
         judgeConfidence: r.judgeConfidence,
@@ -534,6 +535,23 @@ function truncateBody(body: unknown, maxLen: number): unknown {
   } catch {
     return String(body).slice(0, maxLen) + "... [truncated]";
   }
+}
+
+function truncateExecutionTrace(
+  trace: AttackResult["executionTrace"],
+  maxLen: number,
+): AttackResult["executionTrace"] | undefined {
+  if (!trace) return undefined;
+  return {
+    ...trace,
+    stderr: trace.stderr
+      ? String(truncateBody(trace.stderr, maxLen))
+      : undefined,
+    transcript: trace.transcript.map((event) => ({
+      ...event,
+      payload: truncateBody(event.payload, maxLen),
+    })),
+  };
 }
 
 function formatResponseBody(body: unknown, maxLen: number): string {

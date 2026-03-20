@@ -1,7 +1,9 @@
 #!/usr/bin/env npx tsx
 
 import { createInterface } from "node:readline/promises";
+import { loadEnvFile } from "./lib/env-loader.js";
 import { loadConfig } from "./lib/config-loader.js";
+import { describeTarget, getTargetAdapter } from "./lib/target-adapter.js";
 import { analyzeCodebase } from "./lib/codebase-analyzer.js";
 import { planAttacks, refinePartialAttacks } from "./lib/attack-planner.js";
 import {
@@ -26,6 +28,7 @@ import type {
   AttackCategory,
   CategoryDefenseProfile,
   CodebaseAnalysis,
+  Config,
   RoundResult,
 } from "./lib/types.js";
 
@@ -115,6 +118,15 @@ import { housingDiscriminationModule } from "./attacks/housing-discrimination.js
 import { ssrfModule } from "./attacks/ssrf.js";
 import { pathTraversalModule } from "./attacks/path-traversal.js";
 import { insecureOutputHandlingModule } from "./attacks/insecure-output-handling.js";
+import { mcpToolMisuseModule } from "./attacks-mcp/mcp-tool-misuse.js";
+import { mcpDataExfiltrationModule } from "./attacks-mcp/mcp-data-exfiltration.js";
+import { mcpIndirectPromptInjectionModule } from "./attacks-mcp/mcp-indirect-prompt-injection.js";
+import { mcpPathTraversalModule } from "./attacks-mcp/mcp-path-traversal.js";
+import { mcpSsrfModule } from "./attacks-mcp/mcp-ssrf.js";
+import { mcpCrossTenantAccessModule } from "./attacks-mcp/mcp-cross-tenant-access.js";
+import { mcpDebugAccessModule } from "./attacks-mcp/mcp-debug-access.js";
+
+loadEnvFile();
 
 const ALL_MODULES: AttackModule[] = [
   authBypassModule,
@@ -204,6 +216,79 @@ const ALL_MODULES: AttackModule[] = [
   insecureOutputHandlingModule,
 ];
 
+const MCP_MODULES: AttackModule[] = [
+  mcpToolMisuseModule,
+  mcpDataExfiltrationModule,
+  mcpIndirectPromptInjectionModule,
+  mcpPathTraversalModule,
+  mcpSsrfModule,
+  mcpCrossTenantAccessModule,
+  mcpDebugAccessModule,
+];
+
+function mergeUniqueTool(
+  tools: CodebaseAnalysis["tools"],
+  nextTool: CodebaseAnalysis["tools"][number],
+): void {
+  if (
+    tools.some(
+      (tool) =>
+        tool.name === nextTool.name && tool.parameters === nextTool.parameters,
+    )
+  ) {
+    return;
+  }
+  tools.push(nextTool);
+}
+
+async function enrichAnalysisWithTargetSurface(
+  config: Config,
+  analysis: CodebaseAnalysis,
+): Promise<void> {
+  const adapter = getTargetAdapter(config);
+  if (!adapter?.discoverSurface) return;
+
+  try {
+    const surface = await adapter.discoverSurface(config);
+    if (surface.tools?.length) {
+      for (const toolName of surface.tools) {
+        mergeUniqueTool(analysis.tools, {
+          name: toolName,
+          description: "Discovered from MCP surface",
+          parameters: "unknown",
+        });
+      }
+    }
+
+    const notes: string[] = [];
+    if (surface.serverName) {
+      notes.push(`MCP server name: ${surface.serverName}`);
+    }
+    if (surface.protocolVersion) {
+      notes.push(`MCP protocol version: ${surface.protocolVersion}`);
+    }
+    if (surface.capabilities?.length) {
+      notes.push(`MCP capabilities: ${surface.capabilities.join(", ")}`);
+    }
+    if (surface.prompts?.length) {
+      notes.push(`MCP prompts exposed: ${surface.prompts.join(", ")}`);
+    }
+    if (surface.resources?.length) {
+      notes.push(`MCP resources exposed: ${surface.resources.join(", ")}`);
+    }
+
+    for (const note of notes) {
+      if (!analysis.knownWeaknesses.includes(note)) {
+        analysis.knownWeaknesses.push(note);
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `  Warning: failed to discover target surface: ${(error as Error).message}`,
+    );
+  }
+}
+
 function summarizeAffectedFiles(
   analysis: CodebaseAnalysis,
   category: AttackCategory,
@@ -275,30 +360,32 @@ async function main() {
   // 1. Load config
   console.log("[1/5] Loading configuration...");
   const config = loadConfig(configPath);
-  console.log(
-    `  Target: ${config.target.baseUrl}${config.target.agentEndpoint}`,
-  );
+  const targetLabel = describeTarget(config);
+  console.log(`  Target: ${targetLabel}`);
   console.log(`  Adaptive rounds: ${config.attackConfig.adaptiveRounds}`);
   console.log(
     `  LLM generation: ${config.attackConfig.enableLlmGeneration ? "enabled" : "disabled"}`,
   );
 
   // Filter modules based on enabledCategories (empty/absent = all enabled)
+  const moduleSet =
+    (config.target.type ?? "http_agent") === "mcp" ? MCP_MODULES : ALL_MODULES;
   const enabledSet = config.attackConfig.enabledCategories;
   const activeModules = enabledSet?.length
-    ? ALL_MODULES.filter((m) => enabledSet.includes(m.category))
-    : ALL_MODULES;
+    ? moduleSet.filter((m) => enabledSet.includes(m.category))
+    : moduleSet;
   if (enabledSet?.length) {
     console.log(
       `  Active categories (${activeModules.length}): ${enabledSet.join(", ")}`,
     );
   } else {
-    console.log(`  Active categories: all (${ALL_MODULES.length})`);
+    console.log(`  Active categories: all (${moduleSet.length})`);
   }
 
   // 2. Analyze codebase
   console.log("\n[2/5] Analyzing target codebase...");
   const analysis = await analyzeCodebase(config);
+  await enrichAnalysisWithTargetSurface(config, analysis);
   console.log(
     `  Found ${analysis.tools.length} tools, ${analysis.roles.length} roles`,
   );
@@ -333,7 +420,10 @@ async function main() {
   }
 
   // 2.25. Category applicability gating — skip categories with no relevant source files
-  const skipIrrelevant = config.attackConfig.skipIrrelevantCategories ?? true;
+  const skipIrrelevant =
+    (config.target.type ?? "http_agent") === "mcp"
+      ? false
+      : (config.attackConfig.skipIrrelevantCategories ?? true);
   let relevantModules = activeModules;
   if (
     skipIrrelevant &&
@@ -448,6 +538,7 @@ async function main() {
           lastResponse.body,
           lastResponse.timeMs,
           appContext,
+          lastResponse.executionTrace,
         );
 
         if (!got429 && allOk) {
@@ -499,6 +590,7 @@ async function main() {
           lastStep.body,
           lastStep.timeMs,
           appContext,
+          lastStep.executionTrace,
         );
         result.stepIndex = lastStep.stepIndex;
         result.totalSteps = stepResults.length;
@@ -525,10 +617,8 @@ async function main() {
       } else {
         // Single-turn attack
         process.stdout.write(`  ${progress} ${attack.name}...`);
-        const { statusCode, body, timeMs } = await executeAttack(
-          config,
-          attack,
-        );
+        const { statusCode, body, timeMs, executionTrace } =
+          await executeAttack(config, attack);
         const result = await analyzeResponse(
           config,
           attack,
@@ -536,6 +626,7 @@ async function main() {
           body,
           timeMs,
           appContext,
+          executionTrace,
         );
 
         const icon =
@@ -619,6 +710,7 @@ async function main() {
                 lastStep.body,
                 lastStep.timeMs,
                 appContext,
+                lastStep.executionTrace,
               );
               result.stepIndex = lastStep.stepIndex;
               result.totalSteps = stepResults.length;
@@ -643,10 +735,8 @@ async function main() {
               roundResults.push(result);
             } else {
               process.stdout.write(`  ${progress} ${attack.name}...`);
-              const { statusCode, body, timeMs } = await executeAttack(
-                config,
-                attack,
-              );
+              const { statusCode, body, timeMs, executionTrace } =
+                await executeAttack(config, attack);
               const result = await analyzeResponse(
                 config,
                 attack,
@@ -654,6 +744,7 @@ async function main() {
                 body,
                 timeMs,
                 appContext,
+                executionTrace,
               );
 
               const icon =
@@ -731,7 +822,7 @@ async function main() {
       "  Report includes results from rounds executed before cancellation.",
     );
   }
-  const targetUrl = `${config.target.baseUrl}${config.target.agentEndpoint}`;
+  const targetUrl = targetLabel;
   const report = generateReport(
     targetUrl,
     rounds,

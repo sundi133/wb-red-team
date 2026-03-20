@@ -1575,6 +1575,57 @@
           .join("");
       }
 
+      function formatExecutionTrace(trace) {
+        if (!trace) return "";
+        const transcript = Array.isArray(trace.transcript)
+          ? trace.transcript
+              .map((event, idx) => {
+                const label =
+                  event.direction === "client->server"
+                    ? "client → server"
+                    : event.direction === "server->client"
+                      ? "server → client"
+                      : "server notify";
+                const method = event.method ? ` (${event.method})` : "";
+                const payload = esc(
+                  typeof event.payload === "string"
+                    ? event.payload
+                    : JSON.stringify(event.payload, null, 2),
+                );
+                return `<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--text2);margin-bottom:4px">${idx + 1}. ${label}${method}</div><pre class="detail-pre">${payload}</pre></div>`;
+              })
+              .join("")
+          : "";
+        const meta = [
+          trace.transport
+            ? `<span><strong>Transport:</strong> ${esc(trace.transport)}</span>`
+            : "",
+          trace.operation
+            ? `<span><strong>Operation:</strong> ${esc(trace.operation)}</span>`
+            : "",
+          trace.serverName
+            ? `<span><strong>Server:</strong> ${esc(trace.serverName)}</span>`
+            : "",
+          trace.protocolVersion
+            ? `<span><strong>Protocol:</strong> ${esc(trace.protocolVersion)}</span>`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("");
+        const stderr = trace.stderr
+          ? `<div style="margin-top:12px"><div class="detail-label">MCP STDERR</div><pre class="detail-pre">${esc(trace.stderr)}</pre></div>`
+          : "";
+        return `<div style="margin-top:12px"><div class="detail-label">MCP Execution Trace</div>
+          ${
+            meta
+              ? `<div style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:12px">${meta}</div>`
+              : ""
+          }
+          ${transcript || '<div style="color:var(--text2);font-size:12px">No transcript events captured</div>'}
+          ${stderr}
+        </div>`;
+      }
+
       function renderFindings() {
         const verdict = $("#filterVerdict")?.value || "";
         const sev = $("#filterSev")?.value || "";
@@ -1614,6 +1665,9 @@
           const response = extractResponse(result);
           const reasoning = result?.llmReasoning || "";
           const affectedFilesHtml = formatAffectedFiles(f.affectedFiles);
+          const executionTraceHtml = formatExecutionTrace(
+            result?.executionTrace,
+          );
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -1649,6 +1703,7 @@
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
+      ${executionTraceHtml}
       ${
         result?.policyUsed
           ? `<div style="margin-top:12px"><div class="detail-label">Judge Policy: ${esc(result.policyUsed.name)}</div>
@@ -1755,6 +1810,9 @@
           detailTr.classList.add("detail-row");
           detailTr.style.display = "none";
           const roundAffectedFilesHtml = formatAffectedFiles(r.affectedFiles);
+          const roundExecutionTraceHtml = formatExecutionTrace(
+            r.executionTrace,
+          );
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
       <div style="margin-bottom:8px">
         <strong>Payload:</strong>
@@ -1767,6 +1825,7 @@
         <strong>Response:</strong>
         <pre>${esc(JSON.stringify(r.responseBody, null, 2).slice(0, 3000))}${JSON.stringify(r.responseBody, null, 2).length > 3000 ? "\n... (truncated)" : ""}</pre>
       </div>
+      ${roundExecutionTraceHtml}
       ${r.attack.strategyName ? `<div style="margin-bottom:8px"><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}
       ${r.attack.steps ? `<div style="margin-bottom:8px"><strong>Multi-turn:</strong> Step ${r.stepIndex ?? 0 + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
       ${

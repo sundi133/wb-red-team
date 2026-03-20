@@ -1,34 +1,16 @@
 import { createServer, type IncomingMessage } from "node:http";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, extname } from "node:path";
 import { loadConfig } from "../lib/config-loader.js";
-
-// Load .env file if present (no dependency needed)
-const envPath = join(import.meta.dirname, "..", ".env");
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let val = trimmed.slice(eq + 1).trim();
-    // Strip surrounding quotes
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
-      val = val.slice(1, -1);
-    }
-    if (!process.env[key]) process.env[key] = val;
-  }
-}
+import { loadEnvFile } from "../lib/env-loader.js";
 import { getJudgeProvider } from "../lib/llm-provider.js";
 import {
   OWASP_LLM_TOP_10,
   OWASP_AGENTIC_TOP_10,
   type ComplianceItem,
 } from "../lib/compliance-mappings.js";
+
+loadEnvFile();
 
 const PORT = parseInt(process.argv[2] || "4100", 10);
 const REPORT_DIR = join(import.meta.dirname, "..", "report");

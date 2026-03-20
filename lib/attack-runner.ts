@@ -1,10 +1,17 @@
 import * as jose from "jose";
-import type { Config, Attack, Credential } from "./types.js";
+import type { Config, Attack, Credential, McpExecutionTrace } from "./types.js";
+import { getTargetAdapter } from "./target-adapter.js";
 
 // Cache JWT tokens per role
 const tokenCache = new Map<string, string>();
 
 export async function preAuthenticate(config: Config): Promise<void> {
+  const adapter = getTargetAdapter(config);
+  if (adapter) {
+    await adapter.preAuthenticate(config);
+    return;
+  }
+
   if (!config.auth.methods.includes("jwt")) return;
 
   console.log("  Pre-authenticating credentials...");
@@ -50,7 +57,17 @@ export async function forgeJwt(
 export async function executeAttack(
   config: Config,
   attack: Attack,
-): Promise<{ statusCode: number; body: unknown; timeMs: number }> {
+): Promise<{
+  statusCode: number;
+  body: unknown;
+  timeMs: number;
+  executionTrace?: McpExecutionTrace;
+}> {
+  const adapter = getTargetAdapter(config);
+  if (adapter) {
+    return adapter.executeAttack(config, attack);
+  }
+
   const url = `${config.target.baseUrl}${config.target.agentEndpoint}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -144,6 +161,7 @@ export async function executeMultiTurn(
     body: unknown;
     timeMs: number;
     stepIndex: number;
+    executionTrace?: McpExecutionTrace;
   }[];
   stoppedEarly: boolean;
 }> {
@@ -209,7 +227,14 @@ export async function executeRapidFire(
   config: Config,
   attack: Attack,
   count: number,
-): Promise<{ statusCode: number; body: unknown; timeMs: number }[]> {
+): Promise<
+  {
+    statusCode: number;
+    body: unknown;
+    timeMs: number;
+    executionTrace?: McpExecutionTrace;
+  }[]
+> {
   const promises = Array.from({ length: count }, () =>
     executeAttack(config, attack),
   );
