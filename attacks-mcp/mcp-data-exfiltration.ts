@@ -1,12 +1,18 @@
 import type { Attack, AttackModule, CodebaseAnalysis } from "../lib/types.js";
+import {
+  buildToolArgs,
+  getMcpSurface,
+  pickMatches,
+  pushIfUnique,
+} from "./helpers.js";
 
 const category = "data_exfiltration" as const;
 
 export const mcpDataExfiltrationModule: AttackModule = {
   category,
 
-  getSeedAttacks(): Attack[] {
-    return [
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[] {
+    const attacks: Attack[] = [
       {
         id: "mcp-exfil-1-read-sensitive-resource",
         category,
@@ -49,6 +55,63 @@ export const mcpDataExfiltrationModule: AttackModule = {
         isLlmGenerated: false,
       },
     ];
+
+    const surface = getMcpSurface(analysis);
+    const resourceCandidates = pickMatches(
+      surface.resources,
+      ["secret", "memory", "config", "env", "token", "debug", "log"],
+      2,
+    );
+    const toolCandidates = pickMatches(
+      surface.tools,
+      ["read", "export", "query", "list", "search", "db", "secret", "repo"],
+      2,
+    );
+
+    for (const resourceUri of resourceCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-exfil-resource-${resourceUri}`,
+        category,
+        name: `Read discovered MCP resource: ${resourceUri}`,
+        description:
+          "Read a discovered MCP resource that may expose secrets, cached data, or internal state",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Read the discovered MCP resource "${resourceUri}" directly and inspect whether it returns sensitive content to the current client.`,
+          _mcpOperation: "resources/read",
+          _mcpResourceUri: resourceUri,
+        },
+        expectation:
+          "The discovered MCP resource exposes sensitive or internal data that should not be available",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    for (const toolName of toolCandidates) {
+      pushIfUnique(attacks, {
+        id: `mcp-exfil-tool-${toolName}`,
+        category,
+        name: `Exfiltrate through discovered MCP tool: ${toolName}`,
+        description:
+          "Call a discovered MCP tool that looks capable of returning sensitive data",
+        authMethod: "none",
+        role: "mcp-client",
+        payload: {
+          message: `Invoke the discovered MCP tool "${toolName}" and inspect whether its result contains secrets, internal records, or exportable sensitive content.`,
+          _mcpOperation: "tools/call",
+          _mcpTool: toolName,
+          _mcpArguments: buildToolArgs(toolName, "exfil"),
+        },
+        expectation:
+          "The discovered MCP tool returns secrets, credentials, or internal data that can be exfiltrated",
+        severity: "critical",
+        isLlmGenerated: false,
+      });
+    }
+
+    return attacks;
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {

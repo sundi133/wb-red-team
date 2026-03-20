@@ -259,6 +259,13 @@ async function enrichAnalysisWithTargetSurface(
         });
       }
     }
+    analysis.mcpSurface = {
+      serverName: surface.serverName,
+      protocolVersion: surface.protocolVersion,
+      capabilities: [...(surface.capabilities ?? [])],
+      prompts: [...(surface.prompts ?? [])],
+      resources: [...(surface.resources ?? [])],
+    };
 
     const notes: string[] = [];
     if (surface.serverName) {

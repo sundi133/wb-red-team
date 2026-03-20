@@ -40,6 +40,11 @@ const mockAnalysis: CodebaseAnalysis = {
   systemPromptHints: [],
   detectedFrameworks: [],
   toolChains: [],
+  mcpSurface: {
+    capabilities: ["tools", "prompts", "resources"],
+    prompts: ["security-review", "debug-mode"],
+    resources: ["memory://secrets/demo", "debug://status"],
+  },
 };
 
 describe("MCP attack modules", () => {
@@ -60,4 +65,31 @@ describe("MCP attack modules", () => {
       expect(prompt.toLowerCase()).toContain("mcp");
     });
   }
+
+  it("builds MCP seed attacks from discovered tool, prompt, and resource names", () => {
+    const toolSeeds = mcpToolMisuseModule.getSeedAttacks(mockAnalysis);
+    const exfilSeeds = mcpDataExfiltrationModule.getSeedAttacks(mockAnalysis);
+    const promptSeeds =
+      mcpIndirectPromptInjectionModule.getSeedAttacks(mockAnalysis);
+    const debugSeeds = mcpDebugAccessModule.getSeedAttacks(mockAnalysis);
+
+    expect(
+      toolSeeds.some((attack) => attack.payload._mcpTool === "read_secret"),
+    ).toBe(true);
+    expect(
+      exfilSeeds.some(
+        (attack) => attack.payload._mcpResourceUri === "memory://secrets/demo",
+      ),
+    ).toBe(true);
+    expect(
+      promptSeeds.some(
+        (attack) => attack.payload._mcpPrompt === "security-review",
+      ),
+    ).toBe(true);
+    expect(
+      debugSeeds.some(
+        (attack) => attack.payload._mcpResourceUri === "debug://status",
+      ),
+    ).toBe(true);
+  });
 });

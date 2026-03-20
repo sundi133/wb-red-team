@@ -244,6 +244,13 @@ export interface CodebaseAnalysis {
   systemPromptHints: string[];
   detectedFrameworks: FrameworkDetection[];
   toolChains: ToolChain[];
+  mcpSurface?: {
+    serverName?: string;
+    protocolVersion?: string;
+    capabilities: string[];
+    prompts: string[];
+    resources: string[];
+  };
   /** Maps attack categories to the target source files they affect. */
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
 }
@@ -318,7 +325,7 @@ export interface AttackResult {
 
 export interface AttackModule {
   category: AttackCategory;
-  getSeedAttacks(): Attack[];
+  getSeedAttacks(analysis?: CodebaseAnalysis): Attack[];
   getGenerationPrompt(analysis: CodebaseAnalysis): string;
 }
 

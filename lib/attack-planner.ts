@@ -74,7 +74,7 @@ export async function planAttacks(
   for (const mod of modules) {
     // Always include seed attacks on round 1
     if (round === 1) {
-      allAttacks.push(...mod.getSeedAttacks());
+      allAttacks.push(...mod.getSeedAttacks(analysis));
     }
 
     // LLM-generated attacks

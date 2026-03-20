@@ -26,14 +26,19 @@ function prefersMaxCompletionTokens(model: string): boolean {
   return /(^|\/)(gpt-5|o1|o3|o4)(?:$|[-/])/i.test(model);
 }
 
+function shouldOmitTemperature(model: string): boolean {
+  return prefersMaxCompletionTokens(model);
+}
+
 function buildOpenAIChatRequest(
   options: ChatOptions,
   tokenLimitField: TokenLimitField,
+  omitTemperature = false,
 ): ChatCompletionCreateParamsNonStreaming {
   return {
     model: options.model,
     messages: options.messages,
-    temperature: options.temperature ?? 0,
+    ...(omitTemperature ? {} : { temperature: options.temperature ?? 0 }),
     [tokenLimitField]: options.maxTokens ?? 4096,
     ...(options.responseFormat
       ? { response_format: { type: options.responseFormat } }
@@ -56,6 +61,19 @@ function shouldRetryWithAlternateTokenField(error: unknown): boolean {
   );
 }
 
+function shouldRetryWithoutTemperature(error: unknown): boolean {
+  if (!(error instanceof OpenAI.BadRequestError)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    error.param === "temperature" ||
+    (message.includes("temperature") &&
+      (message.includes("unsupported") || message.includes("default (1)")))
+  );
+}
+
 async function createOpenAICompatibleChatCompletion(
   client: OpenAI,
   options: ChatOptions,
@@ -65,23 +83,38 @@ async function createOpenAICompatibleChatCompletion(
   )
     ? "max_completion_tokens"
     : "max_tokens";
+  const initialOmitTemperature = shouldOmitTemperature(options.model);
 
   try {
     const response = await client.chat.completions.create(
-      buildOpenAIChatRequest(options, initialTokenLimitField),
+      buildOpenAIChatRequest(
+        options,
+        initialTokenLimitField,
+        initialOmitTemperature,
+      ),
     );
     return response.choices[0]?.message?.content?.trim() ?? "";
   } catch (error) {
-    if (!shouldRetryWithAlternateTokenField(error)) {
+    const retryAlternateTokenField = shouldRetryWithAlternateTokenField(error);
+    const retryWithoutTemperature =
+      !initialOmitTemperature && shouldRetryWithoutTemperature(error);
+
+    if (!retryAlternateTokenField && !retryWithoutTemperature) {
       throw error;
     }
 
     const fallbackTokenLimitField: TokenLimitField =
-      initialTokenLimitField === "max_tokens"
+      retryAlternateTokenField && initialTokenLimitField === "max_tokens"
         ? "max_completion_tokens"
-        : "max_tokens";
+        : retryAlternateTokenField
+          ? "max_tokens"
+          : initialTokenLimitField;
     const response = await client.chat.completions.create(
-      buildOpenAIChatRequest(options, fallbackTokenLimitField),
+      buildOpenAIChatRequest(
+        options,
+        fallbackTokenLimitField,
+        initialOmitTemperature || retryWithoutTemperature,
+      ),
     );
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
