@@ -353,6 +353,26 @@ async function confirmAttackExecution(
   }
 }
 
+function logFindings(result: AttackResult): void {
+  const deterministicFindings = result.findings.filter(
+    (f) => !f.startsWith("LLM judge"),
+  );
+  const judgeFindings = result.findings.filter((f) =>
+    f.startsWith("LLM judge"),
+  );
+  for (const f of deterministicFindings) {
+    console.log(`    ${f}`);
+  }
+  for (const f of judgeFindings) {
+    console.log(`    ${f}`);
+  }
+  if (judgeFindings.length === 0 && result.llmReasoning) {
+    console.log(
+      `    LLM judge: ${result.llmReasoning}${result.judgeConfidence != null ? ` (confidence ${result.judgeConfidence}%)` : ""}`,
+    );
+  }
+}
+
 async function main() {
   const configPath = process.argv[2];
   console.log("=== Red-Team Security Testing Framework ===\n");
@@ -560,8 +580,9 @@ async function main() {
               ? "OK"
               : "??";
         console.log(
-          `    [${icon}] ${result.verdict} — ${result.findings[0] ?? ""}`,
+          `    [${icon}] ${result.verdict}`,
         );
+        logFindings(result);
         roundResults.push(result);
         continue;
       }
@@ -603,15 +624,24 @@ async function main() {
               : result.verdict === "FAIL"
                 ? "OK"
                 : "??";
+        result.conversation = stepResults.map((sr) => ({
+          stepIndex: sr.stepIndex,
+          payload:
+            sr.stepIndex === 0
+              ? attack.payload
+              : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+          statusCode: sr.statusCode,
+          responseBody: sr.body,
+          responseTimeMs: sr.timeMs,
+        }));
+
         const earlyTag = stoppedEarly
           ? ` (stopped at step ${lastStep.stepIndex + 1})`
           : "";
         console.log(
           ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
         );
-        if (result.findings.length > 0) {
-          console.log(`    ${result.findings[0]}`);
-        }
+        logFindings(result);
 
         roundResults.push(result);
       } else {
@@ -640,9 +670,7 @@ async function main() {
         console.log(
           ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
         );
-        if (result.findings.length > 0) {
-          console.log(`    ${result.findings[0]}`);
-        }
+        logFindings(result);
 
         roundResults.push(result);
       }
@@ -714,6 +742,16 @@ async function main() {
               );
               result.stepIndex = lastStep.stepIndex;
               result.totalSteps = stepResults.length;
+              result.conversation = stepResults.map((sr) => ({
+                stepIndex: sr.stepIndex,
+                payload:
+                  sr.stepIndex === 0
+                    ? attack.payload
+                    : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+                statusCode: sr.statusCode,
+                responseBody: sr.body,
+                responseTimeMs: sr.timeMs,
+              }));
 
               const icon =
                 result.verdict === "PASS"
@@ -729,9 +767,7 @@ async function main() {
               console.log(
                 ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
               );
-              if (result.findings.length > 0) {
-                console.log(`    ${result.findings[0]}`);
-              }
+              logFindings(result);
               roundResults.push(result);
             } else {
               process.stdout.write(`  ${progress} ${attack.name}...`);
@@ -758,9 +794,7 @@ async function main() {
               console.log(
                 ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
               );
-              if (result.findings.length > 0) {
-                console.log(`    ${result.findings[0]}`);
-              }
+              logFindings(result);
               roundResults.push(result);
             }
 
