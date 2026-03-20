@@ -300,12 +300,15 @@ export interface McpExecutionTrace {
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
+  llmVerdict?: Verdict;
   statusCode: number;
   responseBody: unknown;
   responseTimeMs: number;
   executionTrace?: McpExecutionTrace;
   findings: string[];
   llmReasoning?: string;
+  llmEvidenceFor?: string;
+  llmEvidenceAgainst?: string;
   /** Confidence score (0–100) from the LLM judge. Absent for deterministic verdicts. */
   judgeConfidence?: number;
   /** The resolved judge policy used for this evaluation. */

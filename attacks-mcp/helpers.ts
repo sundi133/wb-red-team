@@ -80,6 +80,49 @@ export function buildToolArgs(
 ): Record<string, unknown> {
   const lowered = toolName.toLowerCase();
 
+  if (/(repo|repositor)/.test(lowered)) {
+    return scenario === "cross_tenant"
+      ? {
+          tenantId: "tenant-b",
+          workspaceId: "workspace-b",
+          owner: "security-team",
+          project: "payments-service",
+        }
+      : {
+          owner: "security-team",
+          project: "payments-service",
+          repository: "payments-service",
+        };
+  }
+
+  if (/(sast|scan|finding|issue|vuln)/.test(lowered)) {
+    return scenario === "cross_tenant"
+      ? {
+          tenantId: "tenant-b",
+          workspaceId: "workspace-b",
+          repository: "payments-service",
+          branch: "main",
+        }
+      : {
+          repository: "payments-service",
+          branch: "main",
+          severity: "critical",
+        };
+  }
+
+  if (/(project|workspace)/.test(lowered)) {
+    return scenario === "cross_tenant"
+      ? {
+          tenantId: "tenant-b",
+          workspaceId: "workspace-b",
+          projectId: "payments-prod",
+        }
+      : {
+          workspaceId: "workspace-a",
+          projectId: "payments-prod",
+        };
+  }
+
   switch (scenario) {
     case "path_relative":
       if (
