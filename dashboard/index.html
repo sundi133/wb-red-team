@@ -861,6 +861,54 @@
         text-transform: uppercase;
       }
 
+      /* Conversation timeline */
+      .conversation { margin-top: 12px; }
+      .conv-step {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .conv-step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: var(--surface2);
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text2);
+        user-select: none;
+      }
+      .conv-step-header:hover { background: rgba(88,166,255,0.06); }
+      .conv-step-header .step-num {
+        background: var(--accent);
+        color: #fff;
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700;
+        flex-shrink: 0;
+      }
+      .conv-step-header .step-status {
+        font-size: 11px;
+        margin-left: auto;
+      }
+      .conv-step-body {
+        display: none;
+        padding: 12px;
+      }
+      .conv-step-body.open { display: block; }
+      .conv-exchange {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 900px) {
+        .conv-exchange { grid-template-columns: 1fr; }
+      }
+      .conv-expand { font-size: 12px; color: var(--text2); width: 20px; text-align: center; }
+
       .empty {
         color: var(--text2);
         text-align: center;
@@ -1690,7 +1738,7 @@
         <span><strong>Status:</strong> ${result?.statusCode ?? "-"}</span>
         <span><strong>Response Time:</strong> ${result?.responseTimeMs ?? "-"} ms</span>
       </div>
-      <div class="detail-grid">
+      ${result?.conversation ? renderConversation(result) : `<div class="detail-grid">
         <div class="detail-col">
           <div class="detail-label">Prompt</div>
           <pre class="detail-pre">${esc(prompt || "(no prompt)")}</pre>
@@ -1699,7 +1747,7 @@
           <div class="detail-label">Response</div>
           <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
         </div>
-      </div>
+      </div>`}
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
@@ -1758,6 +1806,64 @@
         });
       }
 
+      function toggleConvStep(header) {
+        const body = header.nextElementSibling;
+        const expand = header.querySelector('.conv-expand');
+        if (body.classList.contains('open')) {
+          body.classList.remove('open');
+          expand.textContent = '+';
+        } else {
+          body.classList.add('open');
+          expand.textContent = '−';
+        }
+      }
+
+      function renderConversation(r) {
+        if (!r.conversation || !r.conversation.length) return renderSingleTurn(r);
+        return `<div class="conversation">
+          <div class="detail-label">Conversation (${r.conversation.length} steps)</div>
+          ${r.conversation.map((step) => {
+            const payloadStr = JSON.stringify(step.payload, null, 2);
+            const respStr = typeof step.responseBody === 'string' ? step.responseBody : JSON.stringify(step.responseBody, null, 2);
+            return `<div class="conv-step">
+              <div class="conv-step-header" onclick="toggleConvStep(this)">
+                <span class="conv-expand">+</span>
+                <span class="step-num">${step.stepIndex + 1}</span>
+                <span>Step ${step.stepIndex + 1}</span>
+                <span class="step-status">HTTP ${step.statusCode} · ${step.responseTimeMs}ms</span>
+              </div>
+              <div class="conv-step-body">
+                <div class="conv-exchange">
+                  <div class="detail-col">
+                    <div class="detail-label">Request Payload</div>
+                    <pre class="detail-pre">${esc(payloadStr)}</pre>
+                  </div>
+                  <div class="detail-col">
+                    <div class="detail-label">Response</div>
+                    <pre class="detail-pre">${esc((respStr || '(no response)').slice(0, 2000))}${(respStr || '').length > 2000 ? '\n... (truncated)' : ''}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      function renderSingleTurn(r) {
+        const prompt = extractPrompt(r);
+        const response = extractResponse(r);
+        return `<div class="detail-grid">
+          <div class="detail-col">
+            <div class="detail-label">Payload</div>
+            <pre class="detail-pre">${esc(JSON.stringify(r.attack.payload, null, 2))}</pre>
+          </div>
+          <div class="detail-col">
+            <div class="detail-label">Response</div>
+            <pre class="detail-pre">${esc((response || '(no response)').slice(0, 2000))}${(response || '').length > 2000 ? '\n... (truncated)' : ''}</pre>
+          </div>
+        </div>`;
+      }
+
       function renderRoundDetail() {
         let results = [];
         if (activeRound === 0) {
@@ -1814,20 +1920,13 @@
             r.executionTrace,
           );
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
-      <div style="margin-bottom:8px">
-        <strong>Payload:</strong>
-        <pre>${esc(JSON.stringify(r.attack.payload, null, 2))}</pre>
-      </div>
-      ${r.findings.length ? `<div style="margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
+      ${r.conversation ? renderConversation(r) : renderSingleTurn(r)}
+      ${r.findings.length ? `<div style="margin-top:12px;margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
       ${roundAffectedFilesHtml ? `<div style="margin-bottom:8px"><strong>Affected Files:</strong><br>${roundAffectedFilesHtml}</div>` : ""}
       ${r.llmReasoning ? `<div style="margin-bottom:8px"><strong>LLM Reasoning:</strong><pre>${esc(r.llmReasoning)}</pre></div>` : ""}
-      <div style="margin-bottom:8px">
-        <strong>Response:</strong>
-        <pre>${esc(JSON.stringify(r.responseBody, null, 2).slice(0, 3000))}${JSON.stringify(r.responseBody, null, 2).length > 3000 ? "\n... (truncated)" : ""}</pre>
-      </div>
       ${roundExecutionTraceHtml}
       ${r.attack.strategyName ? `<div style="margin-bottom:8px"><strong>Strategy:</strong> ${esc(r.attack.strategyName)} (#${r.attack.strategyId})</div>` : ""}
-      ${r.attack.steps ? `<div style="margin-bottom:8px"><strong>Multi-turn:</strong> Step ${r.stepIndex ?? 0 + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
+      ${r.attack.steps ? `<div style="margin-bottom:8px"><strong>Multi-turn:</strong> Step ${(r.stepIndex ?? 0) + 1} of ${r.totalSteps ?? r.attack.steps.length + 1}</div>` : ""}
       ${
         r.policyUsed
           ? `<div style="margin-bottom:8px">

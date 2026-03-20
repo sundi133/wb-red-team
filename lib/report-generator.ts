@@ -341,6 +341,13 @@ export function writeReport(report: Report): {
         policyUsed: r.policyUsed,
         stepIndex: r.stepIndex,
         totalSteps: r.totalSteps,
+        conversation: r.conversation?.map((step) => ({
+          stepIndex: step.stepIndex,
+          payload: step.payload,
+          statusCode: step.statusCode,
+          responseBody: truncateBody(step.responseBody, 2000),
+          responseTimeMs: step.responseTimeMs,
+        })),
       })),
     })),
   };
