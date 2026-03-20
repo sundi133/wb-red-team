@@ -260,6 +260,29 @@
         text-align: center;
         margin-top: 4px;
       }
+      .verdict-legend {
+        margin-top: 16px;
+        padding: 12px 14px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      .verdict-legend-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text2);
+        margin-bottom: 8px;
+      }
+      .verdict-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .verdict-legend-item {
+        font-size: 12px;
+        color: var(--text);
+      }
 
       /* Stat Cards */
       .stats {
@@ -1129,6 +1152,16 @@
       </div>
     </div>
 
+    <div class="verdict-legend">
+      <div class="verdict-legend-title">How To Read Verdicts</div>
+      <div class="verdict-legend-items">
+        <div class="verdict-legend-item"><span class="verdict verdict-PASS">PASS</span> = attack succeeded, vulnerability found</div>
+        <div class="verdict-legend-item"><span class="verdict verdict-FAIL">FAIL</span> = defense held, attack was blocked</div>
+        <div class="verdict-legend-item"><span class="verdict verdict-PARTIAL">PARTIAL</span> = partial leak or incomplete defense</div>
+        <div class="verdict-legend-item"><span class="verdict verdict-ERROR">ERROR</span> = test/evaluation could not complete normally</div>
+      </div>
+    </div>
+
     <div class="two-col">
       <!-- Category Breakdown -->
       <div class="section">
@@ -1169,21 +1202,27 @@
       </div>
     </div>
 
-    <!-- Findings -->
+    <!-- Results -->
     <div class="section">
-      <h2>Findings <span class="badge">${r.findings.length} total</span></h2>
+      <h2>Results <span class="badge">${r.rounds.reduce((sum, round) => sum + round.results.length, 0)} total</span></h2>
       <div class="filter-bar">
+        <label>Verdict:</label>
+        <select id="filterVerdict"><option value="">All</option><option value="PASS">PASS</option><option value="PARTIAL">PARTIAL</option><option value="FAIL">FAIL</option><option value="ERROR">ERROR</option></select>
         <label>Severity:</label>
         <select id="filterSev"><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
         <label>Category:</label>
         <select id="filterCat"><option value="">All</option>${[
-          ...new Set(r.findings.map((f) => f.category)),
+          ...new Set(
+            r.rounds.flatMap((round) =>
+              round.results.map((result) => result.attack.category),
+            ),
+          ),
         ]
           .sort()
           .map((c) => `<option value="${c}">${fmtCat(c)}</option>`)
           .join("")}</select>
         <label>Search:</label>
-        <input id="filterSearch" placeholder="Filter findings...">
+        <input id="filterSearch" placeholder="Filter results...">
       </div>
       <div id="findingsTable"></div>
     </div>
@@ -1214,6 +1253,7 @@
         if (r.staticAnalysis) renderStatic();
 
         // Filter listeners
+        $("#filterVerdict").addEventListener("change", renderFindings);
         $("#filterSev").addEventListener("change", renderFindings);
         $("#filterCat").addEventListener("change", renderFindings);
         $("#filterSearch").addEventListener("input", renderFindings);
@@ -1480,6 +1520,32 @@
         return idx;
       }
 
+      function buildResultRows() {
+        if (report._resultRows) return report._resultRows;
+        const rows = [];
+        report.rounds.forEach((round) => {
+          round.results.forEach((result) => {
+            rows.push({
+              round: round.round,
+              verdict: result.verdict,
+              severity: result.attack.severity,
+              category: result.attack.category,
+              attack: result.attack.name,
+              description:
+                result.findings?.join("; ") || result.attack.description || "",
+              strategyName: result.attack.strategyName || "",
+              affectedFiles:
+                result.affectedFiles ||
+                report.affectedFiles?.[result.attack.category] ||
+                [],
+              result,
+            });
+          });
+        });
+        report._resultRows = rows;
+        return rows;
+      }
+
       function extractPrompt(result) {
         if (!result) return "";
         const msg =
@@ -1510,11 +1576,13 @@
       }
 
       function renderFindings() {
+        const verdict = $("#filterVerdict")?.value || "";
         const sev = $("#filterSev")?.value || "";
         const cat = $("#filterCat")?.value || "";
         const search = ($("#filterSearch")?.value || "").toLowerCase();
 
-        let findings = report.findings;
+        let findings = buildResultRows();
+        if (verdict) findings = findings.filter((f) => f.verdict === verdict);
         if (sev) findings = findings.filter((f) => f.severity === sev);
         if (cat) findings = findings.filter((f) => f.category === cat);
         if (search)
@@ -1523,26 +1591,25 @@
               f.description.toLowerCase().includes(search) ||
               f.attack.toLowerCase().includes(search) ||
               f.category.toLowerCase().includes(search) ||
-              (f.strategyName || "").toLowerCase().includes(search),
+              (f.strategyName || "").toLowerCase().includes(search) ||
+              (f.verdict || "").toLowerCase().includes(search),
           );
 
         const el = $("#findingsTable");
         if (!findings.length) {
           el.innerHTML =
-            '<div class="empty">No findings match the filters</div>';
+            '<div class="empty">No results match the filters</div>';
           return;
         }
 
-        const idx = buildFindingsIndex();
-
         el.innerHTML = `<table>
-    <thead><tr><th>Severity</th><th>Category</th><th>Attack</th><th>Description</th><th>Strategy</th><th style="width:50px"></th></tr></thead>
+    <thead><tr><th>Verdict</th><th>Severity</th><th>Category</th><th>Attack</th><th>Details</th><th>Strategy</th><th style="width:50px"></th></tr></thead>
     <tbody id="findingsRows"></tbody>
   </table>`;
 
         const tbody = $("#findingsRows");
         findings.slice(0, 200).forEach((f, i) => {
-          const result = idx[f.attack + "|" + f.category];
+          const result = f.result;
           const prompt = extractPrompt(result);
           const response = extractResponse(result);
           const reasoning = result?.llmReasoning || "";
@@ -1550,6 +1617,7 @@
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
+      <td><span class="verdict verdict-${f.verdict}">${esc(f.verdict)}</span></td>
       <td><span class="sev sev-${f.severity}">${f.severity}</span></td>
       <td>${fmtCat(f.category)}</td>
       <td>${esc(f.attack)}</td>
@@ -1561,7 +1629,13 @@
           const detailTr = document.createElement("tr");
           detailTr.classList.add("detail-row");
           detailTr.style.display = "none";
-          detailTr.innerHTML = `<td colspan="6"><div class="detail-content">
+          detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
+      <div style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:12px">
+        <span><strong>Round:</strong> ${f.round}</span>
+        <span><strong>Verdict:</strong> <span class="verdict verdict-${f.verdict}">${esc(f.verdict)}</span></span>
+        <span><strong>Status:</strong> ${result?.statusCode ?? "-"}</span>
+        <span><strong>Response Time:</strong> ${result?.responseTimeMs ?? "-"} ms</span>
+      </div>
       <div class="detail-grid">
         <div class="detail-col">
           <div class="detail-label">Prompt</div>
@@ -1573,7 +1647,7 @@
         </div>
       </div>
       ${reasoning ? `<div style="margin-top:12px"><div class="detail-label">LLM Reasoning</div><pre class="detail-pre detail-reasoning">${esc(reasoning)}</pre></div>` : ""}
-      ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Detection Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
+      ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
       ${
         result?.policyUsed

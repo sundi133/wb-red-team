@@ -542,7 +542,11 @@ async function analyzeBatch(
   prompt: string,
   frameworkContext: string,
 ): Promise<CodebaseAnalysis> {
-  const fullPrompt = `${prompt}${frameworkContext}
+  const applicationContext = config.target.applicationDetails
+    ? `\n\nAPPLICATION CONTEXT:\n${config.target.applicationDetails}`
+    : "";
+
+  const fullPrompt = `${prompt}${frameworkContext}${applicationContext}
 
 SOURCE CODE:
 ${sourceBundle.join("\n\n")}`;

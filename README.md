@@ -146,6 +146,7 @@ Edit `config.json` to point at your AI app:
     "baseUrl": "http://localhost:3000",
     "agentEndpoint": "/api/your-agent",
     "authEndpoint": "/api/auth/login",
+    "applicationDetails": "Internal support copilot for support and operations teams. It looks up orders, refunds, invoices, shipping issues, and customer account history. Sensitive actions include exposing customer PII, reading internal tickets, summarizing private conversations, and triggering refund or credit workflows.",
   },
 
   // Path to your app's source code (for static analysis)
@@ -208,30 +209,31 @@ Edit `config.json` to point at your AI app:
 
 ### Config Reference
 
-| Field                              | Required | Description                                                                           |
-| ---------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| `target.baseUrl`                   | Yes      | Base URL of your running AI app                                                       |
-| `target.agentEndpoint`             | Yes      | The agent endpoint path to attack                                                     |
-| `target.authEndpoint`              | No       | Login endpoint (for JWT auth)                                                         |
-| `codebasePath`                     | No       | Path to app source for static analysis                                                |
-| `codebaseGlob`                     | No       | Glob pattern for source files (default: `**/*.ts`)                                    |
-| `auth.methods`                     | Yes      | Auth methods your app supports: `jwt`, `api_key`, `body_role`                         |
-| `auth.jwtSecret`                   | No       | JWT secret (for forged-token attacks)                                                 |
-| `auth.credentials`                 | No       | User credentials with roles for auth testing                                          |
-| `auth.apiKeys`                     | No       | API keys mapped by role                                                               |
-| `auth.bearerToken`                 | No       | Static bearer token attached to all requests (default: none)                          |
-| `sensitivePatterns`                | Yes      | Strings/patterns that should never leak in responses                                  |
-| `attackConfig.adaptiveRounds`      | No       | Number of adaptive rounds (default: 2)                                                |
-| `attackConfig.llmProvider`         | No       | `openai`, `anthropic`, or `openrouter` (default: `anthropic`)                         |
-| `attackConfig.llmModel`            | No       | Model for attack generation (default: `claude-sonnet-4-20250514`)                     |
-| `attackConfig.judgeProvider`       | No       | LLM provider for the judge (defaults to `llmProvider`)                                |
-| `attackConfig.judgeModel`          | No       | Model for response judging (defaults to `llmModel`)                                   |
-| `attackConfig.enableLlmGeneration` | No       | Use LLM to generate novel attacks (default: true)                                     |
-| `attackConfig.maxMultiTurnSteps`   | No       | Max steps per multi-turn attack (default: 8)                                          |
-| `attackConfig.strategiesPerRound`  | No       | Number of social-engineering strategies per round (default: 5)                        |
-| `attackConfig.enabledStrategies`   | No       | Allowlist of strategy IDs (e.g. `life_or_death_emergency`, `dan_style_persona`)       |
-| `attackConfig.enabledCategories`   | No       | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 85 categories |
-| `policyFile`                       | No       | Path to judge policy JSON file (default: `policies/default.json`)                     |
+| Field                              | Required    | Description                                                                                                                                               |
+| ---------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target.baseUrl`                   | Yes         | Base URL of your running AI app                                                                                                                           |
+| `target.agentEndpoint`             | Yes         | The agent endpoint path to attack                                                                                                                         |
+| `target.authEndpoint`              | No          | Login endpoint (for JWT auth)                                                                                                                             |
+| `target.applicationDetails`        | Recommended | Free-form description of what the app does, who uses it, and which workflows/data are sensitive. Used to generate more app-specific offensive test cases. |
+| `codebasePath`                     | No          | Path to app source for static analysis                                                                                                                    |
+| `codebaseGlob`                     | No          | Glob pattern for source files (default: `**/*.ts`)                                                                                                        |
+| `auth.methods`                     | Yes         | Auth methods your app supports: `jwt`, `api_key`, `body_role`                                                                                             |
+| `auth.jwtSecret`                   | No          | JWT secret (for forged-token attacks)                                                                                                                     |
+| `auth.credentials`                 | No          | User credentials with roles for auth testing                                                                                                              |
+| `auth.apiKeys`                     | No          | API keys mapped by role                                                                                                                                   |
+| `auth.bearerToken`                 | No          | Static bearer token attached to all requests (default: none)                                                                                              |
+| `sensitivePatterns`                | Yes         | Strings/patterns that should never leak in responses                                                                                                      |
+| `attackConfig.adaptiveRounds`      | No          | Number of adaptive rounds (default: 2)                                                                                                                    |
+| `attackConfig.llmProvider`         | No          | `openai`, `anthropic`, or `openrouter` (default: `anthropic`)                                                                                             |
+| `attackConfig.llmModel`            | No          | Model for attack generation (default: `claude-sonnet-4-20250514`)                                                                                         |
+| `attackConfig.judgeProvider`       | No          | LLM provider for the judge (defaults to `llmProvider`)                                                                                                    |
+| `attackConfig.judgeModel`          | No          | Model for response judging (defaults to `llmModel`)                                                                                                       |
+| `attackConfig.enableLlmGeneration` | No          | Use LLM to generate novel attacks (default: true)                                                                                                         |
+| `attackConfig.maxMultiTurnSteps`   | No          | Max steps per multi-turn attack (default: 8)                                                                                                              |
+| `attackConfig.strategiesPerRound`  | No          | Number of social-engineering strategies per round (default: 5)                                                                                            |
+| `attackConfig.enabledStrategies`   | No          | Allowlist of strategy IDs (e.g. `life_or_death_emergency`, `dan_style_persona`)                                                                           |
+| `attackConfig.enabledCategories`   | No          | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 85 categories                                                                     |
+| `policyFile`                       | No          | Path to judge policy JSON file (default: `policies/default.json`)                                                                                         |
 
 ### LLM Provider Examples
 

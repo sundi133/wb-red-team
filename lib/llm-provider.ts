@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
 import type { Config } from "./types.js";
 
 export interface ChatMessage {
@@ -19,6 +20,73 @@ export interface LlmProvider {
   chat(options: ChatOptions): Promise<string>;
 }
 
+type TokenLimitField = "max_tokens" | "max_completion_tokens";
+
+function prefersMaxCompletionTokens(model: string): boolean {
+  return /(^|\/)(gpt-5|o1|o3|o4)(?:$|[-/])/i.test(model);
+}
+
+function buildOpenAIChatRequest(
+  options: ChatOptions,
+  tokenLimitField: TokenLimitField,
+): ChatCompletionCreateParamsNonStreaming {
+  return {
+    model: options.model,
+    messages: options.messages,
+    temperature: options.temperature ?? 0,
+    [tokenLimitField]: options.maxTokens ?? 4096,
+    ...(options.responseFormat
+      ? { response_format: { type: options.responseFormat } }
+      : {}),
+  };
+}
+
+function shouldRetryWithAlternateTokenField(error: unknown): boolean {
+  if (!(error instanceof OpenAI.BadRequestError)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    error.param === "max_tokens" ||
+    error.param === "max_completion_tokens" ||
+    (message.includes("unsupported parameter") &&
+      (message.includes("max_tokens") ||
+        message.includes("max_completion_tokens")))
+  );
+}
+
+async function createOpenAICompatibleChatCompletion(
+  client: OpenAI,
+  options: ChatOptions,
+): Promise<string> {
+  const initialTokenLimitField: TokenLimitField = prefersMaxCompletionTokens(
+    options.model,
+  )
+    ? "max_completion_tokens"
+    : "max_tokens";
+
+  try {
+    const response = await client.chat.completions.create(
+      buildOpenAIChatRequest(options, initialTokenLimitField),
+    );
+    return response.choices[0]?.message?.content?.trim() ?? "";
+  } catch (error) {
+    if (!shouldRetryWithAlternateTokenField(error)) {
+      throw error;
+    }
+
+    const fallbackTokenLimitField: TokenLimitField =
+      initialTokenLimitField === "max_tokens"
+        ? "max_completion_tokens"
+        : "max_tokens";
+    const response = await client.chat.completions.create(
+      buildOpenAIChatRequest(options, fallbackTokenLimitField),
+    );
+    return response.choices[0]?.message?.content?.trim() ?? "";
+  }
+}
+
 // ── OpenAI Provider ──
 
 class OpenAIProvider implements LlmProvider {
@@ -29,16 +97,7 @@ class OpenAIProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model: options.model,
-      messages: options.messages,
-      temperature: options.temperature ?? 0,
-      max_tokens: options.maxTokens ?? 4096,
-      ...(options.responseFormat
-        ? { response_format: { type: options.responseFormat } }
-        : {}),
-    });
-    return response.choices[0]?.message?.content?.trim() ?? "";
+    return createOpenAICompatibleChatCompletion(this.client, options);
   }
 }
 
@@ -144,16 +203,7 @@ class OpenRouterProvider implements LlmProvider {
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model: options.model,
-      messages: options.messages,
-      temperature: options.temperature ?? 0,
-      max_tokens: options.maxTokens ?? 4096,
-      ...(options.responseFormat
-        ? { response_format: { type: options.responseFormat } }
-        : {}),
-    });
-    return response.choices[0]?.message?.content?.trim() ?? "";
+    return createOpenAICompatibleChatCompletion(this.client, options);
   }
 }
 
