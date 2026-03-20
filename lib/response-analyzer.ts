@@ -367,13 +367,18 @@ async function llmJudge(
 
   let appContextBlock = "";
   if (appContext) {
-    const toolNames = appContext.tools
+    const toolNames = (appContext.tools ?? [])
       .map((t) => `${t.name} (${t.description})`)
       .join(", ");
-    const roleNames = appContext.roles
-      .map((r) => `${r.name}: ${r.permissions.join(", ")}`)
+    const roleNames = (appContext.roles ?? [])
+      .map((r) => {
+        const permissions = Array.isArray(r.permissions)
+          ? r.permissions.join(", ")
+          : "unknown";
+        return `${r.name}: ${permissions}`;
+      })
       .join("; ");
-    const hints = appContext.systemPromptHints.join("; ");
+    const hints = (appContext.systemPromptHints ?? []).join("; ");
     appContextBlock = `
 TARGET APPLICATION CONTEXT (use this to avoid false positives):
 - Available tools: ${toolNames || "unknown"}
