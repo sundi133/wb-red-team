@@ -23,15 +23,15 @@ describe("registry integrity", () => {
 
   it("configured enabled categories are unique", () => {
     const config = loadConfig("config.json");
-    expect(duplicateValues(config.attackConfig.enabledCategories ?? [])).toEqual(
-      [],
-    );
+    expect(
+      duplicateValues(config.attackConfig.enabledCategories ?? []),
+    ).toEqual([]);
   });
 
   it("configured enabled strategies are unique", () => {
     const config = loadConfig("config.json");
-    expect(duplicateValues(config.attackConfig.enabledStrategies ?? [])).toEqual(
-      [],
-    );
+    expect(
+      duplicateValues(config.attackConfig.enabledStrategies ?? []),
+    ).toEqual([]);
   });
 });

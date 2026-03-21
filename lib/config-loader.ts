@@ -90,14 +90,18 @@ export function loadConfig(configPath?: string): Config {
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 
-  const duplicateCategories = findDuplicates(config.attackConfig.enabledCategories);
+  const duplicateCategories = findDuplicates(
+    config.attackConfig.enabledCategories,
+  );
   if (duplicateCategories.length > 0) {
     throw new Error(
       `config: duplicate enabledCategories: ${duplicateCategories.join(", ")}`,
     );
   }
 
-  const duplicateStrategies = findDuplicates(config.attackConfig.enabledStrategies);
+  const duplicateStrategies = findDuplicates(
+    config.attackConfig.enabledStrategies,
+  );
   if (duplicateStrategies.length > 0) {
     throw new Error(
       `config: duplicate enabledStrategies: ${duplicateStrategies.join(", ")}`,

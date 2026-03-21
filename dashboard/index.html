@@ -862,7 +862,9 @@
       }
 
       /* Conversation timeline */
-      .conversation { margin-top: 12px; }
+      .conversation {
+        margin-top: 12px;
+      }
       .conv-step {
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -880,14 +882,20 @@
         color: var(--text2);
         user-select: none;
       }
-      .conv-step-header:hover { background: rgba(88,166,255,0.06); }
+      .conv-step-header:hover {
+        background: rgba(88, 166, 255, 0.06);
+      }
       .conv-step-header .step-num {
         background: var(--accent);
         color: #fff;
-        width: 22px; height: 22px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 11px; font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
         flex-shrink: 0;
       }
       .conv-step-header .step-status {
@@ -898,16 +906,25 @@
         display: none;
         padding: 12px;
       }
-      .conv-step-body.open { display: block; }
+      .conv-step-body.open {
+        display: block;
+      }
       .conv-exchange {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
       @media (max-width: 900px) {
-        .conv-exchange { grid-template-columns: 1fr; }
+        .conv-exchange {
+          grid-template-columns: 1fr;
+        }
       }
-      .conv-expand { font-size: 12px; color: var(--text2); width: 20px; text-align: center; }
+      .conv-expand {
+        font-size: 12px;
+        color: var(--text2);
+        width: 20px;
+        text-align: center;
+      }
 
       .empty {
         color: var(--text2);
@@ -1783,7 +1800,10 @@
         <span><strong>Status:</strong> ${result?.statusCode ?? "-"}</span>
         <span><strong>Response Time:</strong> ${result?.responseTimeMs ?? "-"} ms</span>
       </div>
-      ${result?.conversation ? renderConversation(result) : `<div class="detail-grid">
+      ${
+        result?.conversation
+          ? renderConversation(result)
+          : `<div class="detail-grid">
         <div class="detail-col">
           <div class="detail-label">Prompt</div>
           <pre class="detail-pre">${esc(prompt || "(no prompt)")}</pre>
@@ -1792,7 +1812,8 @@
           <div class="detail-label">Response</div>
           <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
         </div>
-      </div>`}
+      </div>`
+      }
       ${threatAssessmentHtml}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
@@ -1853,24 +1874,29 @@
 
       function toggleConvStep(header) {
         const body = header.nextElementSibling;
-        const expand = header.querySelector('.conv-expand');
-        if (body.classList.contains('open')) {
-          body.classList.remove('open');
-          expand.textContent = '+';
+        const expand = header.querySelector(".conv-expand");
+        if (body.classList.contains("open")) {
+          body.classList.remove("open");
+          expand.textContent = "+";
         } else {
-          body.classList.add('open');
-          expand.textContent = '−';
+          body.classList.add("open");
+          expand.textContent = "−";
         }
       }
 
       function renderConversation(r) {
-        if (!r.conversation || !r.conversation.length) return renderSingleTurn(r);
+        if (!r.conversation || !r.conversation.length)
+          return renderSingleTurn(r);
         return `<div class="conversation">
           <div class="detail-label">Conversation (${r.conversation.length} steps)</div>
-          ${r.conversation.map((step) => {
-            const payloadStr = JSON.stringify(step.payload, null, 2);
-            const respStr = typeof step.responseBody === 'string' ? step.responseBody : JSON.stringify(step.responseBody, null, 2);
-            return `<div class="conv-step">
+          ${r.conversation
+            .map((step) => {
+              const payloadStr = JSON.stringify(step.payload, null, 2);
+              const respStr =
+                typeof step.responseBody === "string"
+                  ? step.responseBody
+                  : JSON.stringify(step.responseBody, null, 2);
+              return `<div class="conv-step">
               <div class="conv-step-header" onclick="toggleConvStep(this)">
                 <span class="conv-expand">+</span>
                 <span class="step-num">${step.stepIndex + 1}</span>
@@ -1885,12 +1911,13 @@
                   </div>
                   <div class="detail-col">
                     <div class="detail-label">Response</div>
-                    <pre class="detail-pre">${esc((respStr || '(no response)').slice(0, 2000))}${(respStr || '').length > 2000 ? '\n... (truncated)' : ''}</pre>
+                    <pre class="detail-pre">${esc((respStr || "(no response)").slice(0, 2000))}${(respStr || "").length > 2000 ? "\n... (truncated)" : ""}</pre>
                   </div>
                 </div>
               </div>
             </div>`;
-          }).join('')}
+            })
+            .join("")}
         </div>`;
       }
 
@@ -1904,7 +1931,7 @@
           </div>
           <div class="detail-col">
             <div class="detail-label">Response</div>
-            <pre class="detail-pre">${esc((response || '(no response)').slice(0, 2000))}${(response || '').length > 2000 ? '\n... (truncated)' : ''}</pre>
+            <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${(response || "").length > 2000 ? "\n... (truncated)" : ""}</pre>
           </div>
         </div>`;
       }

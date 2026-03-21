@@ -656,9 +656,7 @@ async function main() {
             : result.verdict === "FAIL"
               ? "OK"
               : "??";
-        console.log(
-          `    [${icon}] ${result.verdict}`,
-        );
+        console.log(`    [${icon}] ${result.verdict}`);
         logFindings(result);
         roundResults.push(result);
         continue;
@@ -706,7 +704,7 @@ async function main() {
           payload:
             sr.stepIndex === 0
               ? attack.payload
-              : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+              : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
           statusCode: sr.statusCode,
           responseBody: sr.body,
           responseTimeMs: sr.timeMs,
@@ -824,7 +822,7 @@ async function main() {
                 payload:
                   sr.stepIndex === 0
                     ? attack.payload
-                    : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+                    : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
                 statusCode: sr.statusCode,
                 responseBody: sr.body,
                 responseTimeMs: sr.timeMs,
