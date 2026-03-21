@@ -2,6 +2,17 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import type { Config } from "./types.js";
 
+function findDuplicates(values: string[] | undefined): string[] {
+  if (!values?.length) return [];
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([value]) => value);
+}
+
 export function loadConfig(configPath?: string): Config {
   const fullPath = resolve(configPath ?? "config.json");
   const raw = readFileSync(fullPath, "utf-8");
@@ -78,6 +89,24 @@ export function loadConfig(configPath?: string): Config {
     requireReviewConfirmation: true,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
+
+  const duplicateCategories = findDuplicates(
+    config.attackConfig.enabledCategories,
+  );
+  if (duplicateCategories.length > 0) {
+    throw new Error(
+      `config: duplicate enabledCategories: ${duplicateCategories.join(", ")}`,
+    );
+  }
+
+  const duplicateStrategies = findDuplicates(
+    config.attackConfig.enabledStrategies,
+  );
+  if (duplicateStrategies.length > 0) {
+    throw new Error(
+      `config: duplicate enabledStrategies: ${duplicateStrategies.join(", ")}`,
+    );
+  }
 
   return config;
 }

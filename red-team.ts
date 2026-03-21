@@ -99,6 +99,41 @@ import { overrelianceModule } from "./attacks/overreliance.js";
 import { overRefusalModule } from "./attacks/over-refusal.js";
 import { ragPoisoningModule } from "./attacks/rag-poisoning.js";
 import { ragAttributionModule } from "./attacks/rag-attribution.js";
+import { modelExtractionModule } from "./attacks/model-extraction.js";
+import { membershipInferenceModule } from "./attacks/membership-inference.js";
+import { backdoorTriggerModule } from "./attacks/backdoor-trigger.js";
+import { dataPoisoningModule } from "./attacks/data-poisoning.js";
+import { gradientLeakageModule } from "./attacks/gradient-leakage.js";
+import { modelInversionModule } from "./attacks/model-inversion.js";
+import { ragCorpusPoisoningModule } from "./attacks/rag-corpus-poisoning.js";
+import { retrievalRankingAttackModule } from "./attacks/retrieval-ranking-attack.js";
+import { vectorStoreManipulationModule } from "./attacks/vector-store-manipulation.js";
+import { chunkBoundaryInjectionModule } from "./attacks/chunk-boundary-injection.js";
+import { embeddingInversionModule } from "./attacks/embedding-inversion.js";
+import { structuredOutputInjectionModule } from "./attacks/structured-output-injection.js";
+import { generatedCodeRceModule } from "./attacks/generated-code-rce.js";
+import { markdownLinkInjectionModule } from "./attacks/markdown-link-injection.js";
+import { sycophancyExploitationModule } from "./attacks/sycophancy-exploitation.js";
+import { hallucinationInducementModule } from "./attacks/hallucination-inducement.js";
+import { formatConfusionAttackModule } from "./attacks/format-confusion-attack.js";
+import { modelDosModule } from "./attacks/model-dos.js";
+import { tokenFloodingDosModule } from "./attacks/token-flooding-dos.js";
+import { infiniteLoopAgentModule } from "./attacks/infinite-loop-agent.js";
+import { quotaExhaustionAttackModule } from "./attacks/quota-exhaustion-attack.js";
+import { inferenceAttackModule } from "./attacks/inference-attack.js";
+import { reIdentificationModule } from "./attacks/re-identification.js";
+import { linkageAttackModule } from "./attacks/linkage-attack.js";
+import { differentialPrivacyViolationModule } from "./attacks/differential-privacy-violation.js";
+import { logicBombConditionalModule } from "./attacks/logic-bomb-conditional.js";
+import { agenticLegalCommitmentModule } from "./attacks/agentic-legal-commitment.js";
+import { contextualIntegrityViolationModule } from "./attacks/contextual-integrity-violation.js";
+import { financialFraudFacilitationModule } from "./attacks/financial-fraud-facilitation.js";
+import { gdprErasureBypassModule } from "./attacks/gdpr-erasure-bypass.js";
+import { mcpServerCompromiseModule } from "./attacks/mcp-server-compromise.js";
+import { pluginManifestSpoofingModule } from "./attacks/plugin-manifest-spoofing.js";
+import { sdkDependencyAttackModule } from "./attacks/sdk-dependency-attack.js";
+import { fineTuningDataInjectionModule } from "./attacks/fine-tuning-data-injection.js";
+import { promptTemplateInjectionModule } from "./attacks/prompt-template-injection.js";
 import { debugAccessModule } from "./attacks/debug-access.js";
 import { shellInjectionModule } from "./attacks/shell-injection.js";
 import { sqlInjectionModule } from "./attacks/sql-injection.js";
@@ -195,6 +230,41 @@ const ALL_MODULES: AttackModule[] = [
   overRefusalModule,
   ragPoisoningModule,
   ragAttributionModule,
+  modelExtractionModule,
+  membershipInferenceModule,
+  backdoorTriggerModule,
+  dataPoisoningModule,
+  gradientLeakageModule,
+  modelInversionModule,
+  ragCorpusPoisoningModule,
+  retrievalRankingAttackModule,
+  vectorStoreManipulationModule,
+  chunkBoundaryInjectionModule,
+  embeddingInversionModule,
+  structuredOutputInjectionModule,
+  generatedCodeRceModule,
+  markdownLinkInjectionModule,
+  sycophancyExploitationModule,
+  hallucinationInducementModule,
+  formatConfusionAttackModule,
+  modelDosModule,
+  tokenFloodingDosModule,
+  infiniteLoopAgentModule,
+  quotaExhaustionAttackModule,
+  inferenceAttackModule,
+  reIdentificationModule,
+  linkageAttackModule,
+  differentialPrivacyViolationModule,
+  logicBombConditionalModule,
+  agenticLegalCommitmentModule,
+  contextualIntegrityViolationModule,
+  financialFraudFacilitationModule,
+  gdprErasureBypassModule,
+  mcpServerCompromiseModule,
+  pluginManifestSpoofingModule,
+  sdkDependencyAttackModule,
+  fineTuningDataInjectionModule,
+  promptTemplateInjectionModule,
   debugAccessModule,
   shellInjectionModule,
   sqlInjectionModule,
@@ -586,9 +656,7 @@ async function main() {
             : result.verdict === "FAIL"
               ? "OK"
               : "??";
-        console.log(
-          `    [${icon}] ${result.verdict}`,
-        );
+        console.log(`    [${icon}] ${result.verdict}`);
         logFindings(result);
         roundResults.push(result);
         continue;
@@ -636,7 +704,7 @@ async function main() {
           payload:
             sr.stepIndex === 0
               ? attack.payload
-              : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+              : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
           statusCode: sr.statusCode,
           responseBody: sr.body,
           responseTimeMs: sr.timeMs,
@@ -754,7 +822,7 @@ async function main() {
                 payload:
                   sr.stepIndex === 0
                     ? attack.payload
-                    : attack.steps?.[sr.stepIndex - 1]?.payload ?? {},
+                    : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
                 statusCode: sr.statusCode,
                 responseBody: sr.body,
                 responseTimeMs: sr.timeMs,

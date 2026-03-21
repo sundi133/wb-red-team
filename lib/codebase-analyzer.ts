@@ -742,6 +742,20 @@ const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
       reason: "Prompt template",
     },
   ],
+  prompt_template_injection: [
+    {
+      pathPattern: /prompt|template|route|handler|agent/i,
+      contentPatterns: [
+        /system.*prompt|buildSystem|template|instruction|role.*system/i,
+      ],
+      reason: "Application prompt template / trusted preamble",
+    },
+    {
+      pathPattern: /profile|memory|context|metadata|note/i,
+      contentPatterns: [/note|profile|context|handoff|metadata|template/i],
+      reason: "Potentially interpolated user-controlled context",
+    },
+  ],
   indirect_prompt_injection: [
     {
       pathPattern: /route|handler|agent/i,
@@ -776,6 +790,30 @@ const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
       pathPattern: /fake[-_]env|secret|credential|data/i,
       contentPatterns: [/api.?key|password|secret|ssn|token/i],
       reason: "Sensitive data store",
+    },
+  ],
+  structured_output_injection: [
+    {
+      pathPattern: /route|handler|agent|output/i,
+      contentPatterns: [/json|xml|csv|yaml|schema|response/i],
+      reason: "Structured output generation / response formatting",
+    },
+    {
+      pathPattern: /consumer|render|parse|workflow|automation/i,
+      contentPatterns: [/parse|render|execute|ingest|downstream/i],
+      reason: "Downstream parser / automation consumer",
+    },
+  ],
+  generated_code_rce: [
+    {
+      pathPattern: /route|handler|agent|tool/i,
+      contentPatterns: [/code|script|shell|exec|command|workflow/i],
+      reason: "Code or command generation surface",
+    },
+    {
+      pathPattern: /output|render|pipeline|ci|workflow/i,
+      contentPatterns: [/script|bash|node|python|command/i],
+      reason: "Generated code / pipeline consumption path",
     },
   ],
   steganographic_exfiltration: [
@@ -857,6 +895,55 @@ const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
       reason: "Jailbreak detection",
     },
   ],
+  model_extraction: [
+    {
+      pathPattern: /route|handler|agent|model/i,
+      contentPatterns: [
+        /chat\.completions\.create|responses\.create|system.*prompt|tool_choice/i,
+      ],
+      reason: "LLM integration and behavior template",
+    },
+  ],
+  backdoor_trigger: [
+    {
+      pathPattern: /route|handler|agent|prompt|template/i,
+      contentPatterns: [/mode|maintenance|debug|fallback|special|trigger/i],
+      reason: "Potential hidden mode or trigger handling",
+    },
+  ],
+  membership_inference: [
+    {
+      pathPattern: /route|handler|agent|privacy|policy/i,
+      contentPatterns: [/training|memor|seen.*before|confidence|familiar/i],
+      reason: "Privacy and memorization disclosure flow",
+    },
+  ],
+  data_poisoning: [
+    {
+      pathPattern: /train|feedback|label|dataset|pipeline|eval/i,
+      contentPatterns: [/feedback|label|sample|reward|dataset|import/i],
+      reason: "Training or feedback data ingestion",
+    },
+    {
+      pathPattern: /memory|knowledge|vector|retriev|store/i,
+      contentPatterns: [/upsert|write|save|embed|document/i],
+      reason: "Persistent context or retrieval writes",
+    },
+  ],
+  gradient_leakage: [
+    {
+      pathPattern: /train|model|fine[-_]?tune|gradient|optimizer/i,
+      contentPatterns: [/gradient|optimizer|backprop|loss|update/i],
+      reason: "Training internals or exposed optimization logic",
+    },
+  ],
+  model_inversion: [
+    {
+      pathPattern: /route|handler|agent|model|privacy/i,
+      contentPatterns: [/confidence|likelihood|memor|training|reconstruct/i],
+      reason: "Output patterns useful for sample reconstruction",
+    },
+  ],
   goal_hijack: [
     {
       pathPattern: /route|handler|agent/i,
@@ -915,6 +1002,193 @@ const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
       pathPattern: /data|store|vector|rag/i,
       contentPatterns: [/store|save|embed|knowledge/i],
       reason: "Data/knowledge store",
+    },
+  ],
+  rag_corpus_poisoning: [
+    {
+      pathPattern: /memory|knowledge|vector|retriev|search|store|cache/i,
+      contentPatterns: [/save|upsert|embed|retrieve|document|policy|note/i],
+      reason: "Knowledge base or retrieval corpus management",
+    },
+    {
+      pathPattern: /route|handler|agent/i,
+      contentPatterns: [/knowledge|memory|document|faq|policy|store/i],
+      reason: "User-facing corpus update path",
+    },
+  ],
+  retrieval_ranking_attack: [
+    {
+      pathPattern: /retriev|search|rank|vector|rerank/i,
+      contentPatterns: [/retriev|rank|score|topk|similarity|rerank/i],
+      reason: "Retrieval ranking or reranking logic",
+    },
+  ],
+  vector_store_manipulation: [
+    {
+      pathPattern: /vector|embed|index|store|retriev/i,
+      contentPatterns: [/upsert|delete|insert|embedding|collection|namespace/i],
+      reason: "Vector store mutation path",
+    },
+  ],
+  chunk_boundary_injection: [
+    {
+      pathPattern: /chunk|split|retriev|vector|document/i,
+      contentPatterns: [/chunk|split|window|overlap|segment/i],
+      reason: "Document chunking and segmentation logic",
+    },
+  ],
+  embedding_inversion: [
+    {
+      pathPattern: /embed|vector|retriev|model/i,
+      contentPatterns: [/embedding|vector|similarity|nearest|decode/i],
+      reason: "Embedding generation and similarity search",
+    },
+  ],
+  markdown_link_injection: [
+    {
+      pathPattern: /route|handler|agent|markdown|render/i,
+      contentPatterns: [/\[[^\]]+\]\([^)]+\)|markdown|href|link/i],
+      reason: "Markdown or hyperlink rendering in model output",
+    },
+  ],
+  sycophancy_exploitation: [
+    {
+      pathPattern: /route|handler|agent|prompt|policy/i,
+      contentPatterns: [/helpful|agree|validate|confidence|opinion/i],
+      reason: "Assistant behavior shaping and compliance framing",
+    },
+  ],
+  hallucination_inducement: [
+    {
+      pathPattern: /route|handler|agent|retriev|prompt/i,
+      contentPatterns: [/guess|best effort|speculate|hallucin|confident/i],
+      reason: "Loose evidence handling or speculation prompt",
+    },
+  ],
+  format_confusion_attack: [
+    {
+      pathPattern: /route|handler|agent|parser|transform/i,
+      contentPatterns: [/json|sql|yaml|xml|markdown|format/i],
+      reason: "Multi-format request or transform path",
+    },
+  ],
+  model_dos: [
+    {
+      pathPattern: /route|handler|agent|rate|limit|model/i,
+      contentPatterns: [/max_tokens|timeout|stream|parallel|batch|retry/i],
+      reason: "Model invocation cost and timeout controls",
+    },
+  ],
+  token_flooding_dos: [
+    {
+      pathPattern: /route|handler|agent|context|prompt/i,
+      contentPatterns: [/context|messages|max_tokens|truncate|window/i],
+      reason: "Context window and truncation logic",
+    },
+  ],
+  infinite_loop_agent: [
+    {
+      pathPattern: /route|handler|agent|loop/i,
+      contentPatterns: [/while|for|MAX_ITERATION|loop|continue/i],
+      reason: "Agent loop control and stop conditions",
+    },
+  ],
+  quota_exhaustion_attack: [
+    {
+      pathPattern: /rate|quota|billing|usage|limit/i,
+      contentPatterns: [/quota|limit|bucket|credit|usage|throttle/i],
+      reason: "Quota and rate-limit enforcement",
+    },
+  ],
+  inference_attack: [
+    {
+      pathPattern: /route|handler|agent|profile|analytics|personal/i,
+      contentPatterns: [/health|income|politic|preference|attribute/i],
+      reason: "Sensitive attribute inference surfaces",
+    },
+  ],
+  re_identification: [
+    {
+      pathPattern: /route|handler|agent|privacy|report/i,
+      contentPatterns: [/anonymous|anonym|identity|person|record/i],
+      reason: "Anonymized record handling and identity linkage",
+    },
+  ],
+  linkage_attack: [
+    {
+      pathPattern: /session|history|profile|analytics|memory/i,
+      contentPatterns: [/session|history|cross.*session|profile|link/i],
+      reason: "Cross-session identity or profile linkage",
+    },
+  ],
+  differential_privacy_violation: [
+    {
+      pathPattern: /privacy|train|model|report/i,
+      contentPatterns: [/privacy|epsilon|delta|membership|training/i],
+      reason: "Privacy budget or training-set disclosure logic",
+    },
+  ],
+  logic_bomb_conditional: [
+    {
+      pathPattern: /route|handler|agent|workflow|prompt/i,
+      contentPatterns: [/if|trigger|when|condition|special.*case/i],
+      reason: "Conditional behavior or latent trigger logic",
+    },
+  ],
+  agentic_legal_commitment: [
+    {
+      pathPattern: /route|handler|agent|legal|contract|sales/i,
+      contentPatterns: [/agree|contract|binding|commit|warrant|guarantee/i],
+      reason: "Potential legal or contractual commitment flow",
+    },
+  ],
+  contextual_integrity_violation: [
+    {
+      pathPattern: /route|handler|agent|auth|profile|hr|medical|support/i,
+      contentPatterns: [/context|department|medical|hr|finance|share/i],
+      reason: "Cross-context data handling between domains",
+    },
+  ],
+  financial_fraud_facilitation: [
+    {
+      pathPattern: /route|handler|agent|payment|finance|transaction/i,
+      contentPatterns: [/payment|wire|refund|invoice|account|trading/i],
+      reason: "Financial workflow or transaction support",
+    },
+  ],
+  gdpr_erasure_bypass: [
+    {
+      pathPattern: /privacy|data|delete|erasure|retention|memory/i,
+      contentPatterns: [/delete|erase|retention|forget|cache|persist/i],
+      reason: "Deletion, retention, or memory persistence flow",
+    },
+  ],
+  mcp_server_compromise: [
+    {
+      pathPattern: /mcp|server|tool|manifest/i,
+      contentPatterns: [/mcp|tool|resource|prompt|server/i],
+      reason: "MCP server or prompt/resource boundary",
+    },
+  ],
+  plugin_manifest_spoofing: [
+    {
+      pathPattern: /plugin|manifest|tool|integration/i,
+      contentPatterns: [/manifest|plugin|schema|capability|trusted/i],
+      reason: "Plugin manifest or tool registration logic",
+    },
+  ],
+  sdk_dependency_attack: [
+    {
+      pathPattern: /package|lock|sdk|provider|client/i,
+      contentPatterns: [/openai|anthropic|sdk|dependency|version/i],
+      reason: "LLM SDK dependency and provider integration",
+    },
+  ],
+  fine_tuning_data_injection: [
+    {
+      pathPattern: /train|fine[-_]?tune|dataset|feedback|pipeline/i,
+      contentPatterns: [/fine.?tune|dataset|example|feedback|label|import/i],
+      reason: "Fine-tuning or feedback data pipeline",
     },
   ],
   guardrail_timing: [
