@@ -92,6 +92,33 @@ describe("loadConfig", () => {
     expect(config.attackConfig.concurrency).toBe(3);
   });
 
+  it("throws on duplicate enabled categories", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        attackConfig: {
+          enabledCategories: ["prompt_injection", "prompt_injection"],
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).toThrow("duplicate enabledCategories");
+  });
+
+  it("throws on duplicate enabled strategies", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        attackConfig: {
+          enabledStrategies: [
+            "life_or_death_emergency",
+            "life_or_death_emergency",
+          ],
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).toThrow("duplicate enabledStrategies");
+  });
+
   it("preserves target.applicationDetails when provided", () => {
     const path = writeTestConfig(
       tmpDir,
