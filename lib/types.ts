@@ -156,8 +156,20 @@ export interface Credential {
   role: string;
 }
 
-export type TargetType = "http_agent" | "mcp";
+export type TargetType = "http_agent" | "mcp" | "websocket_agent";
 export type McpTransportType = "stdio" | "sse" | "streamable_http";
+
+/** WebSocket chat targets (e.g. wss://host/ws/chat with a JSON message protocol). */
+export interface WebSocketTargetConfig {
+  /** Path on the same host as baseUrl, e.g. "/ws/chat" */
+  path: string;
+  /** WebSocket subprotocols to negotiate (optional) */
+  subprotocols?: string[];
+  /** Optional token query param (browser localStorage auth) */
+  token?: string;
+  /** Max wait for a complete agent reply (default 120000) */
+  responseTimeoutMs?: number;
+}
 
 export interface McpTargetConfig {
   transport: McpTransportType;
@@ -186,6 +198,8 @@ export interface Config {
     applicationDetails?: string;
     /** MCP server connection details (MCP mode). */
     mcp?: McpTargetConfig;
+    /** WebSocket chat settings when target.type is "websocket_agent". */
+    websocket?: WebSocketTargetConfig;
   };
   codebasePath: string;
   codebaseGlob: string;
