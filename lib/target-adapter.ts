@@ -182,6 +182,10 @@ export function getTargetAdapter(config: Config): TargetAdapter | undefined {
 }
 
 export function describeTarget(config: Config): string {
+  if ((config.target.type ?? "http_agent") === "websocket_agent") {
+    const p = config.target.websocket?.path ?? "/ws/chat";
+    return `${config.target.baseUrl ?? ""} (WebSocket ${p})`;
+  }
   if ((config.target.type ?? "http_agent") === "mcp") {
     const mcp = config.target.mcp;
     if (!mcp) return "mcp://unknown";
