@@ -27,6 +27,16 @@ export function loadConfig(configPath?: string): Config {
     if (!config.target?.agentEndpoint)
       throw new Error("config: target.agentEndpoint is required");
     config.target.authEndpoint = config.target.authEndpoint ?? "";
+  } else if (config.target.type === "websocket_agent") {
+    if (!config.target?.baseUrl)
+      throw new Error("config: target.baseUrl is required");
+    if (!config.target.websocket?.path) {
+      throw new Error(
+        'config: target.websocket.path is required when target.type is "websocket_agent"',
+      );
+    }
+    config.target.agentEndpoint = config.target.agentEndpoint ?? "";
+    config.target.authEndpoint = config.target.authEndpoint ?? "";
   } else if (config.target.type === "mcp") {
     const mcp = config.target.mcp;
     if (!mcp)
