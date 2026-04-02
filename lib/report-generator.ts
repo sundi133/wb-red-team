@@ -297,6 +297,7 @@ export function writeReport(report: Report): {
           responseBody: truncateBody(step.responseBody, 2000),
           responseTimeMs: step.responseTimeMs,
         })),
+        idealResponse: r.idealResponse,
       })),
     })),
   };
@@ -470,6 +471,24 @@ function buildMarkdown(
         lines.push("");
       }
 
+      // Ideal response for PASS/PARTIAL
+      if (r.idealResponse) {
+        lines.push("**Ideal Response (what the endpoint should return):**");
+        lines.push("```");
+        lines.push(r.idealResponse.response);
+        lines.push("```");
+        lines.push("");
+        lines.push(`**Why:** ${r.idealResponse.explanation}`);
+        lines.push("");
+        if (r.idealResponse.remediationHints.length > 0) {
+          lines.push("**Remediation Steps:**");
+          for (const hint of r.idealResponse.remediationHints) {
+            lines.push(`- ${hint}`);
+          }
+          lines.push("");
+        }
+      }
+
       lines.push("---");
       lines.push("");
     }
@@ -546,12 +565,26 @@ export function printConsoleSummary(report: Report): void {
     console.log(`  ${cat.padEnd(22)} ${c.passed}/${c.total} passed${bar}`);
   }
 
+  // Build a lookup from attack name to its result for ideal response hints
+  const idealResponseByAttack = new Map<string, string>();
+  for (const round of report.rounds) {
+    for (const r of round.results) {
+      if (r.idealResponse?.remediationHints?.length) {
+        idealResponseByAttack.set(r.attack.name, r.idealResponse.remediationHints[0]);
+      }
+    }
+  }
+
   if (report.findings.length > 0) {
     console.log("\n  KEY FINDINGS:");
     for (const f of report.findings.slice(0, 10)) {
       console.log(
         `    [${f.severity.toUpperCase()}] ${f.attack}: ${f.description.slice(0, 80)}`,
       );
+      const hint = idealResponseByAttack.get(f.attack);
+      if (hint) {
+        console.log(`      Fix: ${hint.slice(0, 100)}`);
+      }
       if (f.affectedFiles && f.affectedFiles.length > 0) {
         for (const af of f.affectedFiles.slice(0, 3)) {
           const loc = af.line ? `${af.file}:${af.line}` : af.file;

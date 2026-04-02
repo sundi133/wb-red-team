@@ -83,6 +83,7 @@
     "judgeConfidenceThreshold": 70,
     "skipIrrelevantCategories": true,
     "requireReviewConfirmation": true,
+    "enableIdealResponses": true,
     "strategiesPerRound": 5,
     "contextBudgetChars": 100000,
     "maxAnalysisBatches": 3,

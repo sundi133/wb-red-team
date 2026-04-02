@@ -926,6 +926,66 @@
         text-align: center;
       }
 
+      /* Ideal response card */
+      .ideal-response-card {
+        margin-top: 12px;
+        border: 1px solid var(--green);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .ideal-response-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: rgba(63, 185, 80, 0.08);
+        cursor: pointer;
+        user-select: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--green);
+      }
+      .ideal-response-header:hover {
+        background: rgba(63, 185, 80, 0.12);
+      }
+      .ideal-response-body {
+        display: none;
+        padding: 14px;
+      }
+      .ideal-response-body.open {
+        display: block;
+      }
+      .ideal-response-text {
+        background: rgba(63, 185, 80, 0.06);
+        border: 1px solid rgba(63, 185, 80, 0.15);
+        border-radius: 6px;
+        padding: 12px;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--text);
+        max-height: 250px;
+        overflow: auto;
+      }
+      .ideal-response-explanation {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--text2);
+        line-height: 1.6;
+        border-left: 3px solid var(--green);
+        padding-left: 10px;
+      }
+      .ideal-response-hints {
+        margin-top: 10px;
+        padding-left: 18px;
+      }
+      .ideal-response-hints li {
+        font-size: 12px;
+        color: var(--text);
+        margin: 4px 0;
+        line-height: 1.5;
+      }
+
       .empty {
         color: var(--text2);
         text-align: center;
@@ -1736,6 +1796,37 @@
         </div>`;
       }
 
+      function formatIdealResponse(result) {
+        if (!result?.idealResponse) return "";
+        const ir = result.idealResponse;
+        return `<div class="ideal-response-card">
+          <div class="ideal-response-header" onclick="toggleIdealResponse(this)">
+            <span style="font-size:12px">+</span>
+            Ideal Response (What the endpoint should return)
+          </div>
+          <div class="ideal-response-body">
+            <div class="ideal-response-text">${esc(ir.response)}</div>
+            ${ir.explanation ? `<div class="ideal-response-explanation">${esc(ir.explanation)}</div>` : ""}
+            ${ir.remediationHints && ir.remediationHints.length ? `
+              <div style="margin-top:10px"><strong style="font-size:12px;color:var(--green);">Remediation Steps:</strong></div>
+              <ol class="ideal-response-hints">${ir.remediationHints.map(h => `<li>${esc(h)}</li>`).join("")}</ol>
+            ` : ""}
+          </div>
+        </div>`;
+      }
+
+      function toggleIdealResponse(header) {
+        const body = header.nextElementSibling;
+        const expand = header.querySelector("span");
+        if (body.classList.contains("open")) {
+          body.classList.remove("open");
+          expand.textContent = "+";
+        } else {
+          body.classList.add("open");
+          expand.textContent = "−";
+        }
+      }
+
       function renderFindings() {
         const verdict = $("#filterVerdict")?.value || "";
         const sev = $("#filterSev")?.value || "";
@@ -1778,6 +1869,7 @@
             result?.executionTrace,
           );
           const threatAssessmentHtml = formatThreatAssessment(result);
+          const idealResponseHtml = formatIdealResponse(result);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -1814,6 +1906,7 @@
         </div>
       </div>`
       }
+      ${idealResponseHtml}
       ${threatAssessmentHtml}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
@@ -1992,8 +2085,10 @@
             r.executionTrace,
           );
           const roundThreatAssessmentHtml = formatThreatAssessment(r);
+          const roundIdealResponseHtml = formatIdealResponse(r);
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
       ${r.conversation ? renderConversation(r) : renderSingleTurn(r)}
+      ${roundIdealResponseHtml}
       ${r.findings.length ? `<div style="margin-top:12px;margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
       ${roundAffectedFilesHtml ? `<div style="margin-bottom:8px"><strong>Affected Files:</strong><br>${roundAffectedFilesHtml}</div>` : ""}
       ${roundThreatAssessmentHtml}
