@@ -256,6 +256,8 @@ export interface Config {
     maxAnalysisBatches?: number;
     /** Require interactive user confirmation before executing planned/refined attacks. Default: true. */
     requireReviewConfirmation?: boolean;
+    /** Generate ideal (safe) responses for PASS/PARTIAL results. Default: true when enableLlmGeneration is on. */
+    enableIdealResponses?: boolean;
   };
 }
 
@@ -355,6 +357,15 @@ export interface ConversationStep {
   responseTimeMs: number;
 }
 
+export interface IdealResponse {
+  /** The safe response the endpoint should have returned. */
+  response: string;
+  /** Why this response is correct and what was wrong with the actual one. */
+  explanation: string;
+  /** Actionable remediation steps for the developer. */
+  remediationHints: string[];
+}
+
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
@@ -384,6 +395,8 @@ export interface AttackResult {
   totalSteps?: number;
   /** Full request/response history for multi-turn attacks. */
   conversation?: ConversationStep[];
+  /** LLM-generated ideal response showing what the endpoint should have returned. */
+  idealResponse?: IdealResponse;
 }
 
 export interface AttackModule {

@@ -21,6 +21,7 @@ import {
 } from "./lib/report-generator.js";
 import { runStaticAnalysis } from "./lib/static-analyzer.js";
 import { analyzeRound } from "./lib/round-analyzer.js";
+import { generateIdealResponse } from "./lib/ideal-response-generator.js";
 import type {
   AttackModule,
   Attack,
@@ -450,6 +451,25 @@ function logFindings(result: AttackResult): void {
   }
 }
 
+async function maybeGenerateIdealResponse(
+  config: Config,
+  result: AttackResult,
+): Promise<void> {
+  const enabled =
+    config.attackConfig.enableIdealResponses ?? config.attackConfig.enableLlmGeneration;
+  if (!enabled) return;
+  if (result.verdict !== "PASS" && result.verdict !== "PARTIAL") return;
+
+  const ideal = await generateIdealResponse(config, result);
+  if (!ideal) return;
+
+  result.idealResponse = ideal;
+  console.log(`    [Ideal Response] ${ideal.response.slice(0, 120)}${ideal.response.length > 120 ? "..." : ""}`);
+  if (ideal.remediationHints.length > 0) {
+    console.log(`    [Remediation] ${ideal.remediationHints[0]}`);
+  }
+}
+
 async function main() {
   const configPath = process.argv[2];
   console.log("=== Red-Team Security Testing Framework ===\n");
@@ -658,6 +678,7 @@ async function main() {
               : "??";
         console.log(`    [${icon}] ${result.verdict}`);
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
         roundResults.push(result);
         continue;
       }
@@ -717,6 +738,7 @@ async function main() {
           ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
         );
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
 
         roundResults.push(result);
       } else {
@@ -746,6 +768,7 @@ async function main() {
           ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
         );
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
 
         roundResults.push(result);
       }
@@ -843,6 +866,7 @@ async function main() {
                 ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
               );
               logFindings(result);
+              await maybeGenerateIdealResponse(config, result);
               roundResults.push(result);
             } else {
               process.stdout.write(`  ${progress} ${attack.name}...`);
@@ -870,6 +894,7 @@ async function main() {
                 ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
               );
               logFindings(result);
+              await maybeGenerateIdealResponse(config, result);
               roundResults.push(result);
             }
 
