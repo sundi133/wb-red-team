@@ -97,6 +97,7 @@ export function loadConfig(configPath?: string): Config {
     maxMultiTurnSteps: 8,
     strategiesPerRound: 5,
     requireReviewConfirmation: true,
+    appTailoredCustomPromptCount: 0,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 
