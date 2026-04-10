@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import { createInterface } from "node:readline/promises";
+import { dirname, resolve } from "node:path";
 import { loadEnvFile } from "./lib/env-loader.js";
 import { loadConfig } from "./lib/config-loader.js";
 import { describeTarget, getTargetAdapter } from "./lib/target-adapter.js";
@@ -22,6 +23,11 @@ import {
 import { runStaticAnalysis } from "./lib/static-analyzer.js";
 import { analyzeRound } from "./lib/round-analyzer.js";
 import { generateIdealResponse } from "./lib/ideal-response-generator.js";
+import {
+  loadCustomAttacksFromConfig,
+  mergeCustomAttacksForRound,
+} from "./lib/custom-attacks-loader.js";
+import { generateAppTailoredCustomAttacks } from "./lib/app-tailored-custom-prompts.js";
 import type {
   AttackModule,
   Attack,
@@ -477,6 +483,20 @@ async function main() {
   // 1. Load config
   console.log("[1/5] Loading configuration...");
   const config = loadConfig(configPath);
+  const configDir = dirname(resolve(configPath ?? "config.json"));
+  let customAttacks: Attack[] = [];
+  try {
+    customAttacks = loadCustomAttacksFromConfig(config, { configDir });
+  } catch (e) {
+    console.error(`  ${(e as Error).message}`);
+    console.error(
+      "  Fix or remove customAttacksFile in config.json to run without file-based custom attacks.",
+    );
+    process.exit(1);
+  }
+  if (customAttacks.length > 0) {
+    console.log(`  Custom attacks loaded: ${customAttacks.length} case(s)`);
+  }
   const targetLabel = describeTarget(config);
   console.log(`  Target: ${targetLabel}`);
   console.log(`  Adaptive rounds: ${config.attackConfig.adaptiveRounds}`);
@@ -534,6 +554,19 @@ async function main() {
     console.log(
       `  Mapped ${Object.keys(analysis.affectedFiles).length} attack categories to ${totalFiles} target source files`,
     );
+  }
+
+  if (Math.max(0, config.attackConfig.appTailoredCustomPromptCount ?? 0) > 0) {
+    console.log("\n  Generating app-tailored custom prompts from analysis...");
+    const generated = await generateAppTailoredCustomAttacks(config, analysis);
+    if (generated.length > 0) {
+      console.log(`  App-tailored custom cases: ${generated.length}`);
+      customAttacks = [...customAttacks, ...generated];
+    } else {
+      console.log(
+        "  App-tailored generation returned no cases (see errors above if any).",
+      );
+    }
   }
 
   // 2.25. Category applicability gating — skip categories with no relevant source files
@@ -600,14 +633,31 @@ async function main() {
     );
 
     // Plan attacks for this round (with defense profiles from prior rounds)
-    console.log("  Planning attacks with LLM... this may take a while.");
-    const attacks = await planAttacks(
+    const skipBuiltinPlanner =
+      round === 1 &&
+      config.attackConfig.customAttacksOnly === true &&
+      customAttacks.length > 0;
+
+    console.log(
+      skipBuiltinPlanner
+        ? "  Skipping built-in planner (customAttacksOnly)."
+        : "  Planning attacks with LLM... this may take a while.",
+    );
+    const planned = skipBuiltinPlanner
+      ? []
+      : await planAttacks(
+          config,
+          analysis,
+          relevantModules,
+          allPreviousResults,
+          round,
+          defenseProfiles,
+        );
+    const attacks = mergeCustomAttacksForRound(
       config,
-      analysis,
-      relevantModules,
-      allPreviousResults,
       round,
-      defenseProfiles,
+      planned,
+      customAttacks,
     );
     console.log(`  Planned ${attacks.length} attacks`);
     printPlannedAttackReview(round, attacks, analysis, "initial");
