@@ -592,12 +592,12 @@
         display: flex;
         gap: 8px;
         margin-bottom: 12px;
-        flex-wrap: wrap;
         align-items: center;
       }
       .filter-bar label {
         font-size: 12px;
         color: var(--text2);
+        white-space: nowrap;
       }
       .filter-bar select,
       .filter-bar input {
@@ -607,9 +607,10 @@
         border-radius: 4px;
         padding: 4px 8px;
         font-size: 12px;
+        max-width: 140px;
       }
       .filter-bar input {
-        width: 200px;
+        width: 130px;
       }
 
       /* Detail grid for findings */
@@ -655,18 +656,18 @@
         padding: 32px;
       }
       .owasp-btn {
-        background: linear-gradient(135deg, var(--accent), var(--purple));
+        background: var(--surface2);
         color: #fff;
-        border: none;
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 12px 28px;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: opacity 0.2s;
+        transition: background 0.2s;
       }
       .owasp-btn:hover {
-        opacity: 0.85;
+        background: var(--surface);
       }
       .owasp-btn:disabled {
         opacity: 0.5;
@@ -1346,6 +1347,8 @@
           .sort()
           .map((c) => `<option value="${c}">${fmtCat(c)}</option>`)
           .join("")}</select>
+        <label>Strategy:</label>
+        <select id="filterStrategy"><option value="">All</option></select>
         <label>Search:</label>
         <input id="filterSearch" placeholder="Filter results...">
       </div>
@@ -1372,6 +1375,7 @@
 
         renderCategories();
         renderStrategies();
+        populateStrategyDropdown();
         renderFindings();
         renderRoundTabs();
         renderRoundDetail();
@@ -1381,7 +1385,29 @@
         $("#filterVerdict").addEventListener("change", renderFindings);
         $("#filterSev").addEventListener("change", renderFindings);
         $("#filterCat").addEventListener("change", renderFindings);
+        $("#filterStrategy").addEventListener("change", renderFindings);
         $("#filterSearch").addEventListener("input", renderFindings);
+      }
+
+      function populateStrategyDropdown() {
+        const sel = $("#filterStrategy");
+        if (!sel || !report) return;
+        sel.innerHTML = '<option value="">All</option>';
+        const strategies = [
+          ...new Set(
+            report.rounds.flatMap((round) =>
+              round.results
+                .map((r) => r.attack.strategyName)
+                .filter(Boolean),
+            ),
+          ),
+        ].sort();
+        strategies.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+          sel.appendChild(opt);
+        });
       }
 
       function fmtCat(c) {
@@ -1831,12 +1857,14 @@
         const verdict = $("#filterVerdict")?.value || "";
         const sev = $("#filterSev")?.value || "";
         const cat = $("#filterCat")?.value || "";
+        const strategy = $("#filterStrategy")?.value || "";
         const search = ($("#filterSearch")?.value || "").toLowerCase();
 
         let findings = buildResultRows();
         if (verdict) findings = findings.filter((f) => f.verdict === verdict);
         if (sev) findings = findings.filter((f) => f.severity === sev);
         if (cat) findings = findings.filter((f) => f.category === cat);
+        if (strategy) findings = findings.filter((f) => f.strategyName === strategy);
         if (search)
           findings = findings.filter(
             (f) =>
