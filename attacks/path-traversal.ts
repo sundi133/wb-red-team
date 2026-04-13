@@ -83,9 +83,9 @@ ${JSON.stringify(
   analysis.tools
     .filter(
       (t) =>
-        t.name.includes("file") ||
-        t.name.includes("read") ||
-        t.name.includes("repo"),
+        t.name?.includes("file") ||
+        t.name?.includes("read") ||
+        t.name?.includes("repo"),
     )
     .map((t) => ({ name: t.name, description: t.description })),
   null,
