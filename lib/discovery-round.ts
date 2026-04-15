@@ -284,7 +284,6 @@ const DISCOVERY_PROBES: { category: string; probes: string[] }[] = [
 
 function buildDiscoveryAttack(probe: string): Attack {
   return {
-    id: `discovery-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: `Discovery: ${probe.slice(0, 60)}...`,
     category: "sensitive_data",
     description: "Automated discovery probe",
@@ -293,7 +292,6 @@ function buildDiscoveryAttack(probe: string): Attack {
     authMethod: "none",
     role: "user",
     payload: { message: probe },
-    isLlmGenerated: false,
   };
 }
 
