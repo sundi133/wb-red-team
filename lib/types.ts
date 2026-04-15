@@ -412,6 +412,8 @@ export interface Config {
      * Capped at 25. Default: 0 (off).
      */
     appTailoredCustomPromptCount?: number;
+    /** Run an automated discovery round before attack rounds to probe the target and enrich sensitivePatterns. Default: false. */
+    enableDiscovery?: boolean;
   };
 }
 
@@ -608,6 +610,45 @@ export interface Report {
   compliance?: ComplianceResult[];
   /** Maps attack categories to the target source files they affect. */
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
+  /** Intelligence gathered from the automated discovery round (if enabled). */
+  discovery?: {
+    discoveredTools: string[];
+    discoveredDataStores: string[];
+    discoveredPatterns: string[];
+    architectureHints: string[];
+    guardrailProfile: string[];
+    weaknesses: string[];
+    authMechanisms: string[];
+    sessionArtifacts: string[];
+    privilegeBoundaries: string[];
+    integrationPoints: string[];
+    dataFlows: string[];
+    sensitiveDataClasses: string[];
+    fileHandlingSurfaces: string[];
+    inputParsers: string[];
+    configSources: string[];
+    secretHandlingLocations: string[];
+    detectionGaps: string[];
+    featureFlags: string[];
+    defaultAssumptions: string[];
+    unknowns: string[];
+    targetSurfaces: string[];
+    attackObjectives: string[];
+    promptManipulationSurfaces: string[];
+    jailbreakRiskCategories: string[];
+    systemPromptExposureSignals: string[];
+    retrievalAttackSurfaces: string[];
+    memoryAttackSurfaces: string[];
+    toolUseAttackSurfaces: string[];
+    agenticFailureModes: string[];
+    privacyAndLeakageRisks: string[];
+    unsafeCapabilityAreas: string[];
+    deceptionAndManipulationRisks: string[];
+    boundaryConditions: string[];
+    multimodalRiskSurfaces: string[];
+    summary: string;
+    probeCount: number;
+  };
 }
 
 export interface ComplianceResult {
