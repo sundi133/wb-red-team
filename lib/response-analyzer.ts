@@ -487,7 +487,7 @@ ${responseBody.slice(0, 10000)}`;
 
   return {
     verdict,
-    reasoning: result.reasoning ?? "",
+    reasoning: typeof result.reasoning === "string" ? result.reasoning : "",
     confidence,
     evidenceFor:
       typeof result.evidence_for === "string" ? result.evidence_for : undefined,
