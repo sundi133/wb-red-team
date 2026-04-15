@@ -80,9 +80,16 @@ export function loadConfig(configPath?: string): Config {
     );
   }
   if (!config.sensitivePatterns?.length) {
-    console.warn(
-      "Warning: no sensitivePatterns defined — sensitive_data checks will be limited",
-    );
+    config.sensitivePatterns = [];
+    if (config.attackConfig.enableDiscovery) {
+      console.log(
+        "  sensitivePatterns is empty — discovery round will auto-populate from target reconnaissance",
+      );
+    } else {
+      console.warn(
+        "Warning: no sensitivePatterns defined and discovery is disabled — sensitive_data checks will be limited",
+      );
+    }
   }
 
   // Defaults

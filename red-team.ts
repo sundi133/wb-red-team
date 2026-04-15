@@ -28,6 +28,10 @@ import {
   mergeCustomAttacksForRound,
 } from "./lib/custom-attacks-loader.js";
 import { generateAppTailoredCustomAttacks } from "./lib/app-tailored-custom-prompts.js";
+import {
+  runDiscoveryRound,
+  applyDiscoveryIntel,
+} from "./lib/discovery-round.js";
 import type {
   AttackModule,
   Attack,
@@ -36,6 +40,7 @@ import type {
   CategoryDefenseProfile,
   CodebaseAnalysis,
   Config,
+  Report,
   RoundResult,
 } from "./lib/types.js";
 
@@ -615,6 +620,55 @@ async function main() {
   console.log("\n[3/5] Pre-authenticating...");
   await preAuthenticate(config);
 
+  // 3.5. Discovery round (optional — probes target to enrich sensitivePatterns and applicationDetails)
+  let discoveryIntel: Report["discovery"] | undefined;
+  if (config.attackConfig.enableDiscovery) {
+    console.log("\n[3.5/5] Running discovery round...");
+    const intel = await runDiscoveryRound(config);
+    applyDiscoveryIntel(config, intel);
+    discoveryIntel = {
+      discoveredTools: intel.discoveredTools,
+      discoveredDataStores: intel.discoveredDataStores,
+      discoveredPatterns: intel.discoveredPatterns,
+      architectureHints: intel.architectureHints,
+      guardrailProfile: intel.guardrailProfile,
+      weaknesses: intel.weaknesses,
+      authMechanisms: intel.authMechanisms,
+      sessionArtifacts: intel.sessionArtifacts,
+      privilegeBoundaries: intel.privilegeBoundaries,
+      integrationPoints: intel.integrationPoints,
+      dataFlows: intel.dataFlows,
+      sensitiveDataClasses: intel.sensitiveDataClasses,
+      fileHandlingSurfaces: intel.fileHandlingSurfaces,
+      inputParsers: intel.inputParsers,
+      configSources: intel.configSources,
+      secretHandlingLocations: intel.secretHandlingLocations,
+      detectionGaps: intel.detectionGaps,
+      featureFlags: intel.featureFlags,
+      defaultAssumptions: intel.defaultAssumptions,
+      unknowns: intel.unknowns,
+      targetSurfaces: intel.targetSurfaces,
+      attackObjectives: intel.attackObjectives,
+      promptManipulationSurfaces: intel.promptManipulationSurfaces,
+      jailbreakRiskCategories: intel.jailbreakRiskCategories,
+      systemPromptExposureSignals: intel.systemPromptExposureSignals,
+      retrievalAttackSurfaces: intel.retrievalAttackSurfaces,
+      memoryAttackSurfaces: intel.memoryAttackSurfaces,
+      toolUseAttackSurfaces: intel.toolUseAttackSurfaces,
+      agenticFailureModes: intel.agenticFailureModes,
+      privacyAndLeakageRisks: intel.privacyAndLeakageRisks,
+      unsafeCapabilityAreas: intel.unsafeCapabilityAreas,
+      deceptionAndManipulationRisks: intel.deceptionAndManipulationRisks,
+      boundaryConditions: intel.boundaryConditions,
+      multimodalRiskSurfaces: intel.multimodalRiskSurfaces,
+      summary: intel.summary,
+      probeCount: intel.probeResults.length,
+    };
+    console.log(
+      `  Discovery complete: ${intel.discoveredTools.length} tools, ${intel.discoveredDataStores.length} data stores, ${intel.discoveredPatterns.length} patterns, ${intel.weaknesses.length} weaknesses`,
+    );
+  }
+
   // 4. Run adaptive attack rounds
   console.log("\n[4/5] Running attacks...");
   const rounds: RoundResult[] = [];
@@ -733,6 +787,7 @@ async function main() {
         continue;
       }
 
+      try {
       // Multi-turn attack
       if (attack.steps && attack.steps.length > 0) {
         const totalSteps = 1 + attack.steps.length;
@@ -822,6 +877,17 @@ async function main() {
 
         roundResults.push(result);
       }
+      } catch (attackErr) {
+        console.log(` [??] ERROR — ${attackErr instanceof Error ? attackErr.message : String(attackErr)}`);
+        roundResults.push({
+          attack,
+          statusCode: 0,
+          responseBody: "",
+          responseTimeMs: 0,
+          verdict: "ERROR" as const,
+          findings: [`Attack execution failed: ${attackErr instanceof Error ? attackErr.message : String(attackErr)}`],
+        });
+      }
 
       // Delay between requests
       if (config.attackConfig.delayBetweenRequestsMs > 0) {
@@ -855,6 +921,7 @@ async function main() {
             const attack = refinedAttacks[i];
             const progress = `[R${i + 1}/${refinedAttacks.length}]`;
 
+            try {
             if (attack.steps && attack.steps.length > 0) {
               const totalSteps = 1 + attack.steps.length;
               process.stdout.write(
@@ -947,6 +1014,17 @@ async function main() {
               await maybeGenerateIdealResponse(config, result);
               roundResults.push(result);
             }
+            } catch (refineErr) {
+              console.log(` [??] ERROR — ${refineErr instanceof Error ? refineErr.message : String(refineErr)}`);
+              roundResults.push({
+                attack,
+                statusCode: 0,
+                responseBody: "",
+                responseTimeMs: 0,
+                verdict: "ERROR" as const,
+                findings: [`Refined attack execution failed: ${refineErr instanceof Error ? refineErr.message : String(refineErr)}`],
+              });
+            }
 
             if (config.attackConfig.delayBetweenRequestsMs > 0) {
               await sleep(config.attackConfig.delayBetweenRequestsMs);
@@ -1012,6 +1090,7 @@ async function main() {
     rounds,
     staticResult,
     analysis.affectedFiles,
+    discoveryIntel,
   );
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);
