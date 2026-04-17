@@ -302,7 +302,7 @@ export async function executeMultiTurn(
     initial.timeMs,
   );
   if (initialAnalysis.verdict === "PASS") {
-    return { results, stoppedEarly: true };
+    return { results, stoppedEarly: true, conversationHistory };
   }
 
   // Follow-up steps
@@ -328,11 +328,11 @@ export async function executeMultiTurn(
       stepResult.timeMs,
     );
     if (stepAnalysis.verdict === "PASS") {
-      return { results, stoppedEarly: true };
+      return { results, stoppedEarly: true, conversationHistory };
     }
   }
 
-  return { results, stoppedEarly: false };
+  return { results, stoppedEarly: false, conversationHistory };
 }
 
 export async function executeRapidFire(
@@ -376,6 +376,11 @@ export async function executeAdaptiveMultiTurn(
     executionTrace?: McpExecutionTrace;
   }[];
   stoppedEarly: boolean;
+  conversationHistory: Array<{
+    userMessage: string;
+    aiResponse: string;
+    stepIndex: number;
+  }>;
 }> {
   const maxTurns = Math.min(
     config.attackConfig.maxAdaptiveTurns ?? 15,
@@ -425,7 +430,7 @@ export async function executeAdaptiveMultiTurn(
     initial.timeMs,
   );
   if (initialAnalysis.verdict === "PASS") {
-    return { results, stoppedEarly: true };
+    return { results, stoppedEarly: true, conversationHistory };
   }
 
   // Adaptive follow-up turns
@@ -483,11 +488,11 @@ export async function executeAdaptiveMultiTurn(
       stepResult.timeMs,
     );
     if (stepAnalysis.verdict === "PASS") {
-      return { results, stoppedEarly: true };
+      return { results, stoppedEarly: true, conversationHistory };
     }
   }
 
-  return { results, stoppedEarly: false };
+  return { results, stoppedEarly: false, conversationHistory };
 }
 
 async function generateAdaptiveFollowUp(

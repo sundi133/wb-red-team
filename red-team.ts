@@ -703,7 +703,7 @@ async function main() {
           `  ${progress} ${attack.name} (adaptive, max ${maxTurns} turns)...`,
         );
 
-        const { results: stepResults, stoppedEarly } = await executeAdaptiveMultiTurn(
+        const { results: stepResults, stoppedEarly, conversationHistory } = await executeAdaptiveMultiTurn(
           config,
           attack,
           async (cfg, atk, sc, b, t) => {
@@ -726,14 +726,13 @@ async function main() {
         result.totalSteps = stepResults.length;
 
         const icon = getColoredIcon(result.verdict);
-        // For adaptive multi-turn, we need to reconstruct the conversation differently
-        // since steps are generated dynamically
-        result.conversation = stepResults.map((sr) => ({
-          stepIndex: sr.stepIndex,
-          payload: { message: `Step ${sr.stepIndex + 1} (adaptive)` }, // We don't store the exact messages
-          statusCode: sr.statusCode,
-          responseBody: sr.body,
-          responseTimeMs: sr.timeMs,
+        // For adaptive multi-turn, use the actual conversation history with real messages
+        result.conversation = conversationHistory.map((ch) => ({
+          stepIndex: ch.stepIndex,
+          payload: { message: ch.userMessage }, // Use the actual message sent
+          statusCode: stepResults[ch.stepIndex]?.statusCode ?? 0,
+          responseBody: ch.aiResponse,
+          responseTimeMs: stepResults[ch.stepIndex]?.timeMs ?? 0,
         }));
 
         const earlyTag = stoppedEarly
@@ -830,7 +829,7 @@ async function main() {
                 `  ${progress} ${attack.name} (adaptive, max ${maxTurns} turns)...`,
               );
 
-              const { results: stepResults, stoppedEarly } =
+              const { results: stepResults, stoppedEarly, conversationHistory } =
                 await executeAdaptiveMultiTurn(
                   config,
                   attack,
@@ -874,13 +873,13 @@ async function main() {
                   responseTimeMs: sr.timeMs,
                 }));
               } else {
-                // Adaptive multi-turn
-                result.conversation = stepResults.map((sr) => ({
-                  stepIndex: sr.stepIndex,
-                  payload: { message: `Step ${sr.stepIndex + 1} (adaptive)` },
-                  statusCode: sr.statusCode,
-                  responseBody: sr.body,
-                  responseTimeMs: sr.timeMs,
+                // Adaptive multi-turn - use actual conversation history
+                result.conversation = conversationHistory.map((ch) => ({
+                  stepIndex: ch.stepIndex,
+                  payload: { message: ch.userMessage }, // Use the actual message sent
+                  statusCode: stepResults[ch.stepIndex]?.statusCode ?? 0,
+                  responseBody: ch.aiResponse,
+                  responseTimeMs: stepResults[ch.stepIndex]?.timeMs ?? 0,
                 }));
               }
 

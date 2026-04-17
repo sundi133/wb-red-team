@@ -352,13 +352,8 @@
       /* Category chart */
       .cat-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 8px;
-      }
-      @media (max-width: 900px) {
-        .cat-grid {
-          grid-template-columns: 1fr;
-        }
       }
       .cat-row {
         display: flex;
@@ -552,22 +547,229 @@
         font-size: 12px;
       }
 
-      /* Strategy breakdown */
-      .strategy-chip {
-        display: inline-block;
+      /* Strategy breakdown - Compact Bay Area Tech Style */
+      .strategy-empty {
+        text-align: center;
+        padding: 32px 20px;
+        color: var(--text2);
+        background: var(--surface);
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+      }
+      .empty-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+        opacity: 0.6;
+      }
+      .strategy-empty h3 {
+        margin: 0 0 6px 0;
+        color: var(--text);
+        font-size: 16px;
+      }
+      .strategy-empty p {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .strategy-table-container {
         background: var(--surface2);
         border: 1px solid var(--border);
-        padding: 3px 10px;
-        border-radius: 12px;
-        font-size: 11px;
-        margin: 2px;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .strategy-table-header {
+        background: var(--surface);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .strategy-header-metrics {
+        display: flex;
+        gap: 24px;
+        font-size: 13px;
         color: var(--text2);
       }
-      .strategy-chip .s-count {
-        color: var(--red);
-        font-weight: 600;
-        margin-left: 4px;
+
+      .metric {
+        display: flex;
+        align-items: center;
+        gap: 4px;
       }
+
+      .strategy-table {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .strategy-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        transition: all 0.15s ease;
+        position: relative;
+      }
+
+      .strategy-row:last-child {
+        border-bottom: none;
+      }
+
+      .strategy-row:hover {
+        background: var(--surface);
+      }
+
+      .strategy-row.high-risk::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--red);
+      }
+
+      .strategy-row.medium-risk::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--yellow);
+      }
+
+      .strategy-row.low-risk::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--green);
+      }
+
+      .strategy-info {
+        flex: 1;
+        min-width: 0;
+        margin-right: 16px;
+      }
+
+      .strategy-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+        line-height: 1.3;
+      }
+
+      .strategy-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .level {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .level-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+      }
+
+      .level-medium {
+        background: rgba(234, 179, 8, 0.1);
+        color: var(--yellow);
+      }
+
+      .level-high, .level-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--red);
+      }
+
+      .categories {
+        font-size: 11px;
+        color: var(--text2);
+        text-transform: capitalize;
+      }
+
+      .strategy-desc {
+        font-size: 12px;
+        color: var(--text2);
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .strategy-metrics {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-right: 16px;
+        min-width: 60px;
+      }
+
+      .success-rate {
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 2px;
+      }
+
+      .success-rate.high { color: var(--red); }
+      .success-rate.medium { color: var(--yellow); }
+      .success-rate.low { color: var(--green); }
+
+      .attempts-count {
+        font-size: 11px;
+        color: var(--text2);
+        text-align: center;
+      }
+
+      .strategy-breakdown {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 80px;
+      }
+
+      .breakdown-bar {
+        width: 60px;
+        height: 4px;
+        background: var(--surface);
+        border-radius: 2px;
+        overflow: hidden;
+        display: flex;
+        margin-bottom: 6px;
+      }
+
+      .bar-segment {
+        transition: width 0.2s ease;
+      }
+
+      .bar-segment.pass { background: var(--red); }
+      .bar-segment.partial { background: var(--yellow); }
+      .bar-segment.fail { background: var(--green); }
+
+      .breakdown-stats {
+        display: flex;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .stat.pass { color: var(--red); }
+      .stat.partial { color: var(--yellow); }
+      .stat.fail { color: var(--green); }
 
       /* Verdict badge */
       .verdict {
@@ -1217,7 +1419,7 @@
       </div>
     </div>
 
-    <div class="verdict-legend">
+    <div class="verdict-legend" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
       <div class="verdict-legend-title">How To Read Verdicts</div>
       <div class="verdict-legend-items">
         <div class="verdict-legend-item"><span class="verdict verdict-PASS">PASS</span> = attack succeeded, vulnerability found</div>
@@ -1227,18 +1429,16 @@
       </div>
     </div>
 
-    <div class="two-col">
-      <!-- Category Breakdown -->
-      <div class="section">
-        <h2>Category Breakdown <span class="badge">${Object.keys(s.byCategory).length} categories</span></h2>
-        <div id="catChart"></div>
-      </div>
+    <!-- Category Breakdown -->
+    <div class="section" style="margin-top: 24px;">
+      <h2>Category Breakdown <span class="badge">${Object.keys(s.byCategory).length} categories</span></h2>
+      <div id="catChart"></div>
+    </div>
 
-      <!-- Strategy Effectiveness -->
-      <div class="section">
-        <h2>Top Attack Strategies</h2>
-        <div id="strategySection"></div>
-      </div>
+    <!-- Strategy Effectiveness -->
+    <div class="section">
+      <h2>Top Attack Strategies</h2>
+      <div id="strategySection"></div>
     </div>
 
     <!-- OWASP Compliance -->
@@ -1370,29 +1570,123 @@
       }
 
       function renderStrategies() {
-        const stratCounts = {};
+        const stratData = {};
+
+        // Collect comprehensive strategy data
         for (const round of report.rounds) {
           for (const r of round.results) {
-            if (r.verdict === "PASS" && r.attack.strategyName) {
+            if (r.attack.strategyName) {
               const name = r.attack.strategyName;
-              stratCounts[name] = (stratCounts[name] || 0) + 1;
+              const strategy = r.attack.strategy || "unknown";
+
+              if (!stratData[name]) {
+                stratData[name] = {
+                  name: name,
+                  strategy: strategy,
+                  total: 0,
+                  passed: 0,
+                  failed: 0,
+                  partial: 0,
+                  categories: new Set(),
+                  level: r.attack.level || "Unknown",
+                  description: getStrategyDescription(strategy)
+                };
+              }
+
+              stratData[name].total++;
+              stratData[name].categories.add(r.attack.category);
+
+              if (r.verdict === "PASS") stratData[name].passed++;
+              else if (r.verdict === "FAIL") stratData[name].failed++;
+              else if (r.verdict === "PARTIAL") stratData[name].partial++;
             }
           }
         }
-        const sorted = Object.entries(stratCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 20);
+
+        const strategies = Object.values(stratData)
+          .map(s => ({
+            ...s,
+            categories: Array.from(s.categories),
+            successRate: s.total > 0 ? Math.round((s.passed / s.total) * 100) : 0
+          }))
+          .sort((a, b) => b.passed - a.passed || b.successRate - a.successRate)
+          .slice(0, 12);
+
         const el = $("#strategySection");
-        if (!sorted.length) {
-          el.innerHTML = '<div class="empty">No strategy data available</div>';
+        if (!strategies.length) {
+          el.innerHTML = `
+            <div class="strategy-empty">
+              <div class="empty-icon">🛡️</div>
+              <h3>No Attack Strategies Executed</h3>
+              <p>Run red-team tests to see strategy effectiveness analysis</p>
+            </div>`;
           return;
         }
-        el.innerHTML = sorted
-          .map(
-            ([name, count]) =>
-              `<span class="strategy-chip">${esc(name)}<span class="s-count">${count}</span></span>`,
-          )
-          .join("");
+
+        el.innerHTML = `
+          <div class="strategy-table-container">
+            <div class="strategy-table-header">
+              <div class="strategy-header-metrics">
+                <span class="metric"><strong>${strategies.length}</strong> strategies analyzed</span>
+                <span class="metric"><strong>${strategies.reduce((sum, s) => sum + s.total, 0)}</strong> total attempts</span>
+                <span class="metric"><strong>${strategies.reduce((sum, s) => sum + s.passed, 0)}</strong> successful</span>
+              </div>
+            </div>
+            <div class="strategy-table">
+              ${strategies.map(s => `
+                <div class="strategy-row ${s.successRate > 50 ? 'high-risk' : s.successRate > 20 ? 'medium-risk' : 'low-risk'}">
+                  <div class="strategy-info">
+                    <div class="strategy-name">${esc(s.name)}</div>
+                    <div class="strategy-meta">
+                      <span class="level level-${s.level.toLowerCase()}">${s.level}</span>
+                      <span class="categories">${s.categories.map(cat => cat.replace('_', ' ')).join(', ')}</span>
+                    </div>
+                    <div class="strategy-desc">${esc(s.description)}</div>
+                  </div>
+                  <div class="strategy-metrics">
+                    <div class="success-rate ${s.successRate > 50 ? 'high' : s.successRate > 20 ? 'medium' : 'low'}">
+                      ${s.successRate}%
+                    </div>
+                    <div class="attempts-count">${s.total} attempts</div>
+                  </div>
+                  <div class="strategy-breakdown">
+                    <div class="breakdown-bar">
+                      <div class="bar-segment pass" style="width: ${(s.passed / s.total) * 100}%" title="${s.passed} passed"></div>
+                      <div class="bar-segment partial" style="width: ${(s.partial / s.total) * 100}%" title="${s.partial} partial"></div>
+                      <div class="bar-segment fail" style="width: ${(s.failed / s.total) * 100}%" title="${s.failed} failed"></div>
+                    </div>
+                    <div class="breakdown-stats">
+                      <span class="stat pass">${s.passed}</span>
+                      <span class="stat partial">${s.partial}</span>
+                      <span class="stat fail">${s.failed}</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function getStrategyDescription(strategy) {
+        const descriptions = {
+          'base64_context_hint': 'Encodes malicious instructions in Base64 to evade content filters',
+          'json_format_bypass': 'Uses JSON formatting to disguise harmful requests as structured data',
+          'educational_series_framing': 'Frames attacks as educational content or examples',
+          'fiction_writing_escape': 'Disguises harmful requests as creative writing or storytelling',
+          'benign_wrapper_hidden_core': 'Wraps malicious content in seemingly harmless requests',
+          'incremental_escalation_setup': 'Gradually escalates from innocent to harmful requests',
+          'building_on_previous_context': 'Leverages previous conversation context to build trust',
+          'simulated_multi_turn_conversation': 'Simulates realistic multi-turn conversations',
+          'translation_request_disguise': 'Disguises attacks as translation or language requests',
+          'rot13_cipher_trick': 'Uses ROT13 or simple ciphers to encode harmful instructions',
+          'reverse_instruction': 'Reverses or obfuscates instruction order',
+          'poetic_metaphor_request': 'Uses poetry or metaphors to disguise harmful content',
+          'multi_language_obfuscation': 'Uses multiple languages to confuse content filters',
+          'role_consistency_override': 'Attempts to override AI role or system instructions',
+          'academic_computation_disguise': 'Frames attacks as academic or research queries'
+        };
+        return descriptions[strategy] || 'Advanced red-team attack technique';
       }
 
       let owaspResults = [];
