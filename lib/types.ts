@@ -186,8 +186,19 @@ export interface Config {
     applicationDetails?: string;
     /** MCP server connection details (MCP mode). */
     mcp?: McpTargetConfig;
+    /** Custom API template for non-standard endpoints */
+    customApiTemplate?: {
+      /** HTTP method (default: POST) */
+      method?: "GET" | "POST" | "PUT" | "PATCH";
+      /** Custom headers to include in requests */
+      headers?: Record<string, string>;
+      /** Template for request body. Use {{message}} placeholder for the attack message */
+      bodyTemplate?: string;
+      /** JSONPath to extract response from API response (e.g., "choices[0].message.content" for OpenAI) */
+      responsePath?: string;
+    };
   };
-  codebasePath: string;
+  codebasePath?: string | null;
   codebaseGlob: string;
   /** Path to the judge policy JSON file (default: "policies/default.json"). */
   policyFile?: string;
@@ -242,6 +253,14 @@ export interface Config {
     maxAnalysisBatches?: number;
     /** Require interactive user confirmation before executing planned/refined attacks. Default: true. */
     requireReviewConfirmation?: boolean;
+    /** Enable multi-turn attack generation for follow-up steps. Default: false. */
+    enableMultiTurnGeneration?: boolean;
+    /** Probability (0.0-1.0) that a generated attack will include multi-turn steps. Default: 0.3. */
+    multiTurnGenerationRate?: number;
+    /** Enable adaptive multi-turn attacks that react to AI responses. Default: true when enableMultiTurnGeneration is true. */
+    enableAdaptiveMultiTurn?: boolean;
+    /** Maximum conversation turns for adaptive multi-turn attacks. Default: 15. */
+    maxAdaptiveTurns?: number;
   };
 }
 

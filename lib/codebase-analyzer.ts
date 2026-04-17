@@ -638,9 +638,42 @@ ${sourceBundle.join("\n\n")}`;
 export async function analyzeCodebase(
   config: Config,
 ): Promise<CodebaseAnalysis> {
+  // Return empty analysis if no codebase path is provided (API-only mode)
+  if (!config.codebasePath) {
+    console.log("  No codebase path provided - running in API-only mode");
+    return {
+      tools: [],
+      roles: [],
+      guardrailPatterns: [],
+      sensitiveData: [],
+      authMechanisms: [],
+      knownWeaknesses: [],
+      systemPromptHints: [],
+      detectedFrameworks: [],
+      toolChains: [],
+    };
+  }
+
   const basePath = resolve(config.codebasePath);
   const pattern = config.codebaseGlob || "**/*";
-  const files = await glob(pattern, { cwd: basePath, nodir: true });
+
+  let files: string[];
+  try {
+    files = await glob(pattern, { cwd: basePath, nodir: true });
+  } catch (error) {
+    console.log(`  Codebase path not accessible: ${basePath} - running in API-only mode`);
+    return {
+      tools: [],
+      roles: [],
+      guardrailPatterns: [],
+      sensitiveData: [],
+      authMechanisms: [],
+      knownWeaknesses: [],
+      systemPromptHints: [],
+      detectedFrameworks: [],
+      toolChains: [],
+    };
+  }
 
   const budgetPerBatch = config.attackConfig.contextBudgetChars ?? 100_000;
   const maxBatches = config.attackConfig.maxAnalysisBatches ?? 3;
