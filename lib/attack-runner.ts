@@ -307,7 +307,7 @@ export async function executeMultiTurn(
     initial.timeMs,
   );
   if (initialAnalysis.verdict === "PASS") {
-    return { results, stoppedEarly: true, conversationHistory };
+    return { results, stoppedEarly: true };
   }
 
   // Follow-up steps
@@ -333,11 +333,11 @@ export async function executeMultiTurn(
       stepResult.timeMs,
     );
     if (stepAnalysis.verdict === "PASS") {
-      return { results, stoppedEarly: true, conversationHistory };
+      return { results, stoppedEarly: true };
     }
   }
 
-  return { results, stoppedEarly: false, conversationHistory };
+  return { results, stoppedEarly: false };
 }
 
 export async function executeRapidFire(
