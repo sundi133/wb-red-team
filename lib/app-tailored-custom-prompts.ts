@@ -27,7 +27,10 @@ export async function generateAppTailoredCustomAttacks(
   config: Config,
   analysis: CodebaseAnalysis,
 ): Promise<Attack[]> {
-  const raw = Math.max(0, config.attackConfig.appTailoredCustomPromptCount ?? 0);
+  const raw = Math.max(
+    0,
+    config.attackConfig.appTailoredCustomPromptCount ?? 0,
+  );
   if (raw <= 0) return [];
 
   const count = Math.min(Math.floor(raw), MAX_PROMPT_COUNT);
@@ -87,8 +90,7 @@ REALISM:
       .slice(0, count)
       .filter((r) => r && typeof r === "object") as Record<string, unknown>[];
 
-    const defaultAuth =
-      config.customAttacksDefaults?.authMethod ?? "body_role";
+    const defaultAuth = config.customAttacksDefaults?.authMethod ?? "body_role";
 
     return attacksFromCustomRows(config, objects, defaultAuth, {
       isLlmGenerated: true,

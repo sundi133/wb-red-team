@@ -15,14 +15,14 @@ const LABEL_TO_CATEGORY: Record<string, AttackCategory> = {
   "pii minimization": "pii_disclosure",
   "privilege escalation": "rbac_bypass",
   "jailbreak & role-play": "prompt_injection",
-  "jailbreak": "prompt_injection",
+  jailbreak: "prompt_injection",
   "role-play": "prompt_injection",
   "policy violations": "regulatory_violation",
   "context poisoning": "memory_poisoning",
   "contradictory instructions": "prompt_injection",
   "emotional arc manipulation": "conversation_manipulation",
   "cross-topic pivot": "goal_hijack",
-  "custom": "prompt_injection",
+  custom: "prompt_injection",
 };
 
 function normalizeLabel(label: string): string {
@@ -108,9 +108,7 @@ function rowToAttack(
     row.successCriteria ?? row.success_criteria ?? row.expectation ?? "",
   ).trim();
   const description = String(row.description ?? "").trim();
-  const name = String(
-    row.name ?? `Custom #${index + 1}`,
-  ).trim();
+  const name = String(row.name ?? `Custom #${index + 1}`).trim();
   const category = resolveCategory(
     String(row.category ?? "prompt_injection").trim(),
   );
@@ -136,7 +134,8 @@ function rowToAttack(
   const basePayload = buildPayload(config, firstTurn, role);
 
   let steps: AttackStep[] | undefined;
-  if (segments.length > 1) {    steps = segments.slice(1).map((seg) => ({
+  if (segments.length > 1) {
+    steps = segments.slice(1).map((seg) => ({
       payload: buildPayload(config, seg, role),
       expectation: successCriteria || undefined,
     }));
@@ -144,7 +143,8 @@ function rowToAttack(
 
   const id = String(row.id ?? "").trim() || `custom-file-${idSeq + 1}`;
 
-  return {    id,
+  return {
+    id,
     category,
     name,
     description: description || name,
@@ -318,7 +318,8 @@ export function loadCustomAttacksFromConfig(
  * When `attackConfig.customAttacksOnly` is true, returns only `custom` (skips built-in planner output for round 1).
  * Does not control whether file/app-tailored loads run — omit `customAttacksFile` and set `appTailoredCustomPromptCount` to 0 to disable those sources.
  */
-export function mergeCustomAttacksForRound(  config: Config,
+export function mergeCustomAttacksForRound(
+  config: Config,
   round: number,
   planned: Attack[],
   custom: Attack[],

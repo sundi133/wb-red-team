@@ -246,9 +246,7 @@ describe("generateReport", () => {
     const report = generateReport("http://localhost:3000/api/agent", rounds);
     const passResult = report.rounds[0].results[0];
     expect(passResult.idealResponse).toBeDefined();
-    expect(passResult.idealResponse!.response).toBe(
-      "I cannot share API keys.",
-    );
+    expect(passResult.idealResponse!.response).toBe("I cannot share API keys.");
     expect(passResult.idealResponse!.remediationHints).toHaveLength(2);
 
     const failResult = report.rounds[0].results[1];

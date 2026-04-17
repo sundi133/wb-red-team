@@ -76,7 +76,7 @@ function makeResult(overrides: Partial<AttackResult> = {}): AttackResult {
     statusCode: 200,
     responseBody: { response: "Here is the key: sk-proj-abc123" },
     responseTimeMs: 150,
-    findings: ["Sensitive pattern found in response: \"sk-proj-\""],
+    findings: ['Sensitive pattern found in response: "sk-proj-"'],
     llmReasoning: "The agent leaked an API key",
     ...overrides,
   };
@@ -152,9 +152,11 @@ describe("generateIdealResponse", () => {
   });
 
   it("handles markdown-wrapped JSON from LLM", async () => {
-    const mockChat = vi.fn().mockResolvedValue(
-      '```json\n{"response": "No.", "explanation": "Refused.", "remediation_hints": ["Fix"]}\n```',
-    );
+    const mockChat = vi
+      .fn()
+      .mockResolvedValue(
+        '```json\n{"response": "No.", "explanation": "Refused.", "remediation_hints": ["Fix"]}\n```',
+      );
     vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
     const ideal = await generateIdealResponse(makeConfig(), makeResult());

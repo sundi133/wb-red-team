@@ -620,7 +620,7 @@
       }
 
       .strategy-row.high-risk::before {
-        content: '';
+        content: "";
         position: absolute;
         left: 0;
         top: 0;
@@ -630,7 +630,7 @@
       }
 
       .strategy-row.medium-risk::before {
-        content: '';
+        content: "";
         position: absolute;
         left: 0;
         top: 0;
@@ -640,7 +640,7 @@
       }
 
       .strategy-row.low-risk::before {
-        content: '';
+        content: "";
         position: absolute;
         left: 0;
         top: 0;
@@ -689,7 +689,8 @@
         color: var(--yellow);
       }
 
-      .level-high, .level-critical {
+      .level-high,
+      .level-critical {
         background: rgba(239, 68, 68, 0.1);
         color: var(--red);
       }
@@ -725,9 +726,15 @@
         margin-bottom: 2px;
       }
 
-      .success-rate.high { color: var(--red); }
-      .success-rate.medium { color: var(--yellow); }
-      .success-rate.low { color: var(--green); }
+      .success-rate.high {
+        color: var(--red);
+      }
+      .success-rate.medium {
+        color: var(--yellow);
+      }
+      .success-rate.low {
+        color: var(--green);
+      }
 
       .attempts-count {
         font-size: 11px;
@@ -756,9 +763,15 @@
         transition: width 0.2s ease;
       }
 
-      .bar-segment.pass { background: var(--red); }
-      .bar-segment.partial { background: var(--yellow); }
-      .bar-segment.fail { background: var(--green); }
+      .bar-segment.pass {
+        background: var(--red);
+      }
+      .bar-segment.partial {
+        background: var(--yellow);
+      }
+      .bar-segment.fail {
+        background: var(--green);
+      }
 
       .breakdown-stats {
         display: flex;
@@ -767,9 +780,15 @@
         font-weight: 600;
       }
 
-      .stat.pass { color: var(--red); }
-      .stat.partial { color: var(--yellow); }
-      .stat.fail { color: var(--green); }
+      .stat.pass {
+        color: var(--red);
+      }
+      .stat.partial {
+        color: var(--yellow);
+      }
+      .stat.fail {
+        color: var(--green);
+      }
 
       /* Verdict badge */
       .verdict {
@@ -1127,6 +1146,89 @@
         color: var(--text2);
         width: 20px;
         text-align: center;
+      }
+
+      /* Keyboard shortcuts styling */
+      kbd {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 10px;
+        font-family: monospace;
+        color: var(--text);
+        margin: 0 2px;
+      }
+
+      /* Quick action buttons hover effects */
+      button:hover {
+        background: var(--border) !important;
+        border-color: var(--text2) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Row highlighting for keyboard navigation */
+      .main-row.keyboard-focus {
+        background: rgba(88, 166, 255, 0.1) !important;
+        border: 1px solid var(--accent);
+      }
+
+      /* Improved expand button styling */
+      .expand-btn {
+        transition: all 0.2s ease;
+        min-width: 20px;
+      }
+
+      .expand-btn:hover {
+        background: var(--accent) !important;
+        color: white !important;
+        border-color: var(--accent) !important;
+      }
+
+      /* Quick scan mode - more compact rows */
+      .scan-mode .main-row {
+        height: auto;
+      }
+
+      .scan-mode td {
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+
+      /* Enhanced conversation step styling */
+      .conv-step-header {
+        transition: background 0.2s ease;
+      }
+
+      .conv-step-header:hover {
+        background: rgba(88, 166, 255, 0.1) !important;
+      }
+
+      /* Request/response preview styling */
+      .conv-step-header div[style*="color:var(--text2)"] {
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Conversation controls styling */
+      .conversation button:hover {
+        background: var(--accent) !important;
+        color: white !important;
+        border-color: var(--accent) !important;
+      }
+
+      /* Step number styling */
+      .step-num {
+        transition: all 0.2s ease;
+      }
+
+      .conv-step:hover .step-num {
+        background: var(--purple) !important;
+        transform: scale(1.1);
       }
 
       /* Ideal response card */
@@ -1596,16 +1698,16 @@
         const strategies = [
           ...new Set(
             report.rounds.flatMap((round) =>
-              round.results
-                .map((r) => r.attack.strategyName)
-                .filter(Boolean),
+              round.results.map((r) => r.attack.strategyName).filter(Boolean),
             ),
           ),
         ].sort();
         strategies.forEach((s) => {
           const opt = document.createElement("option");
           opt.value = s;
-          opt.textContent = s.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+          opt.textContent = s
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase());
           sel.appendChild(opt);
         });
       }
@@ -1675,7 +1777,7 @@
                   partial: 0,
                   categories: new Set(),
                   level: r.attack.level || "Unknown",
-                  description: getStrategyDescription(strategy)
+                  description: getStrategyDescription(strategy),
                 };
               }
 
@@ -1690,10 +1792,11 @@
         }
 
         const strategies = Object.values(stratData)
-          .map(s => ({
+          .map((s) => ({
             ...s,
             categories: Array.from(s.categories),
-            successRate: s.total > 0 ? Math.round((s.passed / s.total) * 100) : 0
+            successRate:
+              s.total > 0 ? Math.round((s.passed / s.total) * 100) : 0,
           }))
           .sort((a, b) => b.passed - a.passed || b.successRate - a.successRate)
           .slice(0, 12);
@@ -1719,18 +1822,20 @@
               </div>
             </div>
             <div class="strategy-table">
-              ${strategies.map(s => `
-                <div class="strategy-row ${s.successRate > 50 ? 'high-risk' : s.successRate > 20 ? 'medium-risk' : 'low-risk'}">
+              ${strategies
+                .map(
+                  (s) => `
+                <div class="strategy-row ${s.successRate > 50 ? "high-risk" : s.successRate > 20 ? "medium-risk" : "low-risk"}">
                   <div class="strategy-info">
                     <div class="strategy-name">${esc(s.name)}</div>
                     <div class="strategy-meta">
                       <span class="level level-${s.level.toLowerCase()}">${s.level}</span>
-                      <span class="categories">${s.categories.map(cat => cat.replace('_', ' ')).join(', ')}</span>
+                      <span class="categories">${s.categories.map((cat) => cat.replace("_", " ")).join(", ")}</span>
                     </div>
                     <div class="strategy-desc">${esc(s.description)}</div>
                   </div>
                   <div class="strategy-metrics">
-                    <div class="success-rate ${s.successRate > 50 ? 'high' : s.successRate > 20 ? 'medium' : 'low'}">
+                    <div class="success-rate ${s.successRate > 50 ? "high" : s.successRate > 20 ? "medium" : "low"}">
                       ${s.successRate}%
                     </div>
                     <div class="attempts-count">${s.total} attempts</div>
@@ -1748,7 +1853,9 @@
                     </div>
                   </div>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </div>
           </div>
         `;
@@ -1756,23 +1863,37 @@
 
       function getStrategyDescription(strategy) {
         const descriptions = {
-          'base64_context_hint': 'Encodes malicious instructions in Base64 to evade content filters',
-          'json_format_bypass': 'Uses JSON formatting to disguise harmful requests as structured data',
-          'educational_series_framing': 'Frames attacks as educational content or examples',
-          'fiction_writing_escape': 'Disguises harmful requests as creative writing or storytelling',
-          'benign_wrapper_hidden_core': 'Wraps malicious content in seemingly harmless requests',
-          'incremental_escalation_setup': 'Gradually escalates from innocent to harmful requests',
-          'building_on_previous_context': 'Leverages previous conversation context to build trust',
-          'simulated_multi_turn_conversation': 'Simulates realistic multi-turn conversations',
-          'translation_request_disguise': 'Disguises attacks as translation or language requests',
-          'rot13_cipher_trick': 'Uses ROT13 or simple ciphers to encode harmful instructions',
-          'reverse_instruction': 'Reverses or obfuscates instruction order',
-          'poetic_metaphor_request': 'Uses poetry or metaphors to disguise harmful content',
-          'multi_language_obfuscation': 'Uses multiple languages to confuse content filters',
-          'role_consistency_override': 'Attempts to override AI role or system instructions',
-          'academic_computation_disguise': 'Frames attacks as academic or research queries'
+          base64_context_hint:
+            "Encodes malicious instructions in Base64 to evade content filters",
+          json_format_bypass:
+            "Uses JSON formatting to disguise harmful requests as structured data",
+          educational_series_framing:
+            "Frames attacks as educational content or examples",
+          fiction_writing_escape:
+            "Disguises harmful requests as creative writing or storytelling",
+          benign_wrapper_hidden_core:
+            "Wraps malicious content in seemingly harmless requests",
+          incremental_escalation_setup:
+            "Gradually escalates from innocent to harmful requests",
+          building_on_previous_context:
+            "Leverages previous conversation context to build trust",
+          simulated_multi_turn_conversation:
+            "Simulates realistic multi-turn conversations",
+          translation_request_disguise:
+            "Disguises attacks as translation or language requests",
+          rot13_cipher_trick:
+            "Uses ROT13 or simple ciphers to encode harmful instructions",
+          reverse_instruction: "Reverses or obfuscates instruction order",
+          poetic_metaphor_request:
+            "Uses poetry or metaphors to disguise harmful content",
+          multi_language_obfuscation:
+            "Uses multiple languages to confuse content filters",
+          role_consistency_override:
+            "Attempts to override AI role or system instructions",
+          academic_computation_disguise:
+            "Frames attacks as academic or research queries",
         };
-        return descriptions[strategy] || 'Advanced red-team attack technique';
+        return descriptions[strategy] || "Advanced red-team attack technique";
       }
 
       let owaspResults = [];
@@ -2127,10 +2248,14 @@
           <div class="ideal-response-body">
             <div class="ideal-response-text">${esc(ir.response)}</div>
             ${ir.explanation ? `<div class="ideal-response-explanation">${esc(ir.explanation)}</div>` : ""}
-            ${ir.remediationHints && ir.remediationHints.length ? `
+            ${
+              ir.remediationHints && ir.remediationHints.length
+                ? `
               <div style="margin-top:10px"><strong style="font-size:12px;color:var(--green);">Remediation Steps:</strong></div>
-              <ol class="ideal-response-hints">${ir.remediationHints.map(h => `<li>${esc(h)}</li>`).join("")}</ol>
-            ` : ""}
+              <ol class="ideal-response-hints">${ir.remediationHints.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>
+            `
+                : ""
+            }
           </div>
         </div>`;
       }
@@ -2158,7 +2283,8 @@
         if (verdict) findings = findings.filter((f) => f.verdict === verdict);
         if (sev) findings = findings.filter((f) => f.severity === sev);
         if (cat) findings = findings.filter((f) => f.category === cat);
-        if (strategy) findings = findings.filter((f) => f.strategyName === strategy);
+        if (strategy)
+          findings = findings.filter((f) => f.strategyName === strategy);
         if (search)
           findings = findings.filter(
             (f) =>
@@ -2176,7 +2302,16 @@
           return;
         }
 
-        el.innerHTML = `<table>
+        el.innerHTML = `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div style="color:var(--text2);font-size:12px;">${findings.length} findings shown</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="expandAllFindings()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Expand All</button>
+      <button onclick="collapseAllFindings()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Collapse All</button>
+      <button onclick="expandVulnsOnly()" style="background:var(--red);border:1px solid var(--red);color:white;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Show Vulnerabilities</button>
+    </div>
+  </div>
+  <table>
     <thead><tr><th>Verdict</th><th>Severity</th><th>Category</th><th>Attack</th><th>Details</th><th>Strategy</th><th style="width:50px"></th></tr></thead>
     <tbody id="findingsRows"></tbody>
   </table>`;
@@ -2299,10 +2434,330 @@
         }
       }
 
+      // === UX IMPROVEMENT FUNCTIONS ===
+
+      function getResponsePreview(result) {
+        let preview = "";
+        try {
+          if (typeof result.responseBody === "string") {
+            preview = result.responseBody.slice(0, 100);
+          } else if (result.responseBody?.response) {
+            preview = String(result.responseBody.response).slice(0, 100);
+          } else if (result.responseBody) {
+            preview = JSON.stringify(result.responseBody).slice(0, 100);
+          } else {
+            preview = `HTTP ${result.statusCode}`;
+          }
+          return (
+            preview.replace(/\n/g, " ").trim() || `HTTP ${result.statusCode}`
+          );
+        } catch (e) {
+          return `HTTP ${result.statusCode}`;
+        }
+      }
+
+      function expandAllRounds() {
+        const expandBtns = document.querySelectorAll("#roundRows .expand-btn");
+        expandBtns.forEach((btn) => {
+          const idx = parseInt(btn.dataset.idx);
+          const rows = document.querySelectorAll("#roundRows .detail-row");
+          const row = rows[idx];
+          if (row && row.style.display === "none") {
+            row.style.display = "table-row";
+            btn.textContent = "−";
+          }
+        });
+        updateExpandButtons();
+      }
+
+      function collapseAllRounds() {
+        const expandBtns = document.querySelectorAll("#roundRows .expand-btn");
+        expandBtns.forEach((btn) => {
+          const idx = parseInt(btn.dataset.idx);
+          const rows = document.querySelectorAll("#roundRows .detail-row");
+          const row = rows[idx];
+          if (row && row.style.display === "table-row") {
+            row.style.display = "none";
+            btn.textContent = "+";
+          }
+        });
+        updateExpandButtons();
+      }
+
+      function expandPassOnly() {
+        // First collapse all
+        collapseAllRounds();
+        // Then expand only PASS verdicts
+        const rows = document.querySelectorAll("#roundRows .main-row");
+        rows.forEach((row, i) => {
+          const verdict = row.querySelector(".verdict");
+          if (verdict && verdict.textContent.trim() === "PASS") {
+            const btn = row.querySelector(".expand-btn");
+            const detailRows = document.querySelectorAll(
+              "#roundRows .detail-row",
+            );
+            const detailRow = detailRows[i];
+            if (btn && detailRow) {
+              detailRow.style.display = "table-row";
+              btn.textContent = "−";
+            }
+          }
+        });
+        updateExpandButtons();
+      }
+
+      function updateExpandButtons() {
+        const expandedCount = document.querySelectorAll(
+          '#roundRows .detail-row[style="display: table-row;"]',
+        ).length;
+        const totalCount = document.querySelectorAll(
+          "#roundRows .detail-row",
+        ).length;
+
+        const expandBtn = document.getElementById("expandAllBtn");
+        const collapseBtn = document.getElementById("collapseAllBtn");
+
+        if (expandBtn && collapseBtn) {
+          expandBtn.style.display =
+            expandedCount === totalCount ? "none" : "block";
+          collapseBtn.style.display = expandedCount === 0 ? "none" : "block";
+        }
+      }
+
+      // Keyboard shortcuts
+      let currentRowIndex = 0;
+
+      function highlightCurrentRow() {
+        const rows = document.querySelectorAll("#roundRows .main-row");
+        rows.forEach((row, i) => {
+          if (i === currentRowIndex) {
+            row.style.background = "rgba(88, 166, 255, 0.1)";
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            row.style.background = "";
+          }
+        });
+      }
+
+      function toggleCurrentRow() {
+        const btn = document.querySelector(
+          `#roundRows .expand-btn[data-idx="${currentRowIndex}"]`,
+        );
+        if (btn) {
+          btn.click();
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        const rows = document.querySelectorAll("#roundRows .main-row");
+        if (rows.length === 0) return;
+
+        // Only handle shortcuts if not typing in an input
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+          return;
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            currentRowIndex = Math.min(currentRowIndex + 1, rows.length - 1);
+            highlightCurrentRow();
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            currentRowIndex = Math.max(currentRowIndex - 1, 0);
+            highlightCurrentRow();
+            break;
+          case " ":
+            e.preventDefault();
+            toggleCurrentRow();
+            break;
+          case "a":
+          case "A":
+            if (e.ctrlKey || e.metaKey) return; // Don't interfere with Ctrl+A
+            e.preventDefault();
+            expandAllRounds();
+            break;
+          case "c":
+          case "C":
+            e.preventDefault();
+            collapseAllRounds();
+            break;
+          case "p":
+          case "P":
+            e.preventDefault();
+            expandPassOnly();
+            break;
+        }
+      });
+
+      // Auto-expand PASS verdicts on load
+      function autoExpandImportant() {
+        setTimeout(() => {
+          const rows = document.querySelectorAll("#roundRows .main-row");
+          rows.forEach((row, i) => {
+            const verdict = row.querySelector(".verdict");
+            if (verdict && verdict.textContent.trim() === "PASS") {
+              const btn = row.querySelector(".expand-btn");
+              if (btn && btn.textContent === "+") {
+                btn.click();
+              }
+            }
+          });
+        }, 100);
+      }
+
+      // === FINDINGS TABLE FUNCTIONS ===
+
+      function expandAllFindings() {
+        const expandBtns = document.querySelectorAll(
+          "#findingsRows .expand-btn",
+        );
+        expandBtns.forEach((btn) => {
+          const idx = parseInt(btn.dataset.fidx);
+          const tbody = document.querySelector("#findingsRows");
+          const rows = tbody.querySelectorAll(".detail-row");
+          const row = rows[idx];
+          if (row && row.style.display === "none") {
+            row.style.display = "";
+            btn.textContent = "−";
+          }
+        });
+      }
+
+      function collapseAllFindings() {
+        const expandBtns = document.querySelectorAll(
+          "#findingsRows .expand-btn",
+        );
+        expandBtns.forEach((btn) => {
+          const idx = parseInt(btn.dataset.fidx);
+          const tbody = document.querySelector("#findingsRows");
+          const rows = tbody.querySelectorAll(".detail-row");
+          const row = rows[idx];
+          if (row && row.style.display !== "none") {
+            row.style.display = "none";
+            btn.textContent = "+";
+          }
+        });
+      }
+
+      function expandVulnsOnly() {
+        // First collapse all
+        collapseAllFindings();
+        // Then expand only PASS/PARTIAL
+        const mainRows = document.querySelectorAll(
+          "#findingsRows tr:not(.detail-row)",
+        );
+        mainRows.forEach((row, i) => {
+          const verdict = row.querySelector(".verdict");
+          if (
+            verdict &&
+            (verdict.textContent.trim() === "PASS" ||
+              verdict.textContent.trim() === "PARTIAL")
+          ) {
+            const btn = row.querySelector(".expand-btn");
+            if (btn) {
+              const idx = parseInt(btn.dataset.fidx);
+              const tbody = document.querySelector("#findingsRows");
+              const detailRows = tbody.querySelectorAll(".detail-row");
+              const detailRow = detailRows[idx];
+              if (detailRow) {
+                detailRow.style.display = "";
+                btn.textContent = "−";
+              }
+            }
+          }
+        });
+      }
+
+      // === CONVERSATION STEP FUNCTIONS ===
+
+      function expandAllSteps(conversationId) {
+        const conversation = document.getElementById(conversationId);
+        if (!conversation) return;
+
+        const steps = conversation.querySelectorAll(".conv-step");
+        steps.forEach((step) => {
+          const body = step.querySelector(".conv-step-body");
+          const expand = step.querySelector(".conv-expand");
+          if (body && expand) {
+            body.classList.add("open");
+            expand.textContent = "−";
+          }
+        });
+      }
+
+      function collapseAllSteps(conversationId) {
+        const conversation = document.getElementById(conversationId);
+        if (!conversation) return;
+
+        const steps = conversation.querySelectorAll(".conv-step");
+        steps.forEach((step) => {
+          const body = step.querySelector(".conv-step-body");
+          const expand = step.querySelector(".conv-expand");
+          if (body && expand) {
+            body.classList.remove("open");
+            expand.textContent = "+";
+          }
+        });
+      }
+
+      function expandLastStep(conversationId) {
+        const conversation = document.getElementById(conversationId);
+        if (!conversation) return;
+
+        // First collapse all
+        collapseAllSteps(conversationId);
+
+        // Then expand the last step
+        const steps = conversation.querySelectorAll(".conv-step");
+        if (steps.length > 0) {
+          const lastStep = steps[steps.length - 1];
+          const body = lastStep.querySelector(".conv-step-body");
+          const expand = lastStep.querySelector(".conv-expand");
+          if (body && expand) {
+            body.classList.add("open");
+            expand.textContent = "−";
+          }
+
+          // Scroll to last step
+          lastStep.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      // Auto-expand conversation steps for PASS verdicts
+      function autoExpandConversationSteps() {
+        setTimeout(() => {
+          // Find all PASS verdicts and expand their last conversation step
+          const passRows = document.querySelectorAll(".main-row");
+          passRows.forEach((row) => {
+            const verdict = row.querySelector(".verdict");
+            if (verdict && verdict.textContent.trim() === "PASS") {
+              const conversations =
+                row.parentNode.querySelectorAll(".conversation");
+              conversations.forEach((conv) => {
+                if (conv.id) {
+                  expandLastStep(conv.id);
+                }
+              });
+            }
+          });
+        }, 200);
+      }
+
       function renderConversation(r) {
         if (!r.conversation || !r.conversation.length)
           return renderSingleTurn(r);
-        return `<div class="conversation">
+
+        const conversationId = `conv-${Math.random().toString(36).substr(2, 9)}`;
+        return `<div class="conversation" id="${conversationId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="font-weight:600;color:var(--text);">Multi-turn Conversation (${r.conversation.length} steps)</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="expandAllSteps('${conversationId}')" style="background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:3px 6px;border-radius:3px;font-size:10px;cursor:pointer;">Expand All</button>
+          <button onclick="collapseAllSteps('${conversationId}')" style="background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:3px 6px;border-radius:3px;font-size:10px;cursor:pointer;">Collapse All</button>
+          <button onclick="expandLastStep('${conversationId}')" style="background:var(--orange);border:1px solid var(--orange);color:white;padding:3px 6px;border-radius:3px;font-size:10px;cursor:pointer;">Show Last</button>
+        </div>
+      </div>
           <div class="detail-label">Conversation (${r.conversation.length} steps)</div>
           ${r.conversation
             .map((step) => {
@@ -2311,11 +2766,28 @@
                 typeof step.responseBody === "string"
                   ? step.responseBody
                   : JSON.stringify(step.responseBody, null, 2);
+              const requestPreview = (
+                step.payload?.message ||
+                step.payload ||
+                ""
+              )
+                .toString()
+                .slice(0, 80);
+              const responsePreview = respStr.slice(0, 80).replace(/\n/g, " ");
+
               return `<div class="conv-step">
               <div class="conv-step-header" onclick="toggleConvStep(this)">
                 <span class="conv-expand">+</span>
                 <span class="step-num">${step.stepIndex + 1}</span>
-                <span>Step ${step.stepIndex + 1}</span>
+                <div style="flex-grow:1;">
+                  <div>Step ${step.stepIndex + 1}</div>
+                  <div style="font-size:10px;color:var(--text2);margin-top:1px;">
+                    <span style="color:var(--accent);">→</span> ${esc(requestPreview)}${requestPreview.length >= 80 ? "..." : ""}
+                  </div>
+                  <div style="font-size:10px;color:var(--text2);">
+                    <span style="color:var(--green);">←</span> ${esc(responsePreview)}${responsePreview.length >= 80 ? "..." : ""}
+                  </div>
+                </div>
                 <span class="step-status">HTTP ${step.statusCode} · ${step.responseTimeMs}ms</span>
               </div>
               <div class="conv-step-body">
@@ -2374,12 +2846,20 @@
         }
 
         el.innerHTML = `
-    <div style="margin-bottom:8px;color:var(--text2);font-size:12px;">${results.length} attacks &middot;
-      <span style="color:var(--red)">${results.filter((r) => r.verdict === "PASS").length} PASS</span> &middot;
-      <span style="color:var(--orange)">${results.filter((r) => r.verdict === "PARTIAL").length} PARTIAL</span> &middot;
-      <span style="color:var(--green)">${results.filter((r) => r.verdict === "FAIL").length} FAIL</span> &middot;
-      <span>${results.filter((r) => r.verdict === "ERROR").length} ERROR</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="color:var(--text2);font-size:12px;">${results.length} attacks &middot;
+        <span style="color:var(--red)">${results.filter((r) => r.verdict === "PASS").length} PASS</span> &middot;
+        <span style="color:var(--orange)">${results.filter((r) => r.verdict === "PARTIAL").length} PARTIAL</span> &middot;
+        <span style="color:var(--green)">${results.filter((r) => r.verdict === "FAIL").length} FAIL</span> &middot;
+        <span>${results.filter((r) => r.verdict === "ERROR").length} ERROR</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="expandAllBtn" onclick="expandAllRounds()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Expand All</button>
+        <button id="collapseAllBtn" onclick="collapseAllRounds()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Collapse All</button>
+        <button onclick="expandPassOnly()" style="background:var(--red);border:1px solid var(--red);color:white;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">Show PASS Only</button>
+      </div>
     </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">💡 <strong>Tip:</strong> Use <kbd>Space</kbd> to toggle details, <kbd>↑↓</kbd> to navigate, <kbd>P</kbd> for PASS only, <kbd>A</kbd> to expand all</div>
     <table>
       <thead><tr><th style="width:80px">Verdict</th><th style="width:70px">Sev</th><th>Attack</th><th>Category</th><th style="width:60px">Status</th><th style="width:60px">Time</th><th style="width:50px"></th></tr></thead>
       <tbody id="roundRows"></tbody>
@@ -2388,10 +2868,24 @@
         const tbody = $("#roundRows");
         results.forEach((r, i) => {
           const tr = document.createElement("tr");
+          tr.classList.add("main-row");
+          tr.setAttribute("data-row-idx", i);
+
+          // Generate response preview
+          const responsePreview = getResponsePreview(r);
+          const findingsPreview =
+            r.findings.length > 0
+              ? `<div style="font-size:10px;color:var(--orange);margin-top:2px;">🔍 ${r.findings.length} finding${r.findings.length > 1 ? "s" : ""}</div>`
+              : "";
+
           tr.innerHTML = `
       <td><span class="verdict verdict-${r.verdict}">${r.verdict}</span></td>
       <td><span class="sev sev-${r.attack.severity}">${r.attack.severity}</span></td>
-      <td title="${esc(r.attack.description)}">${esc(r.attack.name)}</td>
+      <td title="${esc(r.attack.description)}">
+        <div>${esc(r.attack.name)}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(responsePreview)}">${responsePreview}</div>
+        ${findingsPreview}
+      </td>
       <td>${fmtCat(r.attack.category)}</td>
       <td>${r.statusCode}</td>
       <td>${r.responseTimeMs}ms</td>
@@ -2450,12 +2944,21 @@
           const row = rows[idx];
           if (row.style.display === "none") {
             row.style.display = "";
-            btn.textContent = "-";
+            btn.textContent = "−";
           } else {
             row.style.display = "none";
             btn.textContent = "+";
           }
+          updateExpandButtons();
         });
+
+        // Auto-expand important findings and update buttons
+        autoExpandImportant();
+        updateExpandButtons();
+        setTimeout(() => {
+          highlightCurrentRow();
+          autoExpandConversationSteps();
+        }, 100);
       }
 
       function renderStatic() {

@@ -63,9 +63,7 @@
     "enableAdaptiveMultiTurn": true,
     "maxAdaptiveTurns": 5,
     "requireReviewConfirmation": false,
-    "enabledCategories": [
-      "prompt_injection"
-    ],
+    "enabledCategories": ["prompt_injection"],
     "enabledStrategies": [
       "base64_context_hint",
       "json_format_bypass",
