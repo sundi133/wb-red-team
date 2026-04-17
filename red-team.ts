@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import { createInterface } from "node:readline/promises";
+import { dirname, resolve } from "node:path";
 
 // Color coding for security results
 function getColoredIcon(verdict: string): string {
@@ -44,6 +45,16 @@ import {
 } from "./lib/report-generator.js";
 import { runStaticAnalysis } from "./lib/static-analyzer.js";
 import { analyzeRound } from "./lib/round-analyzer.js";
+import { generateIdealResponse } from "./lib/ideal-response-generator.js";
+import {
+  loadCustomAttacksFromConfig,
+  mergeCustomAttacksForRound,
+} from "./lib/custom-attacks-loader.js";
+import { generateAppTailoredCustomAttacks } from "./lib/app-tailored-custom-prompts.js";
+import {
+  runDiscoveryRound,
+  applyDiscoveryIntel,
+} from "./lib/discovery-round.js";
 import type {
   AttackModule,
   Attack,
@@ -52,6 +63,7 @@ import type {
   CategoryDefenseProfile,
   CodebaseAnalysis,
   Config,
+  Report,
   RoundResult,
 } from "./lib/types.js";
 
@@ -475,6 +487,25 @@ function logFindings(result: AttackResult): void {
   }
 }
 
+async function maybeGenerateIdealResponse(
+  config: Config,
+  result: AttackResult,
+): Promise<void> {
+  const enabled =
+    config.attackConfig.enableIdealResponses ?? config.attackConfig.enableLlmGeneration;
+  if (!enabled) return;
+  if (result.verdict !== "PASS" && result.verdict !== "PARTIAL") return;
+
+  const ideal = await generateIdealResponse(config, result);
+  if (!ideal) return;
+
+  result.idealResponse = ideal;
+  console.log(`    [Ideal Response] ${ideal.response.slice(0, 120)}${ideal.response.length > 120 ? "..." : ""}`);
+  if (ideal.remediationHints.length > 0) {
+    console.log(`    [Remediation] ${ideal.remediationHints[0]}`);
+  }
+}
+
 async function main() {
   const configPath = process.argv[2];
   console.log("=== Red-Team Security Testing Framework ===\n");
@@ -482,6 +513,20 @@ async function main() {
   // 1. Load config
   console.log("[1/5] Loading configuration...");
   const config = loadConfig(configPath);
+  const configDir = dirname(resolve(configPath ?? "config.json"));
+  let customAttacks: Attack[] = [];
+  try {
+    customAttacks = loadCustomAttacksFromConfig(config, { configDir });
+  } catch (e) {
+    console.error(`  ${(e as Error).message}`);
+    console.error(
+      "  Fix or remove customAttacksFile in config.json to run without file-based custom attacks.",
+    );
+    process.exit(1);
+  }
+  if (customAttacks.length > 0) {
+    console.log(`  Custom attacks loaded: ${customAttacks.length} case(s)`);
+  }
   const targetLabel = describeTarget(config);
   console.log(`  Target: ${targetLabel}`);
   console.log(`  Adaptive rounds: ${config.attackConfig.adaptiveRounds}`);
@@ -541,6 +586,19 @@ async function main() {
     );
   }
 
+  if (Math.max(0, config.attackConfig.appTailoredCustomPromptCount ?? 0) > 0) {
+    console.log("\n  Generating app-tailored custom prompts from analysis...");
+    const generated = await generateAppTailoredCustomAttacks(config, analysis);
+    if (generated.length > 0) {
+      console.log(`  App-tailored custom cases: ${generated.length}`);
+      customAttacks = [...customAttacks, ...generated];
+    } else {
+      console.log(
+        "  App-tailored generation returned no cases (see errors above if any).",
+      );
+    }
+  }
+
   // 2.25. Category applicability gating — skip categories with no relevant source files
   const skipIrrelevant =
     (config.target.type ?? "http_agent") === "mcp"
@@ -587,6 +645,55 @@ async function main() {
   console.log("\n[3/5] Pre-authenticating...");
   await preAuthenticate(config);
 
+  // 3.5. Discovery round (optional — probes target to enrich sensitivePatterns and applicationDetails)
+  let discoveryIntel: Report["discovery"] | undefined;
+  if (config.attackConfig.enableDiscovery) {
+    console.log("\n[3.5/5] Running discovery round...");
+    const intel = await runDiscoveryRound(config);
+    applyDiscoveryIntel(config, intel);
+    discoveryIntel = {
+      discoveredTools: intel.discoveredTools,
+      discoveredDataStores: intel.discoveredDataStores,
+      discoveredPatterns: intel.discoveredPatterns,
+      architectureHints: intel.architectureHints,
+      guardrailProfile: intel.guardrailProfile,
+      weaknesses: intel.weaknesses,
+      authMechanisms: intel.authMechanisms,
+      sessionArtifacts: intel.sessionArtifacts,
+      privilegeBoundaries: intel.privilegeBoundaries,
+      integrationPoints: intel.integrationPoints,
+      dataFlows: intel.dataFlows,
+      sensitiveDataClasses: intel.sensitiveDataClasses,
+      fileHandlingSurfaces: intel.fileHandlingSurfaces,
+      inputParsers: intel.inputParsers,
+      configSources: intel.configSources,
+      secretHandlingLocations: intel.secretHandlingLocations,
+      detectionGaps: intel.detectionGaps,
+      featureFlags: intel.featureFlags,
+      defaultAssumptions: intel.defaultAssumptions,
+      unknowns: intel.unknowns,
+      targetSurfaces: intel.targetSurfaces,
+      attackObjectives: intel.attackObjectives,
+      promptManipulationSurfaces: intel.promptManipulationSurfaces,
+      jailbreakRiskCategories: intel.jailbreakRiskCategories,
+      systemPromptExposureSignals: intel.systemPromptExposureSignals,
+      retrievalAttackSurfaces: intel.retrievalAttackSurfaces,
+      memoryAttackSurfaces: intel.memoryAttackSurfaces,
+      toolUseAttackSurfaces: intel.toolUseAttackSurfaces,
+      agenticFailureModes: intel.agenticFailureModes,
+      privacyAndLeakageRisks: intel.privacyAndLeakageRisks,
+      unsafeCapabilityAreas: intel.unsafeCapabilityAreas,
+      deceptionAndManipulationRisks: intel.deceptionAndManipulationRisks,
+      boundaryConditions: intel.boundaryConditions,
+      multimodalRiskSurfaces: intel.multimodalRiskSurfaces,
+      summary: intel.summary,
+      probeCount: intel.probeResults.length,
+    };
+    console.log(
+      `  Discovery complete: ${intel.discoveredTools.length} tools, ${intel.discoveredDataStores.length} data stores, ${intel.discoveredPatterns.length} patterns, ${intel.weaknesses.length} weaknesses`,
+    );
+  }
+
   // 4. Run adaptive attack rounds
   console.log("\n[4/5] Running attacks...");
   const rounds: RoundResult[] = [];
@@ -605,14 +712,31 @@ async function main() {
     );
 
     // Plan attacks for this round (with defense profiles from prior rounds)
-    console.log("  Planning attacks with LLM... this may take a while.");
-    const attacks = await planAttacks(
+    const skipBuiltinPlanner =
+      round === 1 &&
+      config.attackConfig.customAttacksOnly === true &&
+      customAttacks.length > 0;
+
+    console.log(
+      skipBuiltinPlanner
+        ? "  Skipping built-in planner (customAttacksOnly)."
+        : "  Planning attacks with LLM... this may take a while.",
+    );
+    const planned = skipBuiltinPlanner
+      ? []
+      : await planAttacks(
+          config,
+          analysis,
+          relevantModules,
+          allPreviousResults,
+          round,
+          defenseProfiles,
+        );
+    const attacks = mergeCustomAttacksForRound(
       config,
-      analysis,
-      relevantModules,
-      allPreviousResults,
       round,
-      defenseProfiles,
+      planned,
+      customAttacks,
     );
     console.log(`  Planned ${attacks.length} attacks`);
     printPlannedAttackReview(round, attacks, analysis, "initial");
@@ -677,10 +801,12 @@ async function main() {
 
         console.log(`    ${getColoredIcon(result.verdict)} ${result.verdict}`);
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
         roundResults.push(result);
         continue;
       }
 
+      try {
       // Multi-turn attack (predefined steps) or Adaptive multi-turn attack
       if (attack.steps && attack.steps.length > 0) {
         const totalSteps = 1 + attack.steps.length;
@@ -742,6 +868,7 @@ async function main() {
           ` ${icon}${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
         );
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
 
         roundResults.push(result);
       } else {
@@ -764,8 +891,20 @@ async function main() {
           ` ${icon}${result.verdict} (${statusCode}, ${timeMs}ms)`,
         );
         logFindings(result);
+        await maybeGenerateIdealResponse(config, result);
 
         roundResults.push(result);
+      }
+      } catch (attackErr) {
+        console.log(` [??] ERROR — ${attackErr instanceof Error ? attackErr.message : String(attackErr)}`);
+        roundResults.push({
+          attack,
+          statusCode: 0,
+          responseBody: "",
+          responseTimeMs: 0,
+          verdict: "ERROR" as const,
+          findings: [`Attack execution failed: ${attackErr instanceof Error ? attackErr.message : String(attackErr)}`],
+        });
       }
 
       // Delay between requests
@@ -800,6 +939,7 @@ async function main() {
             const attack = refinedAttacks[i];
             const progress = `[R${i + 1}/${refinedAttacks.length}]`;
 
+            try {
             if (attack.steps && attack.steps.length > 0) {
               const totalSteps = 1 + attack.steps.length;
               process.stdout.write(
@@ -891,6 +1031,7 @@ async function main() {
                 ` ${icon}${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
               );
               logFindings(result);
+              await maybeGenerateIdealResponse(config, result);
               roundResults.push(result);
             } else {
               process.stdout.write(`  ${progress} ${attack.name}...`);
@@ -911,7 +1052,19 @@ async function main() {
                 ` ${icon}${result.verdict} (${statusCode}, ${timeMs}ms)`,
               );
               logFindings(result);
+              await maybeGenerateIdealResponse(config, result);
               roundResults.push(result);
+            }
+            } catch (refineErr) {
+              console.log(` [??] ERROR — ${refineErr instanceof Error ? refineErr.message : String(refineErr)}`);
+              roundResults.push({
+                attack,
+                statusCode: 0,
+                responseBody: "",
+                responseTimeMs: 0,
+                verdict: "ERROR" as const,
+                findings: [`Refined attack execution failed: ${refineErr instanceof Error ? refineErr.message : String(refineErr)}`],
+              });
             }
 
             if (config.attackConfig.delayBetweenRequestsMs > 0) {
@@ -978,6 +1131,7 @@ async function main() {
     rounds,
     staticResult,
     analysis.affectedFiles,
+    discoveryIntel,
   );
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);

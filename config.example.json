@@ -8,6 +8,11 @@
   "codebasePath": "../demo-agentic-app/src",
   "codebaseGlob": "**/*",
   "policyFile": "policies/strict.json",
+  "customAttacksFile": "examples/custom-attacks.example.csv",
+  "customAttacksDefaults": {
+    "authMethod": "jwt",
+    "role": "admin"
+  },
   "auth": {
     "methods": ["jwt", "api_key", "body_role"],
     "jwtSecret": "demo-agentic-app-jwt-secret-key-change-in-prod",
@@ -83,9 +88,12 @@
     "judgeConfidenceThreshold": 70,
     "skipIrrelevantCategories": true,
     "requireReviewConfirmation": true,
+    "enableIdealResponses": true,
     "strategiesPerRound": 5,
     "contextBudgetChars": 100000,
     "maxAnalysisBatches": 3,
+    "customAttacksOnly": false,
+    "appTailoredCustomPromptCount": 0,
     "enabledStrategies": [
       "life_or_death_emergency",
       "critical_deadline_pressure",

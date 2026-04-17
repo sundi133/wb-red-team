@@ -141,6 +141,7 @@ export function generateReport(
   rounds: RoundResult[],
   staticAnalysis?: StaticAnalysisResult,
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>,
+  discoveryIntel?: Report["discovery"],
 ): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
@@ -200,6 +201,7 @@ export function generateReport(
     staticAnalysis,
     compliance,
     affectedFiles,
+    discovery: discoveryIntel,
   };
 
   return report;
@@ -297,6 +299,7 @@ export function writeReport(report: Report): {
           responseBody: truncateBody(step.responseBody, 2000),
           responseTimeMs: step.responseTimeMs,
         })),
+        idealResponse: r.idealResponse,
       })),
     })),
   };
@@ -334,6 +337,72 @@ function buildMarkdown(
       );
     }
     lines.push("");
+  }
+
+  // Discovery round section
+  if (report.discovery) {
+    const d = report.discovery;
+    lines.push("## Discovery Round Intelligence");
+    lines.push(
+      `**Probes Sent:** ${d.probeCount} | **Tools Found:** ${d.discoveredTools.length} | **Data Stores:** ${d.discoveredDataStores.length} | **Patterns Extracted:** ${d.discoveredPatterns.length} | **Weaknesses:** ${d.weaknesses.length}`,
+    );
+    lines.push("");
+
+    if (d.summary) {
+      lines.push("### Attack Surface Summary");
+      lines.push(d.summary);
+      lines.push("");
+    }
+
+    const renderSection = (title: string, items: string[]) => {
+      if (items.length > 0) {
+        lines.push(`### ${title}`);
+        for (const item of items) lines.push(`- ${item}`);
+        lines.push("");
+      }
+    };
+
+    renderSection("Discovered Tools", d.discoveredTools);
+    renderSection("Discovered Data Stores", d.discoveredDataStores);
+    renderSection("Architecture", d.architectureHints);
+    renderSection("Guardrail Profile", d.guardrailProfile);
+    renderSection("Identified Weaknesses", d.weaknesses);
+    renderSection("Auth Mechanisms", d.authMechanisms);
+    renderSection("Session Artifacts", d.sessionArtifacts);
+    renderSection("Privilege Boundaries", d.privilegeBoundaries);
+    renderSection("Integration Points", d.integrationPoints);
+    renderSection("Data Flows", d.dataFlows);
+    renderSection("Sensitive Data Classes", d.sensitiveDataClasses);
+    renderSection("File Handling Surfaces", d.fileHandlingSurfaces);
+    renderSection("Input Parsers", d.inputParsers);
+    renderSection("Config Sources", d.configSources);
+    renderSection("Secret Handling Locations", d.secretHandlingLocations);
+    renderSection("Detection Gaps", d.detectionGaps);
+    renderSection("Feature Flags", d.featureFlags);
+    renderSection("Default Assumptions", d.defaultAssumptions);
+    renderSection("Target Surfaces", d.targetSurfaces);
+    renderSection("Attack Objectives", d.attackObjectives);
+    renderSection("Prompt Manipulation Surfaces", d.promptManipulationSurfaces);
+    renderSection("Jailbreak Risk Categories", d.jailbreakRiskCategories);
+    renderSection("System Prompt Exposure Signals", d.systemPromptExposureSignals);
+    renderSection("Retrieval Attack Surfaces", d.retrievalAttackSurfaces);
+    renderSection("Memory Attack Surfaces", d.memoryAttackSurfaces);
+    renderSection("Tool Use Attack Surfaces", d.toolUseAttackSurfaces);
+    renderSection("Agentic Failure Modes", d.agenticFailureModes);
+    renderSection("Privacy & Leakage Risks", d.privacyAndLeakageRisks);
+    renderSection("Unsafe Capability Areas", d.unsafeCapabilityAreas);
+    renderSection("Deception & Manipulation Risks", d.deceptionAndManipulationRisks);
+    renderSection("Boundary Conditions", d.boundaryConditions);
+    renderSection("Multimodal Risk Surfaces", d.multimodalRiskSurfaces);
+    renderSection("Unknowns", d.unknowns);
+
+    if (d.discoveredPatterns.length > 0) {
+      lines.push("### Sensitive Patterns Extracted");
+      lines.push("```");
+      lines.push(d.discoveredPatterns.join(", "));
+      lines.push("```");
+      lines.push("");
+    }
   }
 
   lines.push("## Summary");
@@ -470,6 +539,24 @@ function buildMarkdown(
         lines.push("");
       }
 
+      // Ideal response for PASS/PARTIAL
+      if (r.idealResponse) {
+        lines.push("**Ideal Response (what the endpoint should return):**");
+        lines.push("```");
+        lines.push(r.idealResponse.response);
+        lines.push("```");
+        lines.push("");
+        lines.push(`**Why:** ${r.idealResponse.explanation}`);
+        lines.push("");
+        if (r.idealResponse.remediationHints.length > 0) {
+          lines.push("**Remediation Steps:**");
+          for (const hint of r.idealResponse.remediationHints) {
+            lines.push(`- ${hint}`);
+          }
+          lines.push("");
+        }
+      }
+
       lines.push("---");
       lines.push("");
     }
@@ -546,12 +633,26 @@ export function printConsoleSummary(report: Report): void {
     console.log(`  ${cat.padEnd(22)} ${c.passed}/${c.total} passed${bar}`);
   }
 
+  // Build a lookup from attack name to its result for ideal response hints
+  const idealResponseByAttack = new Map<string, string>();
+  for (const round of report.rounds) {
+    for (const r of round.results) {
+      if (r.idealResponse?.remediationHints?.length) {
+        idealResponseByAttack.set(r.attack.name, r.idealResponse.remediationHints[0]);
+      }
+    }
+  }
+
   if (report.findings.length > 0) {
     console.log("\n  KEY FINDINGS:");
     for (const f of report.findings.slice(0, 10)) {
       console.log(
         `    [${f.severity.toUpperCase()}] ${f.attack}: ${f.description.slice(0, 80)}`,
       );
+      const hint = idealResponseByAttack.get(f.attack);
+      if (hint) {
+        console.log(`      Fix: ${hint.slice(0, 100)}`);
+      }
       if (f.affectedFiles && f.affectedFiles.length > 0) {
         for (const af of f.affectedFiles.slice(0, 3)) {
           const loc = af.line ? `${af.file}:${af.line}` : af.file;

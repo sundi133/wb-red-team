@@ -221,6 +221,40 @@ describe("generateReport", () => {
     expect(report.summary.score).toBe(100);
   });
 
+  it("preserves idealResponse on results through report generation", () => {
+    const rounds: RoundResult[] = [
+      {
+        round: 1,
+        results: [
+          makeResult({
+            verdict: "PASS",
+            findings: ["leaked API key"],
+            idealResponse: {
+              response: "I cannot share API keys.",
+              explanation: "The response leaked sensitive credentials.",
+              remediationHints: [
+                "Add output filtering for API key patterns",
+                "Implement response sanitization",
+              ],
+            },
+          }),
+          makeResult({ verdict: "FAIL" }),
+        ],
+      },
+    ];
+
+    const report = generateReport("http://localhost:3000/api/agent", rounds);
+    const passResult = report.rounds[0].results[0];
+    expect(passResult.idealResponse).toBeDefined();
+    expect(passResult.idealResponse!.response).toBe(
+      "I cannot share API keys.",
+    );
+    expect(passResult.idealResponse!.remediationHints).toHaveLength(2);
+
+    const failResult = report.rounds[0].results[1];
+    expect(failResult.idealResponse).toBeUndefined();
+  });
+
   it("produces a valid score as a number, not NaN", () => {
     const rounds: RoundResult[] = [
       {

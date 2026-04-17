@@ -2,6 +2,7 @@ import * as jose from "jose";
 import type { Config, Attack, Credential, McpExecutionTrace } from "./types.js";
 import { getTargetAdapter } from "./target-adapter.js";
 import { getLlmProvider } from "./llm-provider.js";
+import { executeWebSocketAttack } from "./websocket-attack-executor.js";
 
 // Cache JWT tokens per role
 const tokenCache = new Map<string, string>();
@@ -67,6 +68,10 @@ export async function executeAttack(
   const adapter = getTargetAdapter(config);
   if (adapter) {
     return adapter.executeAttack(config, attack);
+  }
+
+  if (config.target.type === "websocket_agent") {
+    return executeWebSocketAttack(config, attack);
   }
 
   // Use custom API template if provided

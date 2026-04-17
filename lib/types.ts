@@ -122,6 +122,136 @@ export type AttackCategory =
   | "path_traversal"
   | "insecure_output_handling";
 
+/** Runtime list of all attack categories (kept in sync with {@link AttackCategory}). */
+export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
+  "auth_bypass",
+  "rbac_bypass",
+  "prompt_injection",
+  "output_evasion",
+  "data_exfiltration",
+  "rate_limit",
+  "sensitive_data",
+  "indirect_prompt_injection",
+  "steganographic_exfiltration",
+  "out_of_band_exfiltration",
+  "training_data_extraction",
+  "side_channel_inference",
+  "tool_misuse",
+  "rogue_agent",
+  "goal_hijack",
+  "identity_privilege",
+  "unexpected_code_exec",
+  "cascading_failure",
+  "multi_agent_delegation",
+  "memory_poisoning",
+  "tool_output_manipulation",
+  "guardrail_timing",
+  "multi_turn_escalation",
+  "conversation_manipulation",
+  "context_window_attack",
+  "slow_burn_exfiltration",
+  "brand_reputation",
+  "competitor_endorsement",
+  "toxic_content",
+  "misinformation",
+  "pii_disclosure",
+  "regulatory_violation",
+  "copyright_infringement",
+  "consent_bypass",
+  "session_hijacking",
+  "cross_tenant_access",
+  "api_abuse",
+  "supply_chain",
+  "social_engineering",
+  "harmful_advice",
+  "bias_exploitation",
+  "content_filter_bypass",
+  "agentic_workflow_bypass",
+  "tool_chain_hijack",
+  "agent_reflection_exploit",
+  "cross_session_injection",
+  "drug_synthesis",
+  "weapons_violence",
+  "financial_crime",
+  "cyber_crime",
+  "csam_minor_safety",
+  "fake_quotes_misinfo",
+  "competitor_sabotage",
+  "defamation_harassment",
+  "brand_impersonation",
+  "hate_speech_dogwhistle",
+  "radicalization_content",
+  "targeted_harassment",
+  "influence_operations",
+  "psychological_manipulation",
+  "deceptive_misinfo",
+  "hallucination",
+  "overreliance",
+  "over_refusal",
+  "rag_poisoning",
+  "rag_attribution",
+  "model_extraction",
+  "membership_inference",
+  "backdoor_trigger",
+  "data_poisoning",
+  "gradient_leakage",
+  "model_inversion",
+  "rag_corpus_poisoning",
+  "retrieval_ranking_attack",
+  "vector_store_manipulation",
+  "chunk_boundary_injection",
+  "embedding_inversion",
+  "structured_output_injection",
+  "generated_code_rce",
+  "markdown_link_injection",
+  "sycophancy_exploitation",
+  "hallucination_inducement",
+  "format_confusion_attack",
+  "model_dos",
+  "token_flooding_dos",
+  "infinite_loop_agent",
+  "quota_exhaustion_attack",
+  "inference_attack",
+  "re_identification",
+  "linkage_attack",
+  "differential_privacy_violation",
+  "logic_bomb_conditional",
+  "agentic_legal_commitment",
+  "contextual_integrity_violation",
+  "financial_fraud_facilitation",
+  "gdpr_erasure_bypass",
+  "prompt_template_injection",
+  "mcp_server_compromise",
+  "plugin_manifest_spoofing",
+  "sdk_dependency_attack",
+  "fine_tuning_data_injection",
+  "debug_access",
+  "shell_injection",
+  "sql_injection",
+  "unauthorized_commitments",
+  "off_topic",
+  "divergent_repetition",
+  "model_fingerprinting",
+  "special_token_injection",
+  "cross_lingual_attack",
+  "medical_safety",
+  "financial_compliance",
+  "pharmacy_safety",
+  "insurance_compliance",
+  "ecommerce_security",
+  "telecom_compliance",
+  "housing_discrimination",
+  "ssrf",
+  "path_traversal",
+  "insecure_output_handling",
+];
+
+const ATTACK_CATEGORY_SET = new Set<string>(ALL_ATTACK_CATEGORIES);
+
+export function isAttackCategory(s: string): s is AttackCategory {
+  return ATTACK_CATEGORY_SET.has(s);
+}
+
 export type Verdict = "PASS" | "FAIL" | "PARTIAL" | "ERROR";
 
 export type DefenseType =
@@ -156,8 +286,20 @@ export interface Credential {
   role: string;
 }
 
-export type TargetType = "http_agent" | "mcp";
+export type TargetType = "http_agent" | "mcp" | "websocket_agent";
 export type McpTransportType = "stdio" | "sse" | "streamable_http";
+
+/** WebSocket chat targets (e.g. wss://host/ws/chat with a JSON message protocol). */
+export interface WebSocketTargetConfig {
+  /** Path on the same host as baseUrl, e.g. "/ws/chat" */
+  path: string;
+  /** WebSocket subprotocols to negotiate (optional) */
+  subprotocols?: string[];
+  /** Optional token query param (browser localStorage auth) */
+  token?: string;
+  /** Max wait for a complete agent reply (default 120000) */
+  responseTimeoutMs?: number;
+}
 
 export interface McpTargetConfig {
   transport: McpTransportType;
@@ -197,6 +339,8 @@ export interface Config {
       /** JSONPath to extract response from API response (e.g., "choices[0].message.content" for OpenAI) */
       responsePath?: string;
     };
+    /** WebSocket chat settings when target.type is "websocket_agent". */
+    websocket?: WebSocketTargetConfig;
   };
   codebasePath?: string | null;
   codebaseGlob: string;
@@ -223,6 +367,17 @@ export interface Config {
     guardrailsPath: string;
   };
   sensitivePatterns: string[];
+  /**
+   * Optional path to a `.json` or `.csv` file of custom attacks.
+   * Relative paths resolve against the directory containing the loaded `config.json`.
+   * Omit or use an empty string to skip file-based custom attacks.
+   */
+  customAttacksFile?: string;
+  /** Defaults for row-shaped entries in custom attack files (not full `Attack` objects). */
+  customAttacksDefaults?: {
+    authMethod?: Attack["authMethod"];
+    role?: string;
+  };
   attackConfig: {
     adaptiveRounds: number;
     maxAttacksPerCategory: number;
@@ -261,6 +416,23 @@ export interface Config {
     enableAdaptiveMultiTurn?: boolean;
     /** Maximum conversation turns for adaptive multi-turn attacks. Default: 15. */
     maxAdaptiveTurns?: number;
+    /** Generate ideal (safe) responses for PASS/PARTIAL results. Default: true when enableLlmGeneration is on. */
+    enableIdealResponses?: boolean;
+    /**
+     * Round 1 only: when `true` and there is at least one custom attack (file and/or app-tailored),
+     * run **only** those attacks — the built-in planner is skipped for that round.
+     * When `false` (default), custom attacks are **prepended** before built-in planned attacks (seeds + module LLM).
+     * This flag does **not** disable loading `customAttacksFile`; remove that path (or clear it) to turn off file-based cases.
+     */
+    customAttacksOnly?: boolean;
+    /**
+     * When > 0, the framework calls the attack LLM once to synthesize this many custom-style test cases
+     * from `applicationDetails` + codebase analysis (merged with file-based custom attacks for round 1).
+     * Capped at 25. Default: 0 (off).
+     */
+    appTailoredCustomPromptCount?: number;
+    /** Run an automated discovery round before attack rounds to probe the target and enrich sensitivePatterns. Default: false. */
+    enableDiscovery?: boolean;
   };
 }
 
@@ -360,6 +532,15 @@ export interface ConversationStep {
   responseTimeMs: number;
 }
 
+export interface IdealResponse {
+  /** The safe response the endpoint should have returned. */
+  response: string;
+  /** Why this response is correct and what was wrong with the actual one. */
+  explanation: string;
+  /** Actionable remediation steps for the developer. */
+  remediationHints: string[];
+}
+
 export interface AttackResult {
   attack: Attack;
   verdict: Verdict;
@@ -389,6 +570,8 @@ export interface AttackResult {
   totalSteps?: number;
   /** Full request/response history for multi-turn attacks. */
   conversation?: ConversationStep[];
+  /** LLM-generated ideal response showing what the endpoint should have returned. */
+  idealResponse?: IdealResponse;
 }
 
 export interface AttackModule {
@@ -446,6 +629,45 @@ export interface Report {
   compliance?: ComplianceResult[];
   /** Maps attack categories to the target source files they affect. */
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
+  /** Intelligence gathered from the automated discovery round (if enabled). */
+  discovery?: {
+    discoveredTools: string[];
+    discoveredDataStores: string[];
+    discoveredPatterns: string[];
+    architectureHints: string[];
+    guardrailProfile: string[];
+    weaknesses: string[];
+    authMechanisms: string[];
+    sessionArtifacts: string[];
+    privilegeBoundaries: string[];
+    integrationPoints: string[];
+    dataFlows: string[];
+    sensitiveDataClasses: string[];
+    fileHandlingSurfaces: string[];
+    inputParsers: string[];
+    configSources: string[];
+    secretHandlingLocations: string[];
+    detectionGaps: string[];
+    featureFlags: string[];
+    defaultAssumptions: string[];
+    unknowns: string[];
+    targetSurfaces: string[];
+    attackObjectives: string[];
+    promptManipulationSurfaces: string[];
+    jailbreakRiskCategories: string[];
+    systemPromptExposureSignals: string[];
+    retrievalAttackSurfaces: string[];
+    memoryAttackSurfaces: string[];
+    toolUseAttackSurfaces: string[];
+    agenticFailureModes: string[];
+    privacyAndLeakageRisks: string[];
+    unsafeCapabilityAreas: string[];
+    deceptionAndManipulationRisks: string[];
+    boundaryConditions: string[];
+    multimodalRiskSurfaces: string[];
+    summary: string;
+    probeCount: number;
+  };
 }
 
 export interface ComplianceResult {
