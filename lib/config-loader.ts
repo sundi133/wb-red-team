@@ -101,7 +101,7 @@ export function loadConfig(configPath?: string): Config {
     llmProvider: "openai",
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
-    maxMultiTurnSteps: 15,
+    maxMultiTurnSteps: 8,
     strategiesPerRound: 8,
     requireReviewConfirmation: true,
     enableMultiTurnGeneration: true,
