@@ -163,9 +163,9 @@ class McpTargetAdapter implements TargetAdapter {
       serverName: result.serverInfo?.name,
       protocolVersion: result.protocolVersion,
       capabilities: result.capabilities,
-      tools: result.tools.map((tool) => tool.name),
-      prompts: result.prompts.map((prompt) => prompt.name),
-      resources: result.resources.map((resource) => resource.uri),
+      tools: (result.tools || []).map((tool) => tool.name),
+      prompts: (result.prompts || []).map((prompt) => prompt.name),
+      resources: (result.resources || []).map((resource) => resource.uri),
     };
   }
 }

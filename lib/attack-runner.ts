@@ -512,7 +512,7 @@ async function generateAdaptiveFollowUp(
 ): Promise<string | null> {
   const llm = getLlmProvider(config);
 
-  const conversationContext = conversationHistory
+  const conversationContext = (conversationHistory || [])
     .map((turn, i) => `Turn ${i + 1}:\nUser: ${turn.userMessage}\nAI: ${turn.aiResponse}`)
     .join('\n\n');
 

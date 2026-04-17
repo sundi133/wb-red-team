@@ -125,7 +125,6 @@ export async function analyzeResponse(
       } else {
         findings.push(`Potential sensitive mention (needs LLM review): "${pattern}"`);
       }
-      }
     }
   }
 
