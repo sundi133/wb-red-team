@@ -661,7 +661,9 @@ export async function analyzeCodebase(
   try {
     files = await glob(pattern, { cwd: basePath, nodir: true });
   } catch (error) {
-    console.log(`  Codebase path not accessible: ${basePath} - running in API-only mode`);
+    console.log(
+      `  Codebase path not accessible: ${basePath} - running in API-only mode`,
+    );
     return {
       tools: [],
       roles: [],

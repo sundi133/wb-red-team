@@ -1,5 +1,9 @@
 import { getJudgeProvider } from "./llm-provider.js";
-import { loadPolicy, resolvePolicy, buildPolicyPrompt } from "./judge-policy.js";
+import {
+  loadPolicy,
+  resolvePolicy,
+  buildPolicyPrompt,
+} from "./judge-policy.js";
 import type { Config, AttackResult, IdealResponse } from "./types.js";
 
 const DEFAULT_CONCURRENCY = 3;
@@ -120,7 +124,8 @@ export async function generateIdealResponses(
   if (targets.length === 0) return;
 
   const concurrency =
-    Math.min(config.attackConfig.concurrency, DEFAULT_CONCURRENCY) || DEFAULT_CONCURRENCY;
+    Math.min(config.attackConfig.concurrency, DEFAULT_CONCURRENCY) ||
+    DEFAULT_CONCURRENCY;
 
   for (let i = 0; i < targets.length; i += concurrency) {
     const batch = targets.slice(i, i + concurrency);

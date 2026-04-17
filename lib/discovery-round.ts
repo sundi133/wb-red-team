@@ -305,10 +305,7 @@ export async function runDiscoveryRound(
 
   const probeResults: ProbeResult[] = [];
   let probeIndex = 0;
-  const totalProbes = DISCOVERY_PROBES.reduce(
-    (n, c) => n + c.probes.length,
-    0,
-  );
+  const totalProbes = DISCOVERY_PROBES.reduce((n, c) => n + c.probes.length, 0);
 
   for (const group of DISCOVERY_PROBES) {
     console.log(`  [${group.category}]`);
@@ -492,16 +489,22 @@ Be aggressive — extract EVERY piece of useful information, even if implied or 
       unknowns: asStringArray(parsed.unknowns),
       targetSurfaces: asStringArray(parsed.target_surfaces),
       attackObjectives: asStringArray(parsed.attack_objectives),
-      promptManipulationSurfaces: asStringArray(parsed.prompt_manipulation_surfaces),
+      promptManipulationSurfaces: asStringArray(
+        parsed.prompt_manipulation_surfaces,
+      ),
       jailbreakRiskCategories: asStringArray(parsed.jailbreak_risk_categories),
-      systemPromptExposureSignals: asStringArray(parsed.system_prompt_exposure_signals),
+      systemPromptExposureSignals: asStringArray(
+        parsed.system_prompt_exposure_signals,
+      ),
       retrievalAttackSurfaces: asStringArray(parsed.retrieval_attack_surfaces),
       memoryAttackSurfaces: asStringArray(parsed.memory_attack_surfaces),
       toolUseAttackSurfaces: asStringArray(parsed.tool_use_attack_surfaces),
       agenticFailureModes: asStringArray(parsed.agentic_failure_modes),
       privacyAndLeakageRisks: asStringArray(parsed.privacy_and_leakage_risks),
       unsafeCapabilityAreas: asStringArray(parsed.unsafe_capability_areas),
-      deceptionAndManipulationRisks: asStringArray(parsed.deception_and_manipulation_risks),
+      deceptionAndManipulationRisks: asStringArray(
+        parsed.deception_and_manipulation_risks,
+      ),
       boundaryConditions: asStringArray(parsed.boundary_conditions),
       multimodalRiskSurfaces: asStringArray(parsed.multimodal_risk_surfaces),
       probeResults: [],
@@ -562,12 +565,29 @@ function emptyIntel(): DiscoveryIntel {
 }
 
 const UNIVERSAL_BASELINE_PATTERNS = [
-  "sk-proj-", "sk-ant-", "sk_live_", "AKIA", "xoxb-", "xoxp-",
-  "SG.", "gsk_", "BEGIN RSA", "PRIVATE KEY",
-  "api_key", "secret_key", "access_token", "bot_token",
-  "postgres://", "postgresql://", "mongodb://", "redis://",
-  "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
-  ".env", "password", "credential",
+  "sk-proj-",
+  "sk-ant-",
+  "sk_live_",
+  "AKIA",
+  "xoxb-",
+  "xoxp-",
+  "SG.",
+  "gsk_",
+  "BEGIN RSA",
+  "PRIVATE KEY",
+  "api_key",
+  "secret_key",
+  "access_token",
+  "bot_token",
+  "postgres://",
+  "postgresql://",
+  "mongodb://",
+  "redis://",
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  ".env",
+  "password",
+  "credential",
 ];
 
 export function applyDiscoveryIntel(
@@ -636,10 +656,12 @@ export function applyDiscoveryIntel(
   );
 
   const sections: string[] = [];
-  if (intel.summary) sections.push(`--- DISCOVERY ROUND INTELLIGENCE ---\n${intel.summary}`);
+  if (intel.summary)
+    sections.push(`--- DISCOVERY ROUND INTELLIGENCE ---\n${intel.summary}`);
 
   const appendSection = (label: string, items: string[]) => {
-    if (items.length > 0) sections.push(`${label}:\n${items.map((i) => `- ${i}`).join("\n")}`);
+    if (items.length > 0)
+      sections.push(`${label}:\n${items.map((i) => `- ${i}`).join("\n")}`);
   };
 
   appendSection("Discovered Tools", intel.discoveredTools);
@@ -660,23 +682,33 @@ export function applyDiscoveryIntel(
   appendSection("Default Assumptions", intel.defaultAssumptions);
   appendSection("Target Surfaces", intel.targetSurfaces);
   appendSection("Attack Objectives", intel.attackObjectives);
-  appendSection("Prompt Manipulation Surfaces", intel.promptManipulationSurfaces);
+  appendSection(
+    "Prompt Manipulation Surfaces",
+    intel.promptManipulationSurfaces,
+  );
   appendSection("Jailbreak Risk Categories", intel.jailbreakRiskCategories);
-  appendSection("System Prompt Exposure Signals", intel.systemPromptExposureSignals);
+  appendSection(
+    "System Prompt Exposure Signals",
+    intel.systemPromptExposureSignals,
+  );
   appendSection("Retrieval Attack Surfaces", intel.retrievalAttackSurfaces);
   appendSection("Memory Attack Surfaces", intel.memoryAttackSurfaces);
   appendSection("Tool Use Attack Surfaces", intel.toolUseAttackSurfaces);
   appendSection("Agentic Failure Modes", intel.agenticFailureModes);
   appendSection("Privacy & Leakage Risks", intel.privacyAndLeakageRisks);
   appendSection("Unsafe Capability Areas", intel.unsafeCapabilityAreas);
-  appendSection("Deception & Manipulation Risks", intel.deceptionAndManipulationRisks);
+  appendSection(
+    "Deception & Manipulation Risks",
+    intel.deceptionAndManipulationRisks,
+  );
   appendSection("Boundary Conditions", intel.boundaryConditions);
   appendSection("Multimodal Risk Surfaces", intel.multimodalRiskSurfaces);
   appendSection("Unknowns", intel.unknowns);
 
   if (sections.length > 0) {
     const existing = config.target.applicationDetails ?? "";
-    config.target.applicationDetails = existing + "\n\n" + sections.join("\n\n");
+    config.target.applicationDetails =
+      existing + "\n\n" + sections.join("\n\n");
   }
 }
 
@@ -714,16 +746,25 @@ function printDiscoverySummary(intel: DiscoveryIntel): void {
   printSection("Default assumptions", intel.defaultAssumptions);
   printSection("Target surfaces", intel.targetSurfaces);
   printSection("Attack objectives", intel.attackObjectives);
-  printSection("Prompt manipulation surfaces", intel.promptManipulationSurfaces);
+  printSection(
+    "Prompt manipulation surfaces",
+    intel.promptManipulationSurfaces,
+  );
   printSection("Jailbreak risk categories", intel.jailbreakRiskCategories);
-  printSection("System prompt exposure signals", intel.systemPromptExposureSignals);
+  printSection(
+    "System prompt exposure signals",
+    intel.systemPromptExposureSignals,
+  );
   printSection("Retrieval attack surfaces", intel.retrievalAttackSurfaces);
   printSection("Memory attack surfaces", intel.memoryAttackSurfaces);
   printSection("Tool use attack surfaces", intel.toolUseAttackSurfaces);
   printSection("Agentic failure modes", intel.agenticFailureModes);
   printSection("Privacy & leakage risks", intel.privacyAndLeakageRisks);
   printSection("Unsafe capability areas", intel.unsafeCapabilityAreas);
-  printSection("Deception & manipulation risks", intel.deceptionAndManipulationRisks);
+  printSection(
+    "Deception & manipulation risks",
+    intel.deceptionAndManipulationRisks,
+  );
   printSection("Boundary conditions", intel.boundaryConditions);
   printSection("Multimodal risk surfaces", intel.multimodalRiskSurfaces);
   printSection("Unknowns", intel.unknowns);

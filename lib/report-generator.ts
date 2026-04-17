@@ -384,14 +384,20 @@ function buildMarkdown(
     renderSection("Attack Objectives", d.attackObjectives);
     renderSection("Prompt Manipulation Surfaces", d.promptManipulationSurfaces);
     renderSection("Jailbreak Risk Categories", d.jailbreakRiskCategories);
-    renderSection("System Prompt Exposure Signals", d.systemPromptExposureSignals);
+    renderSection(
+      "System Prompt Exposure Signals",
+      d.systemPromptExposureSignals,
+    );
     renderSection("Retrieval Attack Surfaces", d.retrievalAttackSurfaces);
     renderSection("Memory Attack Surfaces", d.memoryAttackSurfaces);
     renderSection("Tool Use Attack Surfaces", d.toolUseAttackSurfaces);
     renderSection("Agentic Failure Modes", d.agenticFailureModes);
     renderSection("Privacy & Leakage Risks", d.privacyAndLeakageRisks);
     renderSection("Unsafe Capability Areas", d.unsafeCapabilityAreas);
-    renderSection("Deception & Manipulation Risks", d.deceptionAndManipulationRisks);
+    renderSection(
+      "Deception & Manipulation Risks",
+      d.deceptionAndManipulationRisks,
+    );
     renderSection("Boundary Conditions", d.boundaryConditions);
     renderSection("Multimodal Risk Surfaces", d.multimodalRiskSurfaces);
     renderSection("Unknowns", d.unknowns);
@@ -638,7 +644,10 @@ export function printConsoleSummary(report: Report): void {
   for (const round of report.rounds) {
     for (const r of round.results) {
       if (r.idealResponse?.remediationHints?.length) {
-        idealResponseByAttack.set(r.attack.name, r.idealResponse.remediationHints[0]);
+        idealResponseByAttack.set(
+          r.attack.name,
+          r.idealResponse.remediationHints[0],
+        );
       }
     }
   }

@@ -124,10 +124,17 @@ describe("generateAppTailoredCustomAttacks", () => {
   it("returns empty array when count is 0", async () => {
     const config = baseConfig();
     config.attackConfig.appTailoredCustomPromptCount = 0;
-    const attacks = await generateAppTailoredCustomAttacks(
-      config,
-      { tools: [], roles: [], guardrailPatterns: [], sensitiveData: [], authMechanisms: [], knownWeaknesses: [], systemPromptHints: [], detectedFrameworks: [], toolChains: [] },
-    );
+    const attacks = await generateAppTailoredCustomAttacks(config, {
+      tools: [],
+      roles: [],
+      guardrailPatterns: [],
+      sensitiveData: [],
+      authMechanisms: [],
+      knownWeaknesses: [],
+      systemPromptHints: [],
+      detectedFrameworks: [],
+      toolChains: [],
+    });
     expect(attacks).toEqual([]);
   });
 });

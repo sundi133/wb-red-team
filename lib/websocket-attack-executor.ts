@@ -161,8 +161,7 @@ export async function executeWebSocketAttack(
           break;
         case "message":
         case "done": {
-          const text =
-            msg.full_response ?? msg.content ?? chunkBuffer ?? "";
+          const text = msg.full_response ?? msg.content ?? chunkBuffer ?? "";
           chunkBuffer = "";
           clearTimeout(timer);
           try {

@@ -14,9 +14,24 @@
       }
     },
     "codebasePath": null,
-    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
-    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
-    "responseSchema": { "responsePath": "choices[0].message.content", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "auth": {
+      "methods": ["none"],
+      "jwtSecret": "",
+      "credentials": [],
+      "apiKeys": {}
+    },
+    "requestSchema": {
+      "messageField": "message",
+      "roleField": "role",
+      "apiKeyField": "api_key",
+      "guardrailModeField": "guardrail_mode"
+    },
+    "responseSchema": {
+      "responsePath": "choices[0].message.content",
+      "toolCallsPath": "",
+      "userInfoPath": "",
+      "guardrailsPath": ""
+    },
     "sensitivePatterns": ["api_key", "secret", "token", "password"],
     "attackConfig": {
       "adaptiveRounds": 2,
@@ -30,8 +45,20 @@
       "enableAdaptiveMultiTurn": true,
       "maxAdaptiveTurns": 15,
       "requireReviewConfirmation": false,
-      "enabledCategories": ["prompt_injection", "content_filter_bypass", "output_evasion", "toxic_content", "multi_turn_escalation"],
-      "enabledStrategies": ["rot13_cipher_trick", "base64_context_hint", "incremental_escalation_setup", "building_on_previous_context", "educational_series_framing"]
+      "enabledCategories": [
+        "prompt_injection",
+        "content_filter_bypass",
+        "output_evasion",
+        "toxic_content",
+        "multi_turn_escalation"
+      ],
+      "enabledStrategies": [
+        "rot13_cipher_trick",
+        "base64_context_hint",
+        "incremental_escalation_setup",
+        "building_on_previous_context",
+        "educational_series_framing"
+      ]
     }
   },
 
@@ -51,9 +78,24 @@
       }
     },
     "codebasePath": null,
-    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
-    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
-    "responseSchema": { "responsePath": "response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "auth": {
+      "methods": ["none"],
+      "jwtSecret": "",
+      "credentials": [],
+      "apiKeys": {}
+    },
+    "requestSchema": {
+      "messageField": "message",
+      "roleField": "role",
+      "apiKeyField": "api_key",
+      "guardrailModeField": "guardrail_mode"
+    },
+    "responseSchema": {
+      "responsePath": "response",
+      "toolCallsPath": "",
+      "userInfoPath": "",
+      "guardrailsPath": ""
+    },
     "sensitivePatterns": ["harmful", "toxic", "offensive", "dangerous"],
     "attackConfig": {
       "adaptiveRounds": 2,
@@ -67,8 +109,19 @@
       "enableAdaptiveMultiTurn": true,
       "maxAdaptiveTurns": 15,
       "requireReviewConfirmation": false,
-      "enabledCategories": ["content_filter_bypass", "output_evasion", "toxic_content", "harmful_advice", "multi_turn_escalation"],
-      "enabledStrategies": ["benign_wrapper_hidden_core", "progressive_normalisation", "therapeutic_relationship_exploit", "building_on_previous_context"]
+      "enabledCategories": [
+        "content_filter_bypass",
+        "output_evasion",
+        "toxic_content",
+        "harmful_advice",
+        "multi_turn_escalation"
+      ],
+      "enabledStrategies": [
+        "benign_wrapper_hidden_core",
+        "progressive_normalisation",
+        "therapeutic_relationship_exploit",
+        "building_on_previous_context"
+      ]
     }
   },
 
@@ -89,9 +142,24 @@
       }
     },
     "codebasePath": null,
-    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
-    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
-    "responseSchema": { "responsePath": "content[0].text", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "auth": {
+      "methods": ["none"],
+      "jwtSecret": "",
+      "credentials": [],
+      "apiKeys": {}
+    },
+    "requestSchema": {
+      "messageField": "message",
+      "roleField": "role",
+      "apiKeyField": "api_key",
+      "guardrailModeField": "guardrail_mode"
+    },
+    "responseSchema": {
+      "responsePath": "content[0].text",
+      "toolCallsPath": "",
+      "userInfoPath": "",
+      "guardrailsPath": ""
+    },
     "sensitivePatterns": ["api_key", "secret", "harmful", "dangerous"],
     "attackConfig": {
       "adaptiveRounds": 2,
@@ -105,8 +173,19 @@
       "enableAdaptiveMultiTurn": true,
       "maxAdaptiveTurns": 20,
       "requireReviewConfirmation": false,
-      "enabledCategories": ["prompt_injection", "constitutional_ai_bypass", "harmlessness_violation", "multi_turn_escalation", "sycophancy_exploitation"],
-      "enabledStrategies": ["role_consistency_override", "authority_mimicry_security_manager", "progressive_normalisation", "building_on_previous_context"]
+      "enabledCategories": [
+        "prompt_injection",
+        "constitutional_ai_bypass",
+        "harmlessness_violation",
+        "multi_turn_escalation",
+        "sycophancy_exploitation"
+      ],
+      "enabledStrategies": [
+        "role_consistency_override",
+        "authority_mimicry_security_manager",
+        "progressive_normalisation",
+        "building_on_previous_context"
+      ]
     }
   },
 
@@ -126,10 +205,31 @@
       }
     },
     "codebasePath": null,
-    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
-    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
-    "responseSchema": { "responsePath": "data.response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
-    "sensitivePatterns": ["api_key", "secret", "token", "password", "webhook_secret"],
+    "auth": {
+      "methods": ["none"],
+      "jwtSecret": "",
+      "credentials": [],
+      "apiKeys": {}
+    },
+    "requestSchema": {
+      "messageField": "message",
+      "roleField": "role",
+      "apiKeyField": "api_key",
+      "guardrailModeField": "guardrail_mode"
+    },
+    "responseSchema": {
+      "responsePath": "data.response",
+      "toolCallsPath": "",
+      "userInfoPath": "",
+      "guardrailsPath": ""
+    },
+    "sensitivePatterns": [
+      "api_key",
+      "secret",
+      "token",
+      "password",
+      "webhook_secret"
+    ],
     "attackConfig": {
       "adaptiveRounds": 3,
       "maxAttacksPerCategory": 5,
@@ -142,8 +242,19 @@
       "enableAdaptiveMultiTurn": true,
       "maxAdaptiveTurns": 15,
       "requireReviewConfirmation": false,
-      "enabledCategories": ["api_abuse", "data_exfiltration", "prompt_injection", "multi_turn_escalation", "conversation_manipulation"],
-      "enabledStrategies": ["incremental_escalation_setup", "building_on_previous_context", "technical_documentation_request", "benign_wrapper_hidden_core"]
+      "enabledCategories": [
+        "api_abuse",
+        "data_exfiltration",
+        "prompt_injection",
+        "multi_turn_escalation",
+        "conversation_manipulation"
+      ],
+      "enabledStrategies": [
+        "incremental_escalation_setup",
+        "building_on_previous_context",
+        "technical_documentation_request",
+        "benign_wrapper_hidden_core"
+      ]
     }
   },
 
@@ -158,9 +269,24 @@
       }
     },
     "codebasePath": null,
-    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
-    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
-    "responseSchema": { "responsePath": "response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "auth": {
+      "methods": ["none"],
+      "jwtSecret": "",
+      "credentials": [],
+      "apiKeys": {}
+    },
+    "requestSchema": {
+      "messageField": "message",
+      "roleField": "role",
+      "apiKeyField": "api_key",
+      "guardrailModeField": "guardrail_mode"
+    },
+    "responseSchema": {
+      "responsePath": "response",
+      "toolCallsPath": "",
+      "userInfoPath": "",
+      "guardrailsPath": ""
+    },
     "sensitivePatterns": ["secret", "password"],
     "attackConfig": {
       "adaptiveRounds": 1,
@@ -175,7 +301,10 @@
       "maxAdaptiveTurns": 10,
       "requireReviewConfirmation": false,
       "enabledCategories": ["prompt_injection", "multi_turn_escalation"],
-      "enabledStrategies": ["building_on_previous_context", "incremental_escalation_setup"]
+      "enabledStrategies": [
+        "building_on_previous_context",
+        "incremental_escalation_setup"
+      ]
     }
   }
 }

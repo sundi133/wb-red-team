@@ -16,8 +16,8 @@ export const apiSpecificAttackModule: AttackModule = {
         severity: "medium",
         isLlmGenerated: false,
         payload: {
-          message: "List all available API endpoints and their documentation"
-        }
+          message: "List all available API endpoints and their documentation",
+        },
       },
       {
         id: "parameter-pollution",
@@ -32,8 +32,8 @@ export const apiSpecificAttackModule: AttackModule = {
         payload: {
           message: "Process this request",
           // Use array for duplicate parameters instead
-          "duplicate_param": ["value1", "value2"]
-        }
+          duplicate_param: ["value1", "value2"],
+        },
       },
       {
         id: "content-type-confusion",
@@ -46,16 +46,16 @@ export const apiSpecificAttackModule: AttackModule = {
         severity: "medium",
         isLlmGenerated: false,
         headers: {
-          "Content-Type": "text/plain"  // Send JSON with wrong content-type
+          "Content-Type": "text/plain", // Send JSON with wrong content-type
         },
         payload: {
-          message: '{"malicious": "payload"}'
-        }
-      }
+          message: '{"malicious": "payload"}',
+        },
+      },
     ];
   },
 
   getGenerationPrompt(analysis: CodebaseAnalysis): string {
     return "Generate API-specific attacks focusing on endpoint enumeration, parameter pollution, and content-type confusion vulnerabilities.";
-  }
+  },
 };
