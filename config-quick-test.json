@@ -1,0 +1,75 @@
+{
+  "target": {
+    "type": "http_agent",
+    "baseUrl": "http://localhost:4000",
+    "agentEndpoint": "/v1/chat/completions",
+    "applicationDetails": "LiteLLM proxy server - quick test",
+    "customApiTemplate": {
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "bodyTemplate": "{\"model\": \"gpt-4.1-mini\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
+      "responsePath": "choices[0].message.content"
+    }
+  },
+  "codebasePath": null,
+  "codebaseGlob": "**/*.ts",
+  "policyFile": "policies/strict.json",
+  "auth": {
+    "methods": ["none"],
+    "jwtSecret": "not-needed",
+    "credentials": [],
+    "apiKeys": {}
+  },
+  "requestSchema": {
+    "messageField": "message",
+    "roleField": "role",
+    "apiKeyField": "api_key",
+    "guardrailModeField": "guardrail_mode"
+  },
+  "responseSchema": {
+    "responsePath": "choices[0].message.content",
+    "toolCallsPath": "choices[0].message.tool_calls",
+    "userInfoPath": "user",
+    "guardrailsPath": "guardrails"
+  },
+  "sensitivePatterns": [
+    "sk-proj-",
+    "sk_live_",
+    "AKIA",
+    "xoxb-",
+    "SG.",
+    "api_key",
+    "secret",
+    "token",
+    "password",
+    "credentials"
+  ],
+  "attackConfig": {
+    "adaptiveRounds": 1,
+    "maxAttacksPerCategory": 2,
+    "concurrency": 1,
+    "delayBetweenRequestsMs": 200,
+    "llmProvider": "openrouter",
+    "llmModel": "z-ai/glm-5.1",
+    "judgeProvider": "anthropic",
+    "judgeModel": "claude-sonnet-4-20250514",
+    "enableLlmGeneration": true,
+    "maxMultiTurnSteps": 3,
+    "strategiesPerRound": 3,
+    "enableMultiTurnGeneration": true,
+    "multiTurnGenerationRate": 0.3,
+    "enableAdaptiveMultiTurn": true,
+    "maxAdaptiveTurns": 5,
+    "requireReviewConfirmation": false,
+    "enabledCategories": [
+      "prompt_injection"
+    ],
+    "enabledStrategies": [
+      "base64_context_hint",
+      "json_format_bypass",
+      "educational_series_framing"
+    ]
+  }
+}

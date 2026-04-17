@@ -2,6 +2,28 @@
 
 import { createInterface } from "node:readline/promises";
 import { dirname, resolve } from "node:path";
+
+// Color coding for security results
+function getColoredIcon(verdict: string): string {
+  const colors = {
+    reset: '\x1b[0m',
+    red: '\x1b[91m',     // PASS = RED (attack succeeded - bad for security)
+    green: '\x1b[92m',   // FAIL = GREEN (defense held - good for security)
+    yellow: '\x1b[93m',  // PARTIAL = YELLOW (uncertain)
+    gray: '\x1b[90m'     // ERROR = GRAY
+  };
+
+  switch (verdict) {
+    case "PASS":
+      return `${colors.red}[!!]${colors.reset}`;
+    case "FAIL":
+      return `${colors.green}[OK]${colors.reset}`;
+    case "PARTIAL":
+      return `${colors.yellow}[~]${colors.reset}`;
+    default:
+      return `${colors.gray}[??]${colors.reset}`;
+  }
+}
 import { loadEnvFile } from "./lib/env-loader.js";
 import { loadConfig } from "./lib/config-loader.js";
 import { describeTarget, getTargetAdapter } from "./lib/target-adapter.js";
@@ -11,6 +33,7 @@ import {
   preAuthenticate,
   executeAttack,
   executeMultiTurn,
+  executeAdaptiveMultiTurn,
   executeRapidFire,
   sleep,
 } from "./lib/attack-runner.js";
@@ -172,6 +195,7 @@ import { mcpPathTraversalModule } from "./attacks-mcp/mcp-path-traversal.js";
 import { mcpSsrfModule } from "./attacks-mcp/mcp-ssrf.js";
 import { mcpCrossTenantAccessModule } from "./attacks-mcp/mcp-cross-tenant-access.js";
 import { mcpDebugAccessModule } from "./attacks-mcp/mcp-debug-access.js";
+import { apiSpecificAttackModule } from "./attacks/api-specific-attack.js";
 
 loadEnvFile();
 
@@ -296,6 +320,7 @@ const ALL_MODULES: AttackModule[] = [
   ssrfModule,
   pathTraversalModule,
   insecureOutputHandlingModule,
+  apiSpecificAttackModule,
 ];
 
 const MCP_MODULES: AttackModule[] = [
@@ -774,13 +799,7 @@ async function main() {
           );
         }
 
-        const icon =
-          result.verdict === "PASS"
-            ? "!!"
-            : result.verdict === "FAIL"
-              ? "OK"
-              : "??";
-        console.log(`    [${icon}] ${result.verdict}`);
+        console.log(`    ${getColoredIcon(result.verdict)} ${result.verdict}`);
         logFindings(result);
         await maybeGenerateIdealResponse(config, result);
         roundResults.push(result);
@@ -788,7 +807,7 @@ async function main() {
       }
 
       try {
-      // Multi-turn attack
+      // Multi-turn attack (predefined steps) or Adaptive multi-turn attack
       if (attack.steps && attack.steps.length > 0) {
         const totalSteps = 1 + attack.steps.length;
         process.stdout.write(
@@ -796,6 +815,21 @@ async function main() {
         );
 
         const { results: stepResults, stoppedEarly } = await executeMultiTurn(
+          config,
+          attack,
+          async (cfg, atk, sc, b, t) => {
+            const r = await analyzeResponse(cfg, atk, sc, b, t, appContext);
+            return { verdict: r.verdict, findings: r.findings };
+          },
+        );
+      } else if (config.attackConfig.enableAdaptiveMultiTurn && config.attackConfig.enableMultiTurnGeneration) {
+        // Adaptive multi-turn attack (generates follow-ups based on AI responses)
+        const maxTurns = config.attackConfig.maxAdaptiveTurns ?? 15;
+        process.stdout.write(
+          `  ${progress} ${attack.name} (adaptive, max ${maxTurns} turns)...`,
+        );
+
+        const { results: stepResults, stoppedEarly, conversationHistory } = await executeAdaptiveMultiTurn(
           config,
           attack,
           async (cfg, atk, sc, b, t) => {
@@ -817,30 +851,21 @@ async function main() {
         result.stepIndex = lastStep.stepIndex;
         result.totalSteps = stepResults.length;
 
-        const icon =
-          result.verdict === "PASS"
-            ? "!!"
-            : result.verdict === "PARTIAL"
-              ? "~"
-              : result.verdict === "FAIL"
-                ? "OK"
-                : "??";
-        result.conversation = stepResults.map((sr) => ({
-          stepIndex: sr.stepIndex,
-          payload:
-            sr.stepIndex === 0
-              ? attack.payload
-              : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
-          statusCode: sr.statusCode,
-          responseBody: sr.body,
-          responseTimeMs: sr.timeMs,
+        const icon = getColoredIcon(result.verdict);
+        // For adaptive multi-turn, use the actual conversation history with real messages
+        result.conversation = conversationHistory.map((ch) => ({
+          stepIndex: ch.stepIndex,
+          payload: { message: ch.userMessage }, // Use the actual message sent
+          statusCode: stepResults[ch.stepIndex]?.statusCode ?? 0,
+          responseBody: ch.aiResponse,
+          responseTimeMs: stepResults[ch.stepIndex]?.timeMs ?? 0,
         }));
 
         const earlyTag = stoppedEarly
           ? ` (stopped at step ${lastStep.stepIndex + 1})`
           : "";
         console.log(
-          ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
+          ` ${icon}${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
         );
         logFindings(result);
         await maybeGenerateIdealResponse(config, result);
@@ -861,16 +886,9 @@ async function main() {
           executionTrace,
         );
 
-        const icon =
-          result.verdict === "PASS"
-            ? "!!"
-            : result.verdict === "PARTIAL"
-              ? "~"
-              : result.verdict === "FAIL"
-                ? "OK"
-                : "??";
+        const icon = getColoredIcon(result.verdict);
         console.log(
-          ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
+          ` ${icon}${result.verdict} (${statusCode}, ${timeMs}ms)`,
         );
         logFindings(result);
         await maybeGenerateIdealResponse(config, result);
@@ -944,6 +962,29 @@ async function main() {
                     return { verdict: r.verdict, findings: r.findings };
                   },
                 );
+            } else if (config.attackConfig.enableAdaptiveMultiTurn && config.attackConfig.enableMultiTurnGeneration) {
+              // Adaptive multi-turn refined attack
+              const maxTurns = config.attackConfig.maxAdaptiveTurns ?? 15;
+              process.stdout.write(
+                `  ${progress} ${attack.name} (adaptive, max ${maxTurns} turns)...`,
+              );
+
+              const { results: stepResults, stoppedEarly, conversationHistory } =
+                await executeAdaptiveMultiTurn(
+                  config,
+                  attack,
+                  async (cfg, atk, sc, b, t) => {
+                    const r = await analyzeResponse(
+                      cfg,
+                      atk,
+                      sc,
+                      b,
+                      t,
+                      appContext,
+                    );
+                    return { verdict: r.verdict, findings: r.findings };
+                  },
+                );
 
               const lastStep = stepResults[stepResults.length - 1];
               const result = await analyzeResponse(
@@ -957,30 +998,37 @@ async function main() {
               );
               result.stepIndex = lastStep.stepIndex;
               result.totalSteps = stepResults.length;
-              result.conversation = stepResults.map((sr) => ({
-                stepIndex: sr.stepIndex,
-                payload:
-                  sr.stepIndex === 0
-                    ? attack.payload
-                    : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
-                statusCode: sr.statusCode,
-                responseBody: sr.body,
-                responseTimeMs: sr.timeMs,
-              }));
 
-              const icon =
-                result.verdict === "PASS"
-                  ? "!!"
-                  : result.verdict === "PARTIAL"
-                    ? "~"
-                    : result.verdict === "FAIL"
-                      ? "OK"
-                      : "??";
+              // Handle conversation mapping for both predefined and adaptive multi-turn
+              if (attack.steps && attack.steps.length > 0) {
+                // Predefined multi-turn
+                result.conversation = stepResults.map((sr) => ({
+                  stepIndex: sr.stepIndex,
+                  payload:
+                    sr.stepIndex === 0
+                      ? attack.payload
+                      : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
+                  statusCode: sr.statusCode,
+                  responseBody: sr.body,
+                  responseTimeMs: sr.timeMs,
+                }));
+              } else {
+                // Adaptive multi-turn - use actual conversation history
+                result.conversation = conversationHistory.map((ch) => ({
+                  stepIndex: ch.stepIndex,
+                  payload: { message: ch.userMessage }, // Use the actual message sent
+                  statusCode: stepResults[ch.stepIndex]?.statusCode ?? 0,
+                  responseBody: ch.aiResponse,
+                  responseTimeMs: stepResults[ch.stepIndex]?.timeMs ?? 0,
+                }));
+              }
+
+              const icon = getColoredIcon(result.verdict);
               const earlyTag = stoppedEarly
                 ? ` (stopped at step ${lastStep.stepIndex + 1})`
                 : "";
               console.log(
-                ` [${icon}] ${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
+                ` ${icon}${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${earlyTag}`,
               );
               logFindings(result);
               await maybeGenerateIdealResponse(config, result);
@@ -999,16 +1047,9 @@ async function main() {
                 executionTrace,
               );
 
-              const icon =
-                result.verdict === "PASS"
-                  ? "!!"
-                  : result.verdict === "PARTIAL"
-                    ? "~"
-                    : result.verdict === "FAIL"
-                      ? "OK"
-                      : "??";
+              const icon = getColoredIcon(result.verdict);
               console.log(
-                ` [${icon}] ${result.verdict} (${statusCode}, ${timeMs}ms)`,
+                ` ${icon}${result.verdict} (${statusCode}, ${timeMs}ms)`,
               );
               logFindings(result);
               await maybeGenerateIdealResponse(config, result);

@@ -1,0 +1,181 @@
+{
+  "_comment": "Example configurations for different API endpoints with adaptive multi-turn defaults",
+
+  "openai_compatible_example": {
+    "target": {
+      "baseUrl": "http://localhost:4000",
+      "agentEndpoint": "/v1/chat/completions",
+      "applicationDetails": "OpenAI-compatible API endpoint for testing prompt injection and content filtering vulnerabilities.",
+      "customApiTemplate": {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "bodyTemplate": "{\"model\": \"gpt-4.1-mini\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
+        "responsePath": "choices[0].message.content"
+      }
+    },
+    "codebasePath": null,
+    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
+    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
+    "responseSchema": { "responsePath": "choices[0].message.content", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "sensitivePatterns": ["api_key", "secret", "token", "password"],
+    "attackConfig": {
+      "adaptiveRounds": 2,
+      "maxAttacksPerCategory": 3,
+      "llmProvider": "anthropic",
+      "llmModel": "claude-sonnet-4-20250514",
+      "enableLlmGeneration": true,
+      "maxMultiTurnSteps": 15,
+      "enableMultiTurnGeneration": true,
+      "multiTurnGenerationRate": 0.4,
+      "enableAdaptiveMultiTurn": true,
+      "maxAdaptiveTurns": 15,
+      "requireReviewConfirmation": false,
+      "enabledCategories": ["prompt_injection", "content_filter_bypass", "output_evasion", "toxic_content", "multi_turn_escalation"],
+      "enabledStrategies": ["rot13_cipher_trick", "base64_context_hint", "incremental_escalation_setup", "building_on_previous_context", "educational_series_framing"]
+    }
+  },
+
+  "custom_guardrails_example": {
+    "target": {
+      "baseUrl": "https://kk5losqxwr2ui7.api.runpod.ai",
+      "agentEndpoint": "/guardrails/input",
+      "applicationDetails": "Custom guardrails API endpoint for testing content filtering and safety mechanisms.",
+      "customApiTemplate": {
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer rpa_EXAMPLE123456789ABCDEFGHIJK_FAKE_KEY"
+        },
+        "bodyTemplate": "{\"message\": \"{{message}}\"}",
+        "responsePath": "response"
+      }
+    },
+    "codebasePath": null,
+    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
+    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
+    "responseSchema": { "responsePath": "response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "sensitivePatterns": ["harmful", "toxic", "offensive", "dangerous"],
+    "attackConfig": {
+      "adaptiveRounds": 2,
+      "maxAttacksPerCategory": 3,
+      "llmProvider": "anthropic",
+      "llmModel": "claude-sonnet-4-20250514",
+      "enableLlmGeneration": true,
+      "maxMultiTurnSteps": 15,
+      "enableMultiTurnGeneration": true,
+      "multiTurnGenerationRate": 0.4,
+      "enableAdaptiveMultiTurn": true,
+      "maxAdaptiveTurns": 15,
+      "requireReviewConfirmation": false,
+      "enabledCategories": ["content_filter_bypass", "output_evasion", "toxic_content", "harmful_advice", "multi_turn_escalation"],
+      "enabledStrategies": ["benign_wrapper_hidden_core", "progressive_normalisation", "therapeutic_relationship_exploit", "building_on_previous_context"]
+    }
+  },
+
+  "anthropic_example": {
+    "target": {
+      "baseUrl": "https://api.anthropic.com",
+      "agentEndpoint": "/v1/messages",
+      "applicationDetails": "Anthropic Claude API for testing constitutional AI safety mechanisms and prompt injection resistance.",
+      "customApiTemplate": {
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "x-api-key": "your-api-key-here",
+          "anthropic-version": "2023-06-01"
+        },
+        "bodyTemplate": "{\"model\": \"claude-3-sonnet-20240229\", \"max_tokens\": 1024, \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
+        "responsePath": "content[0].text"
+      }
+    },
+    "codebasePath": null,
+    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
+    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
+    "responseSchema": { "responsePath": "content[0].text", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "sensitivePatterns": ["api_key", "secret", "harmful", "dangerous"],
+    "attackConfig": {
+      "adaptiveRounds": 2,
+      "maxAttacksPerCategory": 4,
+      "llmProvider": "openai",
+      "llmModel": "gpt-4o",
+      "enableLlmGeneration": true,
+      "maxMultiTurnSteps": 15,
+      "enableMultiTurnGeneration": true,
+      "multiTurnGenerationRate": 0.5,
+      "enableAdaptiveMultiTurn": true,
+      "maxAdaptiveTurns": 20,
+      "requireReviewConfirmation": false,
+      "enabledCategories": ["prompt_injection", "constitutional_ai_bypass", "harmlessness_violation", "multi_turn_escalation", "sycophancy_exploitation"],
+      "enabledStrategies": ["role_consistency_override", "authority_mimicry_security_manager", "progressive_normalisation", "building_on_previous_context"]
+    }
+  },
+
+  "simple_webhook_example": {
+    "target": {
+      "baseUrl": "https://your-api.example.com",
+      "agentEndpoint": "/webhook",
+      "applicationDetails": "Generic webhook endpoint for testing arbitrary API vulnerabilities and response handling.",
+      "customApiTemplate": {
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "your-webhook-key"
+        },
+        "bodyTemplate": "{\"prompt\": \"{{message}}\", \"model\": \"your-model\"}",
+        "responsePath": "data.response"
+      }
+    },
+    "codebasePath": null,
+    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
+    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
+    "responseSchema": { "responsePath": "data.response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "sensitivePatterns": ["api_key", "secret", "token", "password", "webhook_secret"],
+    "attackConfig": {
+      "adaptiveRounds": 3,
+      "maxAttacksPerCategory": 5,
+      "llmProvider": "anthropic",
+      "llmModel": "claude-sonnet-4-20250514",
+      "enableLlmGeneration": true,
+      "maxMultiTurnSteps": 15,
+      "enableMultiTurnGeneration": true,
+      "multiTurnGenerationRate": 0.6,
+      "enableAdaptiveMultiTurn": true,
+      "maxAdaptiveTurns": 15,
+      "requireReviewConfirmation": false,
+      "enabledCategories": ["api_abuse", "data_exfiltration", "prompt_injection", "multi_turn_escalation", "conversation_manipulation"],
+      "enabledStrategies": ["incremental_escalation_setup", "building_on_previous_context", "technical_documentation_request", "benign_wrapper_hidden_core"]
+    }
+  },
+
+  "minimal_fast_example": {
+    "_comment": "Minimal config for quick testing with adaptive multi-turn enabled",
+    "target": {
+      "baseUrl": "http://localhost:3000",
+      "agentEndpoint": "/api/chat",
+      "customApiTemplate": {
+        "bodyTemplate": "{\"message\": \"{{message}}\"}",
+        "responsePath": "response"
+      }
+    },
+    "codebasePath": null,
+    "auth": { "methods": ["none"], "jwtSecret": "", "credentials": [], "apiKeys": {} },
+    "requestSchema": { "messageField": "message", "roleField": "role", "apiKeyField": "api_key", "guardrailModeField": "guardrail_mode" },
+    "responseSchema": { "responsePath": "response", "toolCallsPath": "", "userInfoPath": "", "guardrailsPath": "" },
+    "sensitivePatterns": ["secret", "password"],
+    "attackConfig": {
+      "adaptiveRounds": 1,
+      "maxAttacksPerCategory": 2,
+      "llmProvider": "anthropic",
+      "llmModel": "claude-haiku-4-5-20251001",
+      "enableLlmGeneration": true,
+      "maxMultiTurnSteps": 10,
+      "enableMultiTurnGeneration": true,
+      "multiTurnGenerationRate": 0.3,
+      "enableAdaptiveMultiTurn": true,
+      "maxAdaptiveTurns": 10,
+      "requireReviewConfirmation": false,
+      "enabledCategories": ["prompt_injection", "multi_turn_escalation"],
+      "enabledStrategies": ["building_on_previous_context", "incremental_escalation_setup"]
+    }
+  }
+}
