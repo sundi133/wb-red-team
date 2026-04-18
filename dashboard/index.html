@@ -1535,7 +1535,9 @@
         const res = await fetch(`/api/report/${filename}`);
         report = await res.json();
         activeRound = 0;
+        currentRowIndex = 0;
         render();
+        document.querySelector(".main").scrollTop = 0;
       }
 
       // Keep old name for backward compat
@@ -2359,7 +2361,7 @@
         </div>
         <div class="detail-col">
           <div class="detail-label">Response</div>
-          <pre class="detail-pre">${esc((response || "(no response)").slice(0, 2000))}${response.length > 2000 ? "\n... (truncated)" : ""}</pre>
+          <pre class="detail-pre">${esc((response || "(no response)"))}${response.length > 2000 ? "" : ""}</pre>
         </div>
       </div>`
       }
@@ -2527,12 +2529,12 @@
       // Keyboard shortcuts
       let currentRowIndex = 0;
 
-      function highlightCurrentRow() {
+      function highlightCurrentRow(scroll) {
         const rows = document.querySelectorAll("#roundRows .main-row");
         rows.forEach((row, i) => {
           if (i === currentRowIndex) {
             row.style.background = "rgba(88, 166, 255, 0.1)";
-            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (scroll) row.scrollIntoView({ behavior: "smooth", block: "center" });
           } else {
             row.style.background = "";
           }
@@ -2560,12 +2562,12 @@
           case "ArrowDown":
             e.preventDefault();
             currentRowIndex = Math.min(currentRowIndex + 1, rows.length - 1);
-            highlightCurrentRow();
+            highlightCurrentRow(true);
             break;
           case "ArrowUp":
             e.preventDefault();
             currentRowIndex = Math.max(currentRowIndex - 1, 0);
-            highlightCurrentRow();
+            highlightCurrentRow(true);
             break;
           case " ":
             e.preventDefault();
@@ -2719,8 +2721,6 @@
             expand.textContent = "−";
           }
 
-          // Scroll to last step
-          lastStep.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
 
