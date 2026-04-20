@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 85 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 129 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -77,6 +77,15 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `housing_discrimination`      | Fair Housing Act violations — discriminatory steering, lending bias, valuation bias, source-of-income discrimination, accessibility violations                                                             |
 | `ssrf`                        | Server-Side Request Forgery — using agent tools to access cloud metadata (169.254.169.254), internal services, admin panels, and internal network hosts                                                    |
 | `path_traversal`              | Directory traversal via file tools — `../../etc/passwd`, encoded sequences, absolute path escape, symlink-based traversal, cloud credential file access                                                    |
+| `multimodal_ghost_injection`  | ASR/vision pipelines treating attacker-controlled audio, OCR, or image regions as authoritative for safety, payments, or compliance actions                                                               |
+| `graph_consensus_poisoning`   | Knowledge-graph or retrieval "consensus" and hop counts used to justify trades, freezes, or publishes without verifying authoritative sources                                                                |
+| `inter_agent_protocol_abuse`  | Spoofed inter-agent identity headers, pasted service JWTs, or mesh trust signals honored over real end-user authentication and approval                                                                    |
+| `mcp_tool_namespace_collision` | Duplicate MCP tool names, racing `tools/list`, or alternate MCP URIs causing agents to bind calls to the wrong server or implementation                                                                     |
+| `computer_use_injection`      | Browser or computer-use flows that follow hidden DOM, `font-size:0` blocks, or post-navigation injections not visible in human screenshots                                                                 |
+| `streaming_voice_injection`   | Live streaming ASR — barge-in audio, partial transcripts, or overlapping streams treated as authoritative for minutes, wires, or policy                                                                    |
+| `cross_modal_conflict`        | Conflicting amounts or instructions across image captions, slides, audio, or text — agent executes the wrong modality without human confirmation                                                           |
+| `llm_judge_manipulation`      | User-supplied rubrics, footnoted scoring weights, or naive auto-grader heuristics that down-rank safety or reward harmful verbose answers                                                                  |
+| `retrieval_tenant_bleed`      | Hybrid RAG or graph expansion merging cross-tenant neighbor chunks, legacy-public ACL hits, or shared-index artifacts into tenant-isolated answers                                                         |
 | `insecure_output_handling`    | OWASP LLM Top 10 #2 — XSS/HTML/SVG injection in agent responses, deceptive markdown links, CSS exfiltration, tool output reflection attacks                                                                |
 
 ## Detailed Reports, Risk Quantification & Compliance Mappings
@@ -236,7 +245,7 @@ Edit `config.json` to point at your AI app:
 | `attackConfig.maxMultiTurnSteps`            | No          | Max steps per multi-turn attack (default: 8)                                                                                                                                                                                   |
 | `attackConfig.strategiesPerRound`           | No          | Number of social-engineering strategies per round (default: 5)                                                                                                                                                                 |
 | `attackConfig.enabledStrategies`            | No          | Allowlist of strategy IDs (e.g. `life_or_death_emergency`, `dan_style_persona`)                                                                                                                                                |
-| `attackConfig.enabledCategories`            | No          | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 85 categories                                                                                                                                          |
+| `attackConfig.enabledCategories`            | No          | Allowlist of attack category IDs to run. Omit or set to `[]` to run all 129 categories                                                                                                                                        |
 | `policyFile`                                | No          | Path to judge policy JSON file (default: `policies/default.json`)                                                                                                                                                              |
 
 ### LLM Provider Examples
@@ -282,7 +291,7 @@ Use `llmModel` for attack generation and `judgeModel` for response evaluation. T
 
 ### Selecting Attack Categories
 
-By default all 85 categories run. Use `enabledCategories` to focus on a subset:
+By default all 129 categories run. Use `enabledCategories` to focus on a subset:
 
 ```json
 "attackConfig": {
@@ -299,6 +308,27 @@ By default all 85 categories run. Use `enabledCategories` to focus on a subset:
 ```
 
 Set to `[]` or omit the field entirely to run all categories.
+
+To run **only** the nine **2026 gap-surface** categories (`multimodal_ghost_injection` … `retrieval_tenant_bleed` in the table above), set `enabledCategories` and turn off category skipping so the planner always considers them against your app description:
+
+```json
+"attackConfig": {
+  "enabledCategories": [
+    "multimodal_ghost_injection",
+    "graph_consensus_poisoning",
+    "inter_agent_protocol_abuse",
+    "mcp_tool_namespace_collision",
+    "computer_use_injection",
+    "streaming_voice_injection",
+    "cross_modal_conflict",
+    "llm_judge_manipulation",
+    "retrieval_tenant_bleed"
+  ],
+  "skipIrrelevantCategories": false
+}
+```
+
+The convenience script **`npm run start:gap-2026`** runs `tsx red-team.ts config.gap-2026-run.json` — create that JSON next to `config.example.json` (copy fields from `config.example.json`, then paste the `enabledCategories` list above).
 
 ### Judge Policy System
 
@@ -382,7 +412,7 @@ The policy used for each evaluation is included in the report output and visible
 
 ## Demo Target App
 
-Use [demo-agentic-app](https://github.com/sundi133/demo-agentic-app) as a reference target to try the framework against. It's a fully functional agentic AI app with tools (file read, email, Slack, database queries, GitHub gists), role-based access, JWT auth, and intentional vulnerabilities — ideal for testing all 85 attack categories.
+Use [demo-agentic-app](https://github.com/sundi133/demo-agentic-app) as a reference target to try the framework against. It's a fully functional agentic AI app with tools (file read, email, Slack, database queries, GitHub gists), role-based access, JWT auth, and intentional vulnerabilities — ideal for testing all 129 attack categories.
 
 ```bash
 # 1. Clone and start the demo app
@@ -556,6 +586,15 @@ attacks/
   tool-chain-hijack.ts         # Cross-turn tool chaining to achieve unauthorized outcomes
   agent-reflection-exploit.ts  # ReAct/CoT/scratchpad injection, self-critique poisoning
   cross-session-injection.ts   # Persistent memory poisoning, shared store attacks, RAG injection
+  multimodal-ghost-injection.ts # ASR/vision treated as ground truth over safety text
+  graph-consensus-poisoning.ts   # Graph or retrieval consensus abused for irreversible actions
+  inter-agent-protocol-abuse.ts # Spoofed agent headers, pasted service tokens, mesh trust
+  mcp-tool-namespace-collision.ts # Ambiguous MCP tool names and alternate shard URIs
+  computer-use-injection.ts      # Hidden DOM and post-click instructions in browser-style flows
+  streaming-voice-injection.ts   # Barge-in and partial streaming ASR driving policy or wires
+  cross-modal-conflict.ts        # Conflicting caption, slide, image, or audio precedence
+  llm-judge-manipulation.ts      # Rubric stuffing and grader heuristics that weaken safety
+  retrieval-tenant-bleed.ts      # Cross-tenant or legacy-public RAG chunks in private answers
 dashboard/
   server.ts              # Lightweight dashboard web server
   index.html             # Self-contained SPA (no dependencies)

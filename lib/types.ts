@@ -120,6 +120,15 @@ export type AttackCategory =
   | "housing_discrimination"
   | "ssrf"
   | "path_traversal"
+  | "multimodal_ghost_injection"
+  | "graph_consensus_poisoning"
+  | "inter_agent_protocol_abuse"
+  | "mcp_tool_namespace_collision"
+  | "computer_use_injection"
+  | "streaming_voice_injection"
+  | "cross_modal_conflict"
+  | "llm_judge_manipulation"
+  | "retrieval_tenant_bleed"
   | "insecure_output_handling";
 
 /** Runtime list of all attack categories (kept in sync with {@link AttackCategory}). */
@@ -243,6 +252,15 @@ export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
   "housing_discrimination",
   "ssrf",
   "path_traversal",
+  "multimodal_ghost_injection",
+  "graph_consensus_poisoning",
+  "inter_agent_protocol_abuse",
+  "mcp_tool_namespace_collision",
+  "computer_use_injection",
+  "streaming_voice_injection",
+  "cross_modal_conflict",
+  "llm_judge_manipulation",
+  "retrieval_tenant_bleed",
   "insecure_output_handling",
 ];
 

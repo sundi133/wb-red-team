@@ -43,6 +43,10 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "cross_lingual_attack",
       "agent_reflection_exploit",
       "context_window_attack",
+      "multimodal_ghost_injection",
+      "computer_use_injection",
+      "streaming_voice_injection",
+      "cross_modal_conflict",
     ],
   },
   {
@@ -65,6 +69,7 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "steganographic_exfiltration",
       "slow_burn_exfiltration",
       "out_of_band_exfiltration",
+      "retrieval_tenant_bleed",
     ],
   },
   {
@@ -78,6 +83,7 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "mcp_server_compromise",
       "plugin_manifest_spoofing",
       "sdk_dependency_attack",
+      "mcp_tool_namespace_collision",
     ],
   },
   {
@@ -96,6 +102,7 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "chunk_boundary_injection",
       "fine_tuning_data_injection",
       "tool_output_manipulation",
+      "graph_consensus_poisoning",
     ],
   },
   {
@@ -129,6 +136,8 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "contextual_integrity_violation",
       "financial_fraud_facilitation",
       "unauthorized_commitments",
+      "inter_agent_protocol_abuse",
+      "retrieval_tenant_bleed",
     ],
   },
   {
@@ -157,6 +166,8 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "embedding_inversion",
       "rag_attribution",
       "cross_session_injection",
+      "graph_consensus_poisoning",
+      "retrieval_tenant_bleed",
     ],
   },
   {
@@ -186,6 +197,7 @@ export const OWASP_LLM_TOP_10: ComplianceItem[] = [
       "quota_exhaustion_attack",
       "divergent_repetition",
       "context_window_attack",
+      "streaming_voice_injection",
     ],
   },
 ];
@@ -205,6 +217,9 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "agentic_workflow_bypass",
       "conversation_manipulation",
       "multi_turn_escalation",
+      "multimodal_ghost_injection",
+      "graph_consensus_poisoning",
+      "cross_modal_conflict",
     ],
   },
   {
@@ -223,6 +238,8 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "path_traversal",
       "ssrf",
       "api_abuse",
+      "computer_use_injection",
+      "mcp_tool_namespace_collision",
     ],
   },
   {
@@ -237,6 +254,8 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "session_hijacking",
       "cross_tenant_access",
       "debug_access",
+      "inter_agent_protocol_abuse",
+      "retrieval_tenant_bleed",
     ],
   },
   {
@@ -254,6 +273,8 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "plugin_manifest_spoofing",
       "sdk_dependency_attack",
       "fine_tuning_data_injection",
+      "mcp_tool_namespace_collision",
+      "graph_consensus_poisoning",
     ],
   },
   {
@@ -283,6 +304,11 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "vector_store_manipulation",
       "chunk_boundary_injection",
       "context_window_attack",
+      "multimodal_ghost_injection",
+      "graph_consensus_poisoning",
+      "streaming_voice_injection",
+      "cross_modal_conflict",
+      "retrieval_tenant_bleed",
     ],
   },
   {
@@ -294,6 +320,7 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "multi_agent_delegation",
       "agent_reflection_exploit",
       "agentic_workflow_bypass",
+      "inter_agent_protocol_abuse",
     ],
   },
   {
@@ -318,6 +345,7 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "agentic_legal_commitment",
       "financial_fraud_facilitation",
       "unauthorized_commitments",
+      "llm_judge_manipulation",
     ],
   },
   {
@@ -332,6 +360,8 @@ export const OWASP_AGENTIC_TOP_10: ComplianceItem[] = [
       "infinite_loop_agent",
       "influence_operations",
       "off_topic",
+      "cross_modal_conflict",
+      "streaming_voice_injection",
     ],
   },
 ];
