@@ -417,6 +417,82 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // API: download report as CSV
+  if (url.pathname.startsWith("/api/report-csv/") && req.method === "GET") {
+    const filename = url.pathname.slice("/api/report-csv/".length);
+    if (filename.includes("..") || filename.includes("/")) {
+      res.writeHead(400);
+      res.end("Bad request");
+      return;
+    }
+    try {
+      const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
+      const data = JSON.parse(raw);
+      const csvName = filename.replace(/\.json$/, ".csv");
+
+      const csvEscape = (val: unknown): string => {
+        const s = String(val ?? "").replace(/"/g, '""');
+        return s.includes(",") || s.includes('"') || s.includes("\n")
+          ? `"${s}"`
+          : s;
+      };
+
+      const headers = [
+        "Round", "Verdict", "LLM Verdict", "Category", "Severity",
+        "Attack Name", "Attack Description", "Strategy",
+        "Auth Method", "Role", "Status Code", "Response Time (ms)",
+        "Findings", "LLM Reasoning", "LLM Evidence For",
+        "LLM Evidence Against", "Judge Confidence",
+        "Policy Name", "Steps", "Total Steps",
+      ];
+
+      const rows: string[] = [headers.map(csvEscape).join(",")];
+
+      for (const round of data.rounds || []) {
+        for (const r of round.results || []) {
+          const a = r.attack || {};
+          rows.push(
+            [
+              round.round,
+              r.verdict,
+              r.llmVerdict ?? "",
+              a.category,
+              a.severity,
+              a.name,
+              a.description,
+              a.strategyName ?? "",
+              a.authMethod,
+              a.role,
+              r.statusCode ?? r.status_code ?? "",
+              r.responseTimeMs ?? r.response_time_ms ?? "",
+              (r.findings || []).join(" | "),
+              r.llmReasoning ?? "",
+              r.llmEvidenceFor ?? "",
+              r.llmEvidenceAgainst ?? "",
+              r.judgeConfidence ?? "",
+              r.policyUsed?.name ?? "",
+              r.stepIndex != null ? r.stepIndex + 1 : 1,
+              r.totalSteps ?? 1,
+            ]
+              .map(csvEscape)
+              .join(","),
+          );
+        }
+      }
+
+      const csv = rows.join("\n");
+      res.writeHead(200, {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${csvName}"`,
+      });
+      res.end(csv);
+    } catch {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+    return;
+  }
+
   // API: get a specific report
   if (url.pathname.startsWith("/api/report/") && req.method === "GET") {
     const filename = url.pathname.slice("/api/report/".length);
