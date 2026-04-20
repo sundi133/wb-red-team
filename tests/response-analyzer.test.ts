@@ -387,10 +387,11 @@ describe("analyzeResponse", () => {
       );
       vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
+      // Use 422 — 401/403 are classified as infra/auth errors and skip the LLM judge.
       const result = await analyzeResponse(
         makeConfig(),
         makeAttack(),
-        403,
+        422,
         { error: "forbidden" },
         100,
       );
