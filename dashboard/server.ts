@@ -1,14 +1,18 @@
 import { createServer, type IncomingMessage } from "node:http";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, extname } from "node:path";
+import { randomUUID } from "node:crypto";
 import { loadConfig } from "../lib/config-loader.js";
+import { loadConfigFromObject } from "../lib/config-loader.js";
 import { loadEnvFile } from "../lib/env-loader.js";
 import { getJudgeProvider } from "../lib/llm-provider.js";
+import { runRedTeam, type RunProgress } from "../lib/run.js";
 import {
   OWASP_LLM_TOP_10,
   OWASP_AGENTIC_TOP_10,
   type ComplianceItem,
 } from "../lib/compliance-mappings.js";
+import type { Config, Report } from "../lib/types.js";
 
 loadEnvFile();
 
@@ -92,12 +96,99 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+// ── Job runner ──
+interface Job {
+  id: string;
+  status: "queued" | "running" | "done" | "error" | "cancelled";
+  config: Config;
+  progress: RunProgress[];
+  report?: Report;
+  reportFile?: string;
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
+  abortController?: AbortController;
+}
+
+const jobs = new Map<string, Job>();
+let activeRuns = 0;
+const MAX_CONCURRENT = 2;
+
+async function startJob(job: Job): Promise<void> {
+  activeRuns++;
+  job.status = "running";
+  const ac = new AbortController();
+  job.abortController = ac;
+
+  try {
+    const result = await runRedTeam(
+      job.config,
+      (p) => {
+        job.progress.push(p);
+      },
+      undefined,
+      ac.signal,
+    );
+    job.status = "done";
+    job.report = result.report;
+    job.reportFile = result.jsonPath;
+    job.finishedAt = new Date().toISOString();
+    metaCache.clear();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === "Run cancelled") {
+      job.status = "cancelled";
+      job.error = "Cancelled by user";
+    } else {
+      job.status = "error";
+      job.error = msg;
+    }
+    job.finishedAt = new Date().toISOString();
+  } finally {
+    job.abortController = undefined;
+    activeRuns--;
+    drainQueue();
+  }
+}
+
+const jobQueue: string[] = [];
+
+function drainQueue(): void {
+  while (activeRuns < MAX_CONCURRENT && jobQueue.length > 0) {
+    const nextId = jobQueue.shift()!;
+    const nextJob = jobs.get(nextId);
+    if (nextJob && nextJob.status === "queued") {
+      startJob(nextJob);
+    }
+  }
+}
+
+function enqueueJob(config: Config): Job {
+  const job: Job = {
+    id: randomUUID(),
+    status: "queued",
+    config,
+    progress: [],
+    startedAt: new Date().toISOString(),
+  };
+  jobs.set(job.id, job);
+
+  if (activeRuns < MAX_CONCURRENT) {
+    startJob(job);
+  } else {
+    jobQueue.push(job.id);
+  }
+
+  return job;
+}
+
+// ── HTTP server ──
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
   // CORS headers for local dev
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
@@ -105,6 +196,143 @@ const server = createServer(async (req, res) => {
     res.end();
     return;
   }
+
+  // ── Run API ──
+
+  // POST /api/run — start a new red-team run
+  if (url.pathname === "/api/run" && req.method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+
+      // Validate config
+      let config: Config;
+      try {
+        config = loadConfigFromObject(body);
+      } catch (err) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: `Invalid config: ${err instanceof Error ? err.message : String(err)}`,
+          }),
+        );
+        return;
+      }
+
+      const job = enqueueJob(config);
+      res.writeHead(202, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          runId: job.id,
+          status: job.status,
+          message:
+            job.status === "running"
+              ? "Run started"
+              : `Queued (${jobQueue.length} in queue, ${activeRuns} running)`,
+        }),
+      );
+    } catch (err) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: `Bad request: ${err instanceof Error ? err.message : String(err)}`,
+        }),
+      );
+    }
+    return;
+  }
+
+  // GET /api/run/:id — get job status
+  if (url.pathname.startsWith("/api/run/") && req.method === "GET") {
+    const id = url.pathname.slice("/api/run/".length);
+    if (id.includes("..") || id.includes("/")) {
+      res.writeHead(400);
+      res.end("Bad request");
+      return;
+    }
+
+    const job = jobs.get(id);
+    if (!job) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Run not found" }));
+      return;
+    }
+
+    // Return progress since a given offset (for polling)
+    const since = parseInt(url.searchParams.get("since") || "0", 10);
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        runId: job.id,
+        status: job.status,
+        startedAt: job.startedAt,
+        finishedAt: job.finishedAt,
+        targetUrl: job.config.target.baseUrl,
+        error: job.error,
+        progressTotal: job.progress.length,
+        progress: job.progress.slice(since),
+        reportFile: job.reportFile,
+        summary: job.report?.summary,
+      }),
+    );
+    return;
+  }
+
+  // DELETE /api/run/:id — cancel a running job
+  if (url.pathname.startsWith("/api/run/") && req.method === "DELETE") {
+    const id = url.pathname.slice("/api/run/".length);
+    const job = jobs.get(id);
+    if (!job) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Run not found" }));
+      return;
+    }
+
+    if (job.status === "running" && job.abortController) {
+      job.abortController.abort();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ runId: id, status: "cancelling" }));
+    } else if (job.status === "queued") {
+      // Remove from queue
+      const idx = jobQueue.indexOf(id);
+      if (idx !== -1) jobQueue.splice(idx, 1);
+      job.status = "cancelled";
+      job.error = "Cancelled by user";
+      job.finishedAt = new Date().toISOString();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ runId: id, status: "cancelled" }));
+    } else {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: `Run is already ${job.status}` }));
+    }
+    return;
+  }
+
+  // GET /api/runs — list all runs
+  if (url.pathname === "/api/runs" && req.method === "GET") {
+    const runs = [...jobs.values()]
+      .sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+      )
+      .map((j) => ({
+        runId: j.id,
+        status: j.status,
+        startedAt: j.startedAt,
+        finishedAt: j.finishedAt,
+        targetUrl: j.config.target.baseUrl,
+        error: j.error,
+        progressCount: j.progress.length,
+        reportFile: j.reportFile,
+        summary: j.report?.summary,
+      }));
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(runs));
+    return;
+  }
+
+  // ── Existing report APIs ──
 
   // API: list report filenames (legacy)
   if (url.pathname === "/api/reports") {
@@ -482,5 +710,8 @@ Be specific and reference the actual attack results. Do not be generic.`;
 }
 
 server.listen(PORT, () => {
-  console.log(`\n  Red Team Dashboard → http://localhost:${PORT}\n`);
+  console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
+  console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
+  console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
+  console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs\n`);
 });

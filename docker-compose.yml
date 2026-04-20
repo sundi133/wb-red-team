@@ -1,0 +1,9 @@
+services:
+  red-team:
+    build: .
+    ports:
+      - "4200:4200"
+    env_file: .env
+    volumes:
+      - ./report:/app/report
+    restart: unless-stopped
