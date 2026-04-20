@@ -2835,25 +2835,9 @@
         }
       }
 
-      // Auto-expand conversation steps for PASS verdicts
-      function autoExpandConversationSteps() {
-        setTimeout(() => {
-          // Find all PASS verdicts and expand their last conversation step
-          const passRows = document.querySelectorAll(".main-row");
-          passRows.forEach((row) => {
-            const verdict = row.querySelector(".verdict");
-            if (verdict && verdict.textContent.trim() === "PASS") {
-              const conversations =
-                row.parentNode.querySelectorAll(".conversation");
-              conversations.forEach((conv) => {
-                if (conv.id) {
-                  expandLastStep(conv.id);
-                }
-              });
-            }
-          });
-        }, 200);
-      }
+      // Conversation steps are now expanded by default in renderConversation,
+      // so this auto-expand pass is a no-op (kept for backward-compat callers).
+      function autoExpandConversationSteps() {}
 
       function renderConversation(r) {
         if (!r.conversation || !r.conversation.length)
@@ -2888,7 +2872,7 @@
 
               return `<div class="conv-step">
               <div class="conv-step-header" onclick="toggleConvStep(this)">
-                <span class="conv-expand">+</span>
+                <span class="conv-expand">−</span>
                 <span class="step-num">${step.stepIndex + 1}</span>
                 <div style="flex-grow:1;">
                   <div>Step ${step.stepIndex + 1}</div>
@@ -2901,7 +2885,7 @@
                 </div>
                 <span class="step-status">HTTP ${step.statusCode} · ${step.responseTimeMs}ms</span>
               </div>
-              <div class="conv-step-body">
+              <div class="conv-step-body open">
                 <div class="conv-exchange">
                   <div class="detail-col">
                     <div class="detail-label">Request Payload</div>
