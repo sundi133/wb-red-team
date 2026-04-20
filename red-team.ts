@@ -171,8 +171,12 @@ async function maybeGenerateIdealResponse(
   if (!ideal) return;
 
   result.idealResponse = ideal;
+  const idealPreview =
+    typeof ideal.response === "string"
+      ? ideal.response
+      : JSON.stringify(ideal.response);
   console.log(
-    `    [Ideal Response] ${ideal.response.slice(0, 120)}${ideal.response.length > 120 ? "..." : ""}`,
+    `    [Ideal Response] ${idealPreview.slice(0, 120)}${idealPreview.length > 120 ? "..." : ""}`,
   );
   if (ideal.remediationHints.length > 0) {
     console.log(`    [Remediation] ${ideal.remediationHints[0]}`);

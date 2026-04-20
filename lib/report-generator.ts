@@ -131,6 +131,15 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   housing_discrimination: 12,
   ssrf: 15,
   path_traversal: 15,
+  multimodal_ghost_injection: 14,
+  graph_consensus_poisoning: 14,
+  inter_agent_protocol_abuse: 15,
+  mcp_tool_namespace_collision: 14,
+  computer_use_injection: 14,
+  streaming_voice_injection: 13,
+  cross_modal_conflict: 12,
+  llm_judge_manipulation: 12,
+  retrieval_tenant_bleed: 15,
   insecure_output_handling: 12,
 };
 

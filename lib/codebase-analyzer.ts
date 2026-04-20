@@ -1416,6 +1416,75 @@ const CATEGORY_FILE_PATTERNS: Partial<Record<AttackCategory, FilePattern[]>> = {
       reason: "Response metadata (tool calls, status codes)",
     },
   ],
+  multimodal_ghost_injection: [
+    {
+      pathPattern: /route|handler|agent|vision|audio|speech|media|multimodal/i,
+      contentPatterns: [
+        /transcrib|whisper|speech|stt|asr|image|vision|encode|decode|wav|mp4|png/i,
+      ],
+      reason: "Multimodal ingestion (audio, image, or video pipeline)",
+    },
+  ],
+  graph_consensus_poisoning: [
+    {
+      pathPattern: /rag|retriev|graph|neo4j|knowledge|entity|vector|embed/i,
+      contentPatterns: [
+        /graph|entity|edge|node|consensus|path|travers|retriev|chunk/i,
+      ],
+      reason: "Graph-RAG or entity-centric retrieval",
+    },
+  ],
+  inter_agent_protocol_abuse: [
+    {
+      pathPattern: /route|handler|agent|gateway|mcp|a2a|orchestrat/i,
+      contentPatterns: [
+        /bearer|jwt|mcp|a2a|inter.?agent|handshake|service.?token|x-agent/i,
+      ],
+      reason: "Inter-service or inter-agent auth headers",
+    },
+  ],
+  mcp_tool_namespace_collision: [
+    {
+      pathPattern: /mcp|tool|server|plugin/i,
+      contentPatterns: [/tools\/list|initialize|namespace|register.*tool/i],
+      reason: "MCP or dynamic tool registration",
+    },
+  ],
+  computer_use_injection: [
+    {
+      pathPattern: /browser|playwright|puppeteer|dom|computer.?use|screenshot|page\./i,
+      contentPatterns: [/click|navigate|screenshot|dom|browser|page|a11y/i],
+      reason: "Browser or computer-use agent surface",
+    },
+  ],
+  streaming_voice_injection: [
+    {
+      pathPattern: /stream|websocket|rtc|voice|real.?time|partial/i,
+      contentPatterns: [/stream|chunk|delta|partial|websocket|audio/i],
+      reason: "Streaming or partial-result handling",
+    },
+  ],
+  cross_modal_conflict: [
+    {
+      pathPattern: /route|handler|agent|vision|ocr|caption|multimodal/i,
+      contentPatterns: [/caption|ocr|image|audio|modal|conflict|merge/i],
+      reason: "Multi-input fusion or modality arbitration",
+    },
+  ],
+  llm_judge_manipulation: [
+    {
+      pathPattern: /route|handler|eval|judge|rubric|reward|score/i,
+      contentPatterns: [/judge|evaluat|rubric|score|grader|reward/i],
+      reason: "LLM-as-judge or automated evaluation",
+    },
+  ],
+  retrieval_tenant_bleed: [
+    {
+      pathPattern: /rag|retriev|tenant|vector|embed|isolation|row.?level/i,
+      contentPatterns: [/tenant|org_id|rls|isolation|filter|hybrid|retriev/i],
+      reason: "Multi-tenant retrieval or RAG isolation",
+    },
+  ],
 };
 
 function mapCategoriesToFiles(
