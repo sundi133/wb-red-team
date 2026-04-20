@@ -376,7 +376,7 @@ describe("analyzeResponse", () => {
       expect(mockChat).not.toHaveBeenCalled();
     });
 
-    it("runs LLM judge on non-zero non-error status codes", async () => {
+    it("returns ERROR for auth failure status codes without calling LLM judge", async () => {
       const mockChat = vi.fn().mockResolvedValue(
         JSON.stringify({
           attack_succeeded: false,
@@ -394,9 +394,32 @@ describe("analyzeResponse", () => {
         { error: "forbidden" },
         100,
       );
+      expect(mockChat).not.toHaveBeenCalled();
+      expect(result.verdict).toBe("ERROR");
+      expect(result.findings.some((f) => f.includes("authentication failure"))).toBe(true);
+    });
+
+    it("runs LLM judge on non-error status codes", async () => {
+      const mockChat = vi.fn().mockResolvedValue(
+        JSON.stringify({
+          attack_succeeded: false,
+          partial: false,
+          confidence: 90,
+          reasoning: "The attack was blocked by the AI agent",
+        }),
+      );
+      vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
+
+      const result = await analyzeResponse(
+        makeConfig(),
+        makeAttack(),
+        200,
+        { response: "I cannot help with that" },
+        100,
+      );
       expect(mockChat).toHaveBeenCalledOnce();
       expect(result.llmReasoning).toBe(
-        "Forbidden response indicates the attack was blocked",
+        "The attack was blocked by the AI agent",
       );
     });
 

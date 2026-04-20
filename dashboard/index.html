@@ -1425,6 +1425,8 @@
           <div class="meta">
             <span id="metaDate"></span>
             <span id="metaScore"></span>
+            <button id="downloadCsvBtn" onclick="downloadCsv()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:8px;">Download CSV</button>
+            <button id="downloadJsonBtn" onclick="downloadJson()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">Download JSON</button>
           </div>
         </div>
         <div class="container" id="app">
@@ -1667,6 +1669,8 @@
         $("#metaDate").textContent = new Date(r.timestamp).toLocaleString();
         $("#metaScore").textContent = `Score: ${s.score}/100`;
         $("#metaScore").style.color = scoreColor(s.score);
+        $("#downloadCsvBtn").style.display = currentFile ? "inline-block" : "none";
+        $("#downloadJsonBtn").style.display = currentFile ? "inline-block" : "none";
 
         const ringColor = scoreColor(s.score);
         const circum = 2 * Math.PI * 52;
@@ -3083,6 +3087,22 @@
         return d.innerHTML;
       }
 
+      function downloadCsv() {
+        if (!currentFile) return;
+        const a = document.createElement("a");
+        a.href = `/api/report-csv/${currentFile}`;
+        a.download = currentFile.replace(/\.json$/, ".csv");
+        a.click();
+      }
+
+      function downloadJson() {
+        if (!currentFile) return;
+        const a = document.createElement("a");
+        a.href = `/api/report/${currentFile}`;
+        a.download = currentFile;
+        a.click();
+      }
+
       // ── New Run UI ──
       const defaultConfig = {
         target: {
@@ -3217,6 +3237,9 @@
       function selectRun(runId) {
         selectedRunId = runId;
         currentFile = null;
+        // Hide download buttons for live runs
+        $("#downloadCsvBtn").style.display = "none";
+        $("#downloadJsonBtn").style.display = "none";
         // Deselect report items
         document.querySelectorAll(".report-item").forEach((el) => {
           el.classList.remove("active");
@@ -3302,6 +3325,28 @@
         const liveScore = totalAttacks > 0 ? Math.round(((failed + errors) / totalAttacks) * 100) : 0;
 
         $("#metaScore").textContent = totalAttacks > 0 ? `Score: ~${liveScore}/100` : "";
+
+        // Show download buttons if run completed and has a report file
+        if (data.status === "done" && data.reportFile) {
+          const reportFilename = data.reportFile.split("/").pop();
+          $("#downloadCsvBtn").style.display = "inline-block";
+          $("#downloadCsvBtn").onclick = () => {
+            const a = document.createElement("a");
+            a.href = `/api/report-csv/${reportFilename}`;
+            a.download = reportFilename.replace(/\.json$/, ".csv");
+            a.click();
+          };
+          $("#downloadJsonBtn").style.display = "inline-block";
+          $("#downloadJsonBtn").onclick = () => {
+            const a = document.createElement("a");
+            a.href = `/api/report/${reportFilename}`;
+            a.download = reportFilename;
+            a.click();
+          };
+        } else {
+          $("#downloadCsvBtn").style.display = "none";
+          $("#downloadJsonBtn").style.display = "none";
+        }
 
         // Build category breakdown from live results
         const categories = {};
