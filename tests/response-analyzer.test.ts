@@ -387,7 +387,8 @@ describe("analyzeResponse", () => {
       );
       vi.mocked(getJudgeProvider).mockReturnValue({ chat: mockChat });
 
-      const result = await analyzeResponse(
+      // Test 403
+      const result403 = await analyzeResponse(
         makeConfig(),
         makeAttack(),
         403,
@@ -395,8 +396,19 @@ describe("analyzeResponse", () => {
         100,
       );
       expect(mockChat).not.toHaveBeenCalled();
-      expect(result.verdict).toBe("ERROR");
-      expect(result.findings.some((f) => f.includes("authentication failure"))).toBe(true);
+      expect(result403.verdict).toBe("ERROR");
+      expect(result403.findings.some((f) => f.includes("authentication failure"))).toBe(true);
+
+      // Test 422
+      const result422 = await analyzeResponse(
+        makeConfig(),
+        makeAttack(),
+        422,
+        { error: "forbidden" },
+        100,
+      );
+      expect(mockChat).not.toHaveBeenCalled();
+      expect(result422.verdict).toBe("ERROR");
     });
 
     it("runs LLM judge on non-error status codes", async () => {
