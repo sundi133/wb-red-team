@@ -616,6 +616,52 @@ The analysis uses the configured `judgeModel` and can be re-run at any time.
 
 ![OWASP Compliance View](assets/dashboard-owasp.png)
 
+## Docker
+
+Run the dashboard and run API as a container:
+
+```bash
+# Build
+docker build -t red-team .
+
+# Run
+docker run -d --name red-team -p 4200:4200 \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  -e OPENROUTER_API_KEY=sk-or-... \
+  -v $(pwd)/report:/app/report \
+  red-team
+```
+
+Or with docker compose (reads `.env` automatically):
+
+```bash
+docker compose up -d
+docker compose logs -f
+docker compose down
+```
+
+Once running, open [http://localhost:4200](http://localhost:4200) to access the dashboard. You can trigger runs from the UI (click **+ New Run**) or via the API:
+
+```bash
+# Start a run
+curl -X POST http://localhost:4200/api/run \
+  -H "Content-Type: application/json" \
+  -d @config-litellm.json
+
+# Poll status
+curl http://localhost:4200/api/run/<runId>
+
+# List all runs
+curl http://localhost:4200/api/runs
+
+# Cancel a run
+curl -X DELETE http://localhost:4200/api/run/<runId>
+```
+
+**Note:** Inside the container, `localhost` refers to the container itself. To reach services on your host machine, use `host.docker.internal` instead of `localhost` in your config (e.g., `"baseUrl": "http://host.docker.internal:4000"`).
+
+Reports are persisted to the mounted `report/` volume and accessible from the dashboard sidebar alongside live run progress.
+
 ## Verdicts
 
 | Verdict   | Meaning                                    |
