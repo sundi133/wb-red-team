@@ -101,6 +101,84 @@
       }
 
       /* Report list */
+      /* Active runs in sidebar */
+      .sidebar-runs-section {
+        border-bottom: 1px solid var(--border);
+        padding: 0;
+      }
+      .sidebar-runs-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text2);
+        padding: 8px 16px 4px;
+      }
+      .run-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background 0.15s;
+      }
+      .run-item:hover {
+        background: var(--surface2);
+      }
+      .run-item.active {
+        background: rgba(88, 166, 255, 0.08);
+        border-left-color: var(--accent);
+      }
+      .run-item-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        border: 2px solid;
+      }
+      .run-item-icon.running {
+        color: var(--accent);
+        border-color: var(--accent);
+        animation: pulse-run 1.5s ease-in-out infinite;
+      }
+      .run-item-icon.queued {
+        color: var(--text2);
+        border-color: var(--text2);
+      }
+      .run-item-icon.error {
+        color: var(--red);
+        border-color: var(--red);
+      }
+      @keyframes pulse-run {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+      .run-item-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .run-item-status {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .run-item-target {
+        font-size: 11px;
+        color: var(--text2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .run-item-progress {
+        font-size: 10px;
+        color: var(--text2);
+        margin-top: 2px;
+      }
+
       .report-list {
         flex: 1;
         overflow-y: auto;
@@ -1316,16 +1394,21 @@
       <div class="sidebar">
         <div class="sidebar-header">
           <h1>Red Team Dashboard</h1>
-          <input
-            class="sidebar-search"
-            id="reportSearch"
-            placeholder="Search reports..."
-          />
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <input
+              class="sidebar-search"
+              id="reportSearch"
+              placeholder="Search reports..."
+              style="flex:1"
+            />
+            <button id="newRunBtn" style="background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">+ New Run</button>
+          </div>
         </div>
         <div class="trend-section">
           <div class="trend-label">Score Trend</div>
           <canvas class="trend-canvas" id="trendCanvas"></canvas>
         </div>
+        <div id="sidebarRuns"></div>
         <div class="report-list" id="reportList">
           <div class="loading" style="padding: 24px">Loading...</div>
         </div>
@@ -1346,6 +1429,32 @@
         </div>
         <div class="container" id="app">
           <div class="loading">Select a report from the sidebar</div>
+        </div>
+
+        <!-- New Run Panel (hidden by default) -->
+        <div id="newRunPanel" style="display:none;position:absolute;inset:0;background:var(--bg);z-index:100;overflow-y:auto;padding:24px;">
+          <div style="max-width:900px;margin:0 auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:18px;font-weight:600;">New Red-Team Run</h2>
+              <button id="closeRunPanel" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;">Close</button>
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px;">Configuration JSON</label>
+              <textarea id="runConfigEditor" spellcheck="false" style="width:100%;height:400px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical;tab-size:2;"></textarea>
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;">
+              <button id="startRunBtn" style="background:var(--green);color:#000;border:none;border-radius:6px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Start Run</button>
+              <span id="runError" style="color:var(--red);font-size:12px;"></span>
+            </div>
+
+            <!-- Active Runs -->
+            <div id="activeRunsSection" style="display:none;">
+              <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text2);">Active Runs</h3>
+              <div id="activeRunsList"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1526,10 +1635,12 @@
 
       async function selectReport(filename) {
         currentFile = filename;
+        selectedRunId = null;
         // Highlight in sidebar
         document.querySelectorAll(".report-item").forEach((el) => {
           el.classList.toggle("active", el.dataset.file === filename);
         });
+        renderSidebarRuns();
 
         app.innerHTML = '<div class="loading">Loading report...</div>';
         const res = await fetch(`/api/report/${filename}`);
@@ -2987,6 +3098,396 @@
         d.textContent = s;
         return d.innerHTML;
       }
+
+      // ── New Run UI ──
+      const defaultConfig = {
+        target: {
+          type: "http_agent",
+          baseUrl: "http://localhost:4000",
+          agentEndpoint: "/v1/chat/completions",
+          applicationDetails: "Describe your application here"
+        },
+        auth: {
+          methods: ["api_key"],
+          apiKeys: { default: "your-api-key" }
+        },
+        requestSchema: { messageField: "message" },
+        responseSchema: { responsePath: "response" },
+        sensitivePatterns: [],
+        attackConfig: {
+          adaptiveRounds: 1,
+          maxAttacksPerCategory: 2,
+          concurrency: 2,
+          delayBetweenRequestsMs: 500,
+          llmProvider: "anthropic",
+          llmModel: "claude-sonnet-4-20250514",
+          judgeProvider: "anthropic",
+          judgeModel: "claude-sonnet-4-20250514",
+          enableLlmGeneration: true,
+          enableMultiTurnGeneration: false,
+          enableAdaptiveMultiTurn: false,
+          enabledCategories: ["prompt_injection", "sensitive_data"],
+          enabledStrategies: ["direct", "obfuscation"]
+        }
+      };
+
+      const runConfigEditor = document.getElementById("runConfigEditor");
+      runConfigEditor.value = JSON.stringify(defaultConfig, null, 2);
+
+      document.getElementById("newRunBtn").addEventListener("click", () => {
+        document.getElementById("newRunPanel").style.display = "block";
+        refreshActiveRuns();
+      });
+
+      document.getElementById("closeRunPanel").addEventListener("click", () => {
+        document.getElementById("newRunPanel").style.display = "none";
+      });
+
+      document.getElementById("startRunBtn").addEventListener("click", async () => {
+        const errEl = document.getElementById("runError");
+        errEl.textContent = "";
+
+        let configObj;
+        try {
+          configObj = JSON.parse(runConfigEditor.value);
+        } catch (e) {
+          errEl.textContent = "Invalid JSON: " + e.message;
+          return;
+        }
+
+        const btn = document.getElementById("startRunBtn");
+        btn.disabled = true;
+        btn.textContent = "Starting...";
+
+        try {
+          const resp = await fetch("/api/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(configObj),
+          });
+          const data = await resp.json();
+          if (!resp.ok) {
+            errEl.textContent = data.error || "Failed to start run";
+            return;
+          }
+          pollRun(data.runId);
+          refreshActiveRuns();
+        } catch (e) {
+          errEl.textContent = "Request failed: " + e.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Start Run";
+        }
+      });
+
+      // ── Sidebar run tracking ──
+      const pollingRuns = new Set();
+      let selectedRunId = null;
+      const runDataCache = new Map();
+
+      function pollRun(runId) {
+        if (pollingRuns.has(runId)) return;
+        pollingRuns.add(runId);
+
+        let progressOffset = 0;
+        const interval = setInterval(async () => {
+          try {
+            const resp = await fetch(`/api/run/${runId}?since=${progressOffset}`);
+            const data = await resp.json();
+            progressOffset = data.progressTotal;
+
+            // Merge new progress into cached entry instead of replacing
+            const cached = runDataCache.get(runId);
+            if (cached && data.progress?.length > 0) {
+              cached.progress = [...(cached.progress || []), ...data.progress];
+            }
+            const merged = cached || data;
+            // Always update non-progress fields
+            merged.status = data.status;
+            merged.error = data.error;
+            merged.finishedAt = data.finishedAt;
+            merged.summary = data.summary;
+            merged.reportFile = data.reportFile;
+            merged.progressTotal = data.progressTotal;
+            merged.targetUrl = data.targetUrl || merged.targetUrl;
+            if (!cached) merged.progress = data.progress || [];
+            runDataCache.set(runId, merged);
+
+            renderSidebarRuns();
+            if (selectedRunId === runId) renderRunMainPanel(runId, merged);
+
+            if (data.status === "done" || data.status === "error") {
+              clearInterval(interval);
+              pollingRuns.delete(runId);
+              if (data.status === "done") {
+                loadReportsMeta();
+              }
+              renderSidebarRuns();
+            }
+          } catch {
+            // ignore transient errors
+          }
+        }, 2000);
+      }
+
+      function selectRun(runId) {
+        selectedRunId = runId;
+        currentFile = null;
+        // Deselect report items
+        document.querySelectorAll(".report-item").forEach((el) => {
+          el.classList.remove("active");
+        });
+        renderSidebarRuns();
+        const data = runDataCache.get(runId);
+        if (data) renderRunMainPanel(runId, data);
+      }
+
+      function renderSidebarRuns() {
+        const container = document.getElementById("sidebarRuns");
+        const activeRuns = [...runDataCache.entries()]
+          .filter(([, d]) => d.status === "queued" || d.status === "running" || d.status === "error" || d.status === "cancelled")
+          .sort((a, b) => new Date(b[1].startedAt).getTime() - new Date(a[1].startedAt).getTime());
+
+        if (activeRuns.length === 0) {
+          container.innerHTML = "";
+          return;
+        }
+
+        const html = activeRuns.map(([runId, data]) => {
+          const isActive = selectedRunId === runId ? " active" : "";
+          const statusClass = data.status; // running, queued, error
+          const lastProgress = data.progress?.length > 0 ? data.progress[data.progress.length - 1] : null;
+          const lastMsg = lastProgress ? lastProgress.message : "";
+          const targetUrl = data.targetUrl || data.config?.target?.baseUrl || "unknown";
+
+          let iconText = "";
+          if (data.status === "running") iconText = "...";
+          else if (data.status === "queued") iconText = "Q";
+          else if (data.status === "error") iconText = "!";
+
+          const timeStr = new Date(data.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+          const progressText = data.status === "running" && lastMsg
+            ? `[${lastProgress.phase}] ${lastMsg.slice(0, 50)}`
+            : data.status === "error"
+              ? (data.error || "Failed").slice(0, 50)
+              : "Waiting...";
+
+          const cancelBtn = (data.status === "running" || data.status === "queued")
+            ? `<button onclick="event.stopPropagation();cancelRun('${runId}')" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;flex-shrink:0;" title="Cancel run">Cancel</button>`
+            : "";
+
+          return `<div class="run-item${isActive}" onclick="selectRun('${runId}')">
+            <div class="run-item-icon ${statusClass}">${iconText}</div>
+            <div class="run-item-info">
+              <div class="run-item-status" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${data.status === "running" ? "Running" : data.status === "queued" ? "Queued" : "Error"} &middot; ${timeStr}</span>
+                ${cancelBtn}
+              </div>
+              <div class="run-item-target" title="${esc(targetUrl)}">${esc(targetUrl)}</div>
+              <div class="run-item-progress">${esc(progressText)}</div>
+            </div>
+          </div>`;
+        }).join("");
+
+        container.innerHTML = `<div class="sidebar-runs-section">
+          <div class="sidebar-runs-label">Active Runs (${activeRuns.length})</div>
+          ${html}
+        </div>`;
+      }
+
+      function renderRunMainPanel(runId, data) {
+        // Update header
+        const targetUrl = data.targetUrl || data.config?.target?.baseUrl || "unknown";
+        $("#metaTarget").textContent = targetUrl;
+        const statusLabels = { queued: "Queued", running: "Running...", done: "Completed", error: "Error", cancelled: "Cancelled" };
+        const statusColors = { queued: "var(--text2)", running: "var(--accent)", done: "var(--green)", error: "var(--red)", cancelled: "var(--orange)" };
+        $("#metaDate").innerHTML = `<span style="color:${statusColors[data.status] || "var(--text2)"}">${statusLabels[data.status] || data.status}</span>`;
+
+        // Extract live results from progress events
+        const liveResults = (data.progress || [])
+          .filter(p => p.result)
+          .map(p => p.result);
+
+        // Build live summary stats
+        const totalAttacks = liveResults.length;
+        const passed = liveResults.filter(r => r.verdict === "PASS").length;
+        const failed = liveResults.filter(r => r.verdict === "FAIL").length;
+        const partial = liveResults.filter(r => r.verdict === "PARTIAL").length;
+        const errors = liveResults.filter(r => r.verdict === "ERROR").length;
+        const liveScore = totalAttacks > 0 ? Math.round(((failed + errors) / totalAttacks) * 100) : 0;
+
+        $("#metaScore").textContent = totalAttacks > 0 ? `Score: ~${liveScore}/100` : "";
+
+        // Build category breakdown from live results
+        const categories = {};
+        for (const r of liveResults) {
+          const cat = r.category;
+          if (!categories[cat]) categories[cat] = { pass: 0, fail: 0, partial: 0, error: 0, total: 0 };
+          categories[cat].total++;
+          if (r.verdict === "PASS") categories[cat].pass++;
+          else if (r.verdict === "FAIL") categories[cat].fail++;
+          else if (r.verdict === "PARTIAL") categories[cat].partial++;
+          else categories[cat].error++;
+        }
+
+        // Summary cards
+        const summaryHtml = totalAttacks > 0 ? `
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:${scoreColor(liveScore)}">${liveScore}</div>
+              <div style="font-size:11px;color:var(--text2)">Security Score (live)</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+              <div style="font-size:24px;font-weight:700">${totalAttacks}</div>
+              <div style="font-size:11px;color:var(--text2)">Total Attacks</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:var(--red)">${passed}</div>
+              <div style="font-size:11px;color:var(--text2)">Vulnerabilities</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+              <div style="font-size:24px;font-weight:700;color:var(--green)">${failed}</div>
+              <div style="font-size:11px;color:var(--text2)">Blocked</div>
+            </div>
+          </div>` : "";
+
+        // Category breakdown chart
+        const catEntries = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
+        const maxCatTotal = catEntries.length > 0 ? Math.max(...catEntries.map(([,v]) => v.total)) : 1;
+        const categoryHtml = catEntries.length > 0 ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Category Breakdown <span style="color:var(--text2);font-weight:400">${catEntries.length} categories</span></div>
+            ${catEntries.map(([cat, v]) => {
+              const catLabel = cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              const barWidth = (v.total / maxCatTotal) * 100;
+              const passW = v.total > 0 ? (v.pass / v.total) * barWidth : 0;
+              const failW = v.total > 0 ? (v.fail / v.total) * barWidth : 0;
+              const partialW = v.total > 0 ? (v.partial / v.total) * barWidth : 0;
+              const errorW = v.total > 0 ? (v.error / v.total) * barWidth : 0;
+              return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <div style="width:160px;text-align:right;font-size:11px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(catLabel)}">${esc(catLabel)}</div>
+                <div style="flex:1;height:14px;background:var(--surface2);border-radius:3px;overflow:hidden;display:flex;">
+                  ${passW > 0 ? `<div style="width:${passW}%;background:var(--red);"></div>` : ''}
+                  ${partialW > 0 ? `<div style="width:${partialW}%;background:var(--orange);"></div>` : ''}
+                  ${failW > 0 ? `<div style="width:${failW}%;background:var(--green);"></div>` : ''}
+                  ${errorW > 0 ? `<div style="width:${errorW}%;background:var(--text2);opacity:0.4;"></div>` : ''}
+                </div>
+                <div style="width:30px;font-size:11px;color:var(--text2);text-align:right;">${v.pass}/${v.total}</div>
+              </div>`;
+            }).join('')}
+          </div>` : "";
+
+        // Results table
+        const resultsHtml = liveResults.length > 0 ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Results <span style="color:var(--text2);font-weight:400">${liveResults.length} total</span></div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);text-align:left;">
+                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">VERDICT</th>
+                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">SEVERITY</th>
+                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">CATEGORY</th>
+                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">ATTACK</th>
+                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">DETAILS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${liveResults.map(r => {
+                  const verdictColors = { PASS: "var(--red)", FAIL: "var(--green)", PARTIAL: "var(--orange)", ERROR: "var(--text2)" };
+                  const sevColors = { critical: "var(--critical)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)" };
+                  const catLabel = r.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                  const details = r.findings?.length > 0 ? r.findings[0].slice(0, 100) : (r.llmReasoning || "").slice(0, 100);
+                  return `<tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:6px 8px;"><span style="color:${verdictColors[r.verdict] || "var(--text2)"};font-weight:600;">${r.verdict}</span></td>
+                    <td style="padding:6px 8px;"><span style="color:${sevColors[r.severity] || "var(--text2)"};text-transform:uppercase;font-size:10px;font-weight:600;">${r.severity}</span></td>
+                    <td style="padding:6px 8px;color:var(--text2);">${esc(catLabel)}</td>
+                    <td style="padding:6px 8px;">${esc(r.name)}</td>
+                    <td style="padding:6px 8px;color:var(--text2);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(details)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>` : "";
+
+        // Progress log (collapsed when results exist)
+        const progressLines = (data.progress || []).filter(p => p.phase !== "result").slice(-20);
+        const progressHtml = progressLines
+          .map(p => {
+            const phaseColor = {config:"#58a6ff",analyze:"#58a6ff",static:"#58a6ff",auth:"#58a6ff",discovery:"#d29922",attacks:"#f85149",refine:"#d29922",report:"#3fb950"}[p.phase] || "#8b949e";
+            return `<div style="font-size:12px;font-family:'SF Mono',Monaco,Consolas,monospace;padding:2px 0;color:var(--text);">
+              <span style="color:${phaseColor}">[${esc(p.phase)}]</span> ${esc(p.message).slice(0, 150)}
+            </div>`;
+          }).join("");
+
+        const errorHtml = data.error
+          ? `<div style="background:rgba(248,81,73,0.1);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:16px;color:var(--red);font-size:13px;">${esc(data.error)}</div>`
+          : "";
+
+        app.innerHTML = `
+          <div style="padding:4px 0;">
+            ${errorHtml}
+            ${summaryHtml}
+            ${categoryHtml}
+            ${resultsHtml}
+            <details ${liveResults.length === 0 ? 'open' : ''} style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;">
+              <summary style="font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>Live Progress Log</span>
+                <span style="font-size:11px;color:var(--text2);font-weight:400">${data.progressTotal || 0} events</span>
+              </summary>
+              <div style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:6px;padding:12px;margin-top:10px;">
+                ${progressHtml || '<div style="color:var(--text2);font-size:12px;">Waiting for progress...</div>'}
+              </div>
+            </details>
+          </div>
+        `;
+      }
+
+      async function refreshActiveRuns() {
+        try {
+          const resp = await fetch("/api/runs");
+          const runs = await resp.json();
+          for (const run of runs) {
+            if (run.status === "queued" || run.status === "running" || run.status === "error") {
+              // Fetch full progress for active/recent runs
+              try {
+                const fullResp = await fetch(`/api/run/${run.runId}?since=0`);
+                const fullData = await fullResp.json();
+                runDataCache.set(run.runId, fullData);
+              } catch {
+                runDataCache.set(run.runId, { ...run, progress: [] });
+              }
+              if (run.status === "queued" || run.status === "running") {
+                pollRun(run.runId);
+              }
+            }
+          }
+          renderSidebarRuns();
+        } catch {
+          // ignore
+        }
+      }
+
+      async function cancelRun(runId) {
+        try {
+          const resp = await fetch(`/api/run/${runId}`, { method: "DELETE" });
+          const data = await resp.json();
+          if (resp.ok) {
+            const cached = runDataCache.get(runId);
+            if (cached) {
+              cached.status = data.status === "cancelling" ? "error" : data.status;
+              cached.error = "Cancelled by user";
+            }
+            renderSidebarRuns();
+            if (selectedRunId === runId && cached) renderRunMainPanel(runId, cached);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Load active runs on page load
+      refreshActiveRuns();
     </script>
   </body>
 </html>

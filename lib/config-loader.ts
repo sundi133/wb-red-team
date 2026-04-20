@@ -13,11 +13,7 @@ function findDuplicates(values: string[] | undefined): string[] {
     .map(([value]) => value);
 }
 
-export function loadConfig(configPath?: string): Config {
-  const fullPath = resolve(configPath ?? "config.json");
-  const raw = readFileSync(fullPath, "utf-8");
-  const config: Config = JSON.parse(raw);
-
+function validateAndNormalizeConfig(config: Config): Config {
   config.target.type = config.target.type ?? "http_agent";
 
   // Validate required fields
@@ -131,4 +127,17 @@ export function loadConfig(configPath?: string): Config {
   }
 
   return config;
+}
+
+export function loadConfig(configPath?: string): Config {
+  const fullPath = resolve(configPath ?? "config.json");
+  const raw = readFileSync(fullPath, "utf-8");
+  const config: Config = JSON.parse(raw);
+  return validateAndNormalizeConfig(config);
+}
+
+/** Load and validate a config from a plain object (for API server usage). */
+export function loadConfigFromObject(obj: Record<string, unknown>): Config {
+  const config = obj as unknown as Config;
+  return validateAndNormalizeConfig(config);
 }
