@@ -164,6 +164,15 @@ import { housingDiscriminationModule } from "../attacks/housing-discrimination.j
 import { ssrfModule } from "../attacks/ssrf.js";
 import { pathTraversalModule } from "../attacks/path-traversal.js";
 import { insecureOutputHandlingModule } from "../attacks/insecure-output-handling.js";
+import { multimodalGhostInjectionModule } from "../attacks/multimodal-ghost-injection.js";
+import { graphConsensusPoisoningModule } from "../attacks/graph-consensus-poisoning.js";
+import { interAgentProtocolAbuseModule } from "../attacks/inter-agent-protocol-abuse.js";
+import { mcpToolNamespaceCollisionModule } from "../attacks/mcp-tool-namespace-collision.js";
+import { computerUseInjectionModule } from "../attacks/computer-use-injection.js";
+import { streamingVoiceInjectionModule } from "../attacks/streaming-voice-injection.js";
+import { crossModalConflictModule } from "../attacks/cross-modal-conflict.js";
+import { llmJudgeManipulationModule } from "../attacks/llm-judge-manipulation.js";
+import { retrievalTenantBleedModule } from "../attacks/retrieval-tenant-bleed.js";
 import { mcpToolMisuseModule } from "../attacks-mcp/mcp-tool-misuse.js";
 import { mcpDataExfiltrationModule } from "../attacks-mcp/mcp-data-exfiltration.js";
 import { mcpIndirectPromptInjectionModule } from "../attacks-mcp/mcp-indirect-prompt-injection.js";
@@ -218,6 +227,11 @@ export const ALL_MODULES: AttackModule[] = [
   financialComplianceModule, pharmacySafetyModule, insuranceComplianceModule,
   ecommerceSecurityModule, telecomComplianceModule, housingDiscriminationModule,
   ssrfModule, pathTraversalModule, insecureOutputHandlingModule,
+  multimodalGhostInjectionModule, graphConsensusPoisoningModule,
+  interAgentProtocolAbuseModule, mcpToolNamespaceCollisionModule,
+  computerUseInjectionModule, streamingVoiceInjectionModule,
+  crossModalConflictModule, llmJudgeManipulationModule,
+  retrievalTenantBleedModule,
   apiSpecificAttackModule,
 ];
 

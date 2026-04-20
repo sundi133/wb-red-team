@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { fileURLToPath } from "node:url";
 import type { Attack, Config } from "../lib/types.js";
 import { McpSession } from "../lib/mcp/session.js";
 import { discoverMcpSurface } from "../lib/mcp/discovery.js";
 import { describeTarget, getTargetAdapter } from "../lib/target-adapter.js";
 
-const FIXTURE_PATH = new URL("./fixtures/mock-mcp-server.js", import.meta.url)
-  .pathname;
+const FIXTURE_PATH = fileURLToPath(
+  new URL("./fixtures/mock-mcp-server.js", import.meta.url),
+);
 
 function makeMcpConfig(): Config {
   return {

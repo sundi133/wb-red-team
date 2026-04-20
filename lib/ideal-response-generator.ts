@@ -8,6 +8,14 @@ import type { Config, AttackResult, IdealResponse } from "./types.js";
 
 const DEFAULT_CONCURRENCY = 3;
 
+/** LLM JSON may return `response` as an object; IdealResponse requires a string. */
+function coerceIdealText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 export async function generateIdealResponse(
   config: Config,
   result: AttackResult,
@@ -91,11 +99,11 @@ ${result.llmReasoning ? `\nJUDGE REASONING:\n${result.llmReasoning}` : ""}`;
     if (!text?.trim()) return undefined;
 
     const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    const parsed = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
 
     return {
-      response: parsed.response ?? "",
-      explanation: parsed.explanation ?? "",
+      response: coerceIdealText(parsed.response),
+      explanation: coerceIdealText(parsed.explanation),
       remediationHints: Array.isArray(parsed.remediation_hints)
         ? parsed.remediation_hints.filter(
             (h: unknown) => typeof h === "string" && h.length > 0,
