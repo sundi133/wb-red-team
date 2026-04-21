@@ -1,0 +1,62 @@
+# Hermes Agent tool manifest for the wb-red-team reconnaissance workflow.
+# Adjust keys if your Hermes version's manifest schema differs.
+# Start the tool server first:  npm run hermes:tools
+
+[[tool]]
+name = "read_repo"
+description = "Read a local source tree. Returns up to maxFiles files (truncated to maxBytesPerFile each). Use to discover tool names, roles, guardrails, sensitive data flows."
+url = "http://127.0.0.1:4300/tool/read_repo"
+method = "POST"
+[tool.schema]
+path = { type = "string", required = true, description = "Absolute or relative path to the target repo root" }
+pattern = { type = "string", description = "Glob pattern (default: **/*.{ts,tsx,js,py,md,json,yaml,yml})" }
+maxFiles = { type = "integer", description = "Max files to return (default 40)" }
+maxBytesPerFile = { type = "integer", description = "Max bytes per file (default 20000)" }
+
+[[tool]]
+name = "probe_target"
+description = "Send a BENIGN message to the live target AI app. Observe the JSON shape, refusal language, tool-call format. Do NOT use for attacks."
+url = "http://127.0.0.1:4300/tool/probe_target"
+method = "POST"
+[tool.schema]
+baseUrl = { type = "string", required = true }
+endpoint = { type = "string", required = true }
+message = { type = "string", required = true }
+headers = { type = "object", description = "Additional headers (e.g. Authorization)" }
+body = { type = "object", description = "Additional body fields merged with {message}" }
+
+[[tool]]
+name = "read_prior_reports"
+description = "Ingest prior wb-red-team reports from the report/ dir so the new config builds on past findings."
+url = "http://127.0.0.1:4300/tool/read_prior_reports"
+method = "POST"
+[tool.schema]
+dir = { type = "string", description = "Default: report" }
+limit = { type = "integer", description = "Default: 3" }
+
+[[tool]]
+name = "write_config"
+description = "Emit a wb-red-team config JSON to disk."
+url = "http://127.0.0.1:4300/tool/write_config"
+method = "POST"
+[tool.schema]
+path = { type = "string", required = true }
+config = { type = "object", required = true }
+
+[[tool]]
+name = "write_custom_attacks"
+description = "Emit the customAttacksFile as CSV (.csv) or JSON (.json). rows is an array of {category, prompt, role, note}."
+url = "http://127.0.0.1:4300/tool/write_custom_attacks"
+method = "POST"
+[tool.schema]
+path = { type = "string", required = true }
+rows = { type = "array", required = true }
+
+[[tool]]
+name = "write_policy"
+description = "Emit a judge policy JSON with target-specific category overrides."
+url = "http://127.0.0.1:4300/tool/write_policy"
+method = "POST"
+[tool.schema]
+path = { type = "string", required = true }
+policy = { type = "object", required = true }

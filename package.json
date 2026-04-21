@@ -38,7 +38,8 @@
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "dashboard": "tsx dashboard/server.ts 4200"
+    "dashboard": "tsx dashboard/server.ts 4200",
+    "hermes:tools": "tsx hermes-redteam/tool-server.ts"
   },
   "dependencies": {
     "csv-parse": "^6.2.1",
