@@ -129,7 +129,17 @@ export type AttackCategory =
   | "cross_modal_conflict"
   | "llm_judge_manipulation"
   | "retrieval_tenant_bleed"
-  | "insecure_output_handling";
+  | "insecure_output_handling"
+  | "sandbox_escape"
+  | "tool_permission_escalation"
+  | "alignment_faking"
+  | "capability_elicitation"
+  | "instruction_hierarchy_violation"
+  | "agentic_scope_creep"
+  | "state_persistence_attack"
+  | "encoding_serialization_attack"
+  | "multi_hop_reasoning_exploit"
+  | "emotional_manipulation";
 
 /** Runtime list of all attack categories (kept in sync with {@link AttackCategory}). */
 export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
@@ -262,6 +272,16 @@ export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
   "llm_judge_manipulation",
   "retrieval_tenant_bleed",
   "insecure_output_handling",
+  "sandbox_escape",
+  "tool_permission_escalation",
+  "alignment_faking",
+  "capability_elicitation",
+  "instruction_hierarchy_violation",
+  "agentic_scope_creep",
+  "state_persistence_attack",
+  "encoding_serialization_attack",
+  "multi_hop_reasoning_exploit",
+  "emotional_manipulation",
 ];
 
 const ATTACK_CATEGORY_SET = new Set<string>(ALL_ATTACK_CATEGORIES);

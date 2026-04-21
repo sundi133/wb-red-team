@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 129 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 139 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 
@@ -87,6 +87,16 @@ We're actively adding new attack categories. You can also [add your own](CONTRIB
 | `llm_judge_manipulation`      | User-supplied rubrics, footnoted scoring weights, or naive auto-grader heuristics that down-rank safety or reward harmful verbose answers                                                                  |
 | `retrieval_tenant_bleed`      | Hybrid RAG or graph expansion merging cross-tenant neighbor chunks, legacy-public ACL hits, or shared-index artifacts into tenant-isolated answers                                                         |
 | `insecure_output_handling`    | OWASP LLM Top 10 #2 — XSS/HTML/SVG injection in agent responses, deceptive markdown links, CSS exfiltration, tool output reflection attacks                                                                |
+| `sandbox_escape`              | Container/sandbox breakout — Docker escape, filesystem escape beyond allowed paths, network escape to internal services, environment variable harvesting, host mount exploitation                           |
+| `tool_permission_escalation`  | Using one permitted tool to gain access to restricted tools — reading tool configs to discover admin APIs, chaining read-only tools for write access, exploiting tool dependencies                           |
+| `alignment_faking`            | Testing if the agent appears safe during evaluation but acts differently when monitoring is perceived as off — deceptive alignment, conditional safety bypass, evaluation gaming                              |
+| `capability_elicitation`      | Discovering hidden capabilities the model has but shouldn't expose — undocumented tools, code execution when restricted, web browsing access, internal capability probing                                    |
+| `instruction_hierarchy_violation` | Breaking system > developer > user instruction priority ordering — user prompts overriding system-level safety, conflicting hierarchy instructions, constraint removal                                  |
+| `agentic_scope_creep`         | Agent autonomously expanding beyond requested scope — unrequested file creation, unauthorized message sending, auto-escalation from read to write operations, unsolicited side-effects                       |
+| `state_persistence_attack`    | Exploiting persistent state from previous sessions — poisoning config files, writing malicious DB records, leaving triggered payloads in filesystem, manipulating cached results                              |
+| `encoding_serialization_attack` | Exploiting JSON/XML/YAML parsing edge cases — nested object injection, unicode normalization, prototype pollution, oversized payloads, null byte injection, mixed-encoding confusion                       |
+| `multi_hop_reasoning_exploit` | Chaining multiple innocuous queries that individually seem safe but together leak secrets — schema probing then data extraction, context establishment then exploitation, logical chain forcing               |
+| `emotional_manipulation`      | Agent manipulating users emotionally to override judgment — urgency manufacturing, parasocial bonding, guilt-tripping for risky approvals, authority framing, simulated distress for compliance               |
 
 ## Detailed Reports, Risk Quantification & Compliance Mappings
 

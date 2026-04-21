@@ -181,6 +181,16 @@ import { mcpSsrfModule } from "../attacks-mcp/mcp-ssrf.js";
 import { mcpCrossTenantAccessModule } from "../attacks-mcp/mcp-cross-tenant-access.js";
 import { mcpDebugAccessModule } from "../attacks-mcp/mcp-debug-access.js";
 import { apiSpecificAttackModule } from "../attacks/api-specific-attack.js";
+import { sandboxEscapeModule } from "../attacks/sandbox-escape.js";
+import { toolPermissionEscalationModule } from "../attacks/tool-permission-escalation.js";
+import { alignmentFakingModule } from "../attacks/alignment-faking.js";
+import { capabilityElicitationModule } from "../attacks/capability-elicitation.js";
+import { instructionHierarchyViolationModule } from "../attacks/instruction-hierarchy-violation.js";
+import { agenticScopeCreepModule } from "../attacks/agentic-scope-creep.js";
+import { statePersistenceAttackModule } from "../attacks/state-persistence-attack.js";
+import { encodingSerializationAttackModule } from "../attacks/encoding-serialization-attack.js";
+import { multiHopReasoningExploitModule } from "../attacks/multi-hop-reasoning-exploit.js";
+import { emotionalManipulationModule } from "../attacks/emotional-manipulation.js";
 
 export const ALL_MODULES: AttackModule[] = [
   authBypassModule, rbacBypassModule, promptInjectionModule, outputEvasionModule,
@@ -233,6 +243,11 @@ export const ALL_MODULES: AttackModule[] = [
   crossModalConflictModule, llmJudgeManipulationModule,
   retrievalTenantBleedModule,
   apiSpecificAttackModule,
+  sandboxEscapeModule, toolPermissionEscalationModule, alignmentFakingModule,
+  capabilityElicitationModule, instructionHierarchyViolationModule,
+  agenticScopeCreepModule, statePersistenceAttackModule,
+  encodingSerializationAttackModule, multiHopReasoningExploitModule,
+  emotionalManipulationModule,
 ];
 
 export const MCP_MODULES: AttackModule[] = [
