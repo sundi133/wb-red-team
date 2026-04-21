@@ -7,11 +7,11 @@ import { loadConfigFromObject } from "../lib/config-loader.js";
 import { loadEnvFile } from "../lib/env-loader.js";
 import { getJudgeProvider } from "../lib/llm-provider.js";
 import { runRedTeam, type RunProgress } from "../lib/run.js";
+import { type ComplianceItem } from "../lib/compliance-mappings.js";
 import {
-  OWASP_LLM_TOP_10,
-  OWASP_AGENTIC_TOP_10,
-  type ComplianceItem,
-} from "../lib/compliance-mappings.js";
+  loadComplianceFrameworks,
+  listComplianceFrameworks,
+} from "../lib/compliance-loader.js";
 import type { Config, Report } from "../lib/types.js";
 
 loadEnvFile();
@@ -513,7 +513,15 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // API: OWASP analysis — LLM-powered per-item analysis
+  // API: list available compliance frameworks
+  if (url.pathname === "/api/compliance-frameworks" && req.method === "GET") {
+    const frameworks = listComplianceFrameworks();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(frameworks));
+    return;
+  }
+
+  // API: compliance analysis — LLM-powered per-item analysis
   if (url.pathname === "/api/owasp-analyze" && req.method === "POST") {
     try {
       const body = JSON.parse(await readBody(req));
@@ -568,14 +576,15 @@ const server = createServer(async (req, res) => {
         (r: { results: unknown[] }) => r.results,
       );
 
-      // Process both frameworks
-      const frameworks = [
-        { name: "OWASP LLM Top 10 (2025)", items: OWASP_LLM_TOP_10 },
-        {
-          name: "OWASP Agentic Security Top 10",
-          items: OWASP_AGENTIC_TOP_10,
-        },
-      ];
+      // Load frameworks from compliance/ directory (or built-in fallback)
+      const allFrameworks = loadComplianceFrameworks();
+      // If request specifies framework IDs, filter; otherwise run all
+      const selectedIds: string[] | undefined = body.frameworkIds;
+      const frameworks = selectedIds?.length
+        ? allFrameworks
+            .filter((fw) => selectedIds.includes(fw.id))
+            .map((fw) => ({ name: fw.name, items: fw.items }))
+        : allFrameworks.map((fw) => ({ name: fw.name, items: fw.items }));
 
       for (const fw of frameworks) {
         for (const item of fw.items) {

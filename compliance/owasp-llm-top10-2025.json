@@ -1,0 +1,111 @@
+{
+  "id": "owasp-llm-2025",
+  "name": "OWASP LLM Top 10 (2025)",
+  "items": [
+    {
+      "code": "LLM01:2025",
+      "title": "Prompt Injection",
+      "description": "Manipulating model outputs via malicious inputs",
+      "categories": [
+        "prompt_injection", "indirect_prompt_injection", "content_filter_bypass",
+        "special_token_injection", "cross_lingual_attack", "agent_reflection_exploit",
+        "context_window_attack", "multimodal_ghost_injection", "computer_use_injection",
+        "streaming_voice_injection", "cross_modal_conflict"
+      ]
+    },
+    {
+      "code": "LLM02:2025",
+      "title": "Sensitive Information Disclosure",
+      "description": "Leaking confidential data in outputs",
+      "categories": [
+        "sensitive_data", "data_exfiltration", "pii_disclosure", "training_data_extraction",
+        "side_channel_inference", "membership_inference", "model_inversion",
+        "embedding_inversion", "inference_attack", "re_identification", "linkage_attack",
+        "differential_privacy_violation", "steganographic_exfiltration",
+        "slow_burn_exfiltration", "out_of_band_exfiltration", "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "LLM03:2025",
+      "title": "Supply Chain Vulnerabilities",
+      "description": "Compromised third-party models or plugins",
+      "categories": [
+        "supply_chain", "rag_poisoning", "prompt_template_injection",
+        "mcp_server_compromise", "plugin_manifest_spoofing", "sdk_dependency_attack",
+        "mcp_tool_namespace_collision"
+      ]
+    },
+    {
+      "code": "LLM04:2025",
+      "title": "Data and Model Poisoning",
+      "description": "Manipulating training data or embeddings",
+      "categories": [
+        "memory_poisoning", "cross_session_injection", "rag_poisoning",
+        "rag_corpus_poisoning", "backdoor_trigger", "data_poisoning", "gradient_leakage",
+        "vector_store_manipulation", "chunk_boundary_injection", "fine_tuning_data_injection",
+        "tool_output_manipulation", "graph_consensus_poisoning"
+      ]
+    },
+    {
+      "code": "LLM05:2025",
+      "title": "Improper Output Handling",
+      "description": "Failing to sanitize LLM responses, leading to downstream attacks",
+      "categories": [
+        "insecure_output_handling", "output_evasion", "unexpected_code_exec",
+        "generated_code_rce", "structured_output_injection", "markdown_link_injection",
+        "format_confusion_attack", "shell_injection", "sql_injection"
+      ]
+    },
+    {
+      "code": "LLM06:2025",
+      "title": "Excessive Agency",
+      "description": "Over-provisioning permissions, allowing unintended actions",
+      "categories": [
+        "tool_misuse", "rbac_bypass", "identity_privilege", "auth_bypass",
+        "tool_chain_hijack", "agentic_legal_commitment", "contextual_integrity_violation",
+        "financial_fraud_facilitation", "unauthorized_commitments",
+        "inter_agent_protocol_abuse", "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "LLM07:2025",
+      "title": "System Prompt Leakage",
+      "description": "Exposing hidden, foundational instructions",
+      "categories": [
+        "prompt_injection", "training_data_extraction", "prompt_template_injection",
+        "model_extraction", "model_fingerprinting", "debug_access"
+      ]
+    },
+    {
+      "code": "LLM08:2025",
+      "title": "Vector and Embedding Weaknesses",
+      "description": "Targeting RAG system vulnerabilities",
+      "categories": [
+        "rag_poisoning", "rag_corpus_poisoning", "retrieval_ranking_attack",
+        "vector_store_manipulation", "chunk_boundary_injection", "embedding_inversion",
+        "rag_attribution", "cross_session_injection", "graph_consensus_poisoning",
+        "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "LLM09:2025",
+      "title": "Misinformation",
+      "description": "Generating false or misleading content",
+      "categories": [
+        "misinformation", "hallucination", "sycophancy_exploitation",
+        "hallucination_inducement", "fake_quotes_misinfo", "deceptive_misinfo",
+        "overreliance"
+      ]
+    },
+    {
+      "code": "LLM10:2025",
+      "title": "Unbounded Consumption",
+      "description": "Overloading resources, causing DoS",
+      "categories": [
+        "rate_limit", "cascading_failure", "model_dos", "token_flooding_dos",
+        "infinite_loop_agent", "quota_exhaustion_attack", "divergent_repetition",
+        "context_window_attack", "streaming_voice_injection"
+      ]
+    }
+  ]
+}

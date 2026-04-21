@@ -21,6 +21,7 @@ COPY attacks-mcp/ ./attacks-mcp/
 COPY dashboard/ ./dashboard/
 COPY red-team.ts ./
 COPY policies/ ./policies/
+COPY compliance/ ./compliance/
 COPY config.example.json ./
 
 # Create report directory

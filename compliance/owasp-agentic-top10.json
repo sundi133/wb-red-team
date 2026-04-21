@@ -1,0 +1,106 @@
+{
+  "id": "owasp-agentic-2025",
+  "name": "OWASP Agentic Security Top 10",
+  "items": [
+    {
+      "code": "ASI01",
+      "title": "Agent Goal Hijack",
+      "description": "Attackers manipulate instructions, prompts, or external content to redirect agent objectives",
+      "categories": [
+        "goal_hijack", "prompt_injection", "indirect_prompt_injection",
+        "agentic_workflow_bypass", "conversation_manipulation", "multi_turn_escalation",
+        "multimodal_ghost_injection", "graph_consensus_poisoning", "cross_modal_conflict"
+      ]
+    },
+    {
+      "code": "ASI02",
+      "title": "Tool Misuse & Exploitation",
+      "description": "Agents use legitimate tools to perform unauthorized, malicious actions due to poor validation",
+      "categories": [
+        "tool_misuse", "tool_chain_hijack", "tool_output_manipulation",
+        "structured_output_injection", "generated_code_rce", "shell_injection",
+        "sql_injection", "path_traversal", "ssrf", "api_abuse",
+        "computer_use_injection", "mcp_tool_namespace_collision"
+      ]
+    },
+    {
+      "code": "ASI03",
+      "title": "Identity & Privilege Abuse",
+      "description": "Exploiting agent permissions, session tokens, or credentials that often exceed user scope",
+      "categories": [
+        "identity_privilege", "auth_bypass", "rbac_bypass", "session_hijacking",
+        "cross_tenant_access", "debug_access", "inter_agent_protocol_abuse",
+        "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "ASI04",
+      "title": "Agentic Supply Chain Vulnerabilities",
+      "description": "Compromise of tools, plugins, models, or MCP servers used by the agent",
+      "categories": [
+        "supply_chain", "rag_poisoning", "rag_corpus_poisoning",
+        "prompt_template_injection", "backdoor_trigger", "mcp_server_compromise",
+        "plugin_manifest_spoofing", "sdk_dependency_attack", "fine_tuning_data_injection",
+        "mcp_tool_namespace_collision", "graph_consensus_poisoning"
+      ]
+    },
+    {
+      "code": "ASI05",
+      "title": "Unexpected Code Execution",
+      "description": "Agents are tricked into generating and executing malicious code",
+      "categories": [
+        "unexpected_code_exec", "generated_code_rce", "shell_injection",
+        "sql_injection", "insecure_output_handling"
+      ]
+    },
+    {
+      "code": "ASI06",
+      "title": "Memory & Context Poisoning",
+      "description": "Corrupting the agent's memory or RAG databases to alter behavior",
+      "categories": [
+        "memory_poisoning", "cross_session_injection", "rag_poisoning",
+        "rag_corpus_poisoning", "data_poisoning", "vector_store_manipulation",
+        "chunk_boundary_injection", "context_window_attack", "multimodal_ghost_injection",
+        "graph_consensus_poisoning", "streaming_voice_injection", "cross_modal_conflict",
+        "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "ASI07",
+      "title": "Insecure Inter-Agent Communication",
+      "description": "Interception or spoofing of messages within multi-agent systems",
+      "categories": [
+        "multi_agent_delegation", "agent_reflection_exploit",
+        "agentic_workflow_bypass", "inter_agent_protocol_abuse"
+      ]
+    },
+    {
+      "code": "ASI08",
+      "title": "Cascading Failures",
+      "description": "One agent's error or compromise triggers a chain reaction leading to system-wide failure",
+      "categories": ["cascading_failure", "divergent_repetition", "rate_limit"]
+    },
+    {
+      "code": "ASI09",
+      "title": "Human-Agent Trust Exploitation",
+      "description": "Exploiting over-reliance on AI, where agents convince humans to approve unsafe actions",
+      "categories": [
+        "social_engineering", "overreliance", "sycophancy_exploitation",
+        "hallucination_inducement", "psychological_manipulation",
+        "conversation_manipulation", "agentic_legal_commitment",
+        "financial_fraud_facilitation", "unauthorized_commitments",
+        "llm_judge_manipulation"
+      ]
+    },
+    {
+      "code": "ASI10",
+      "title": "Rogue Agents",
+      "description": "Agents that behave unexpectedly or go rogue due to conflicting goals or adversarial tampering",
+      "categories": [
+        "rogue_agent", "goal_hijack", "logic_bomb_conditional", "infinite_loop_agent",
+        "influence_operations", "off_topic", "cross_modal_conflict",
+        "streaming_voice_injection"
+      ]
+    }
+  ]
+}
