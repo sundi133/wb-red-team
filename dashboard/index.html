@@ -1725,6 +1725,16 @@
     <div class="section">
       <h2>OWASP Compliance Mapping</h2>
       <div id="owaspTrigger" class="owasp-trigger">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <label style="font-size:11px;color:var(--text2);">Provider:</label>
+          <select id="owaspProvider" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;">
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter</option>
+          </select>
+          <label style="font-size:11px;color:var(--text2);">Model:</label>
+          <input id="owaspModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;width:220px;" />
+        </div>
         <button class="owasp-btn" id="owaspAnalyzeBtn" onclick="runOwaspAnalysis()">Run OWASP Mapping Analysis</button>
         <div class="owasp-progress" id="owaspProgress" style="display:none">
           <span id="owaspProgressText">Analyzing...</span>
@@ -2016,6 +2026,12 @@
       let owaspResults = [];
       let owaspAnalyzing = false;
 
+      // Auto-fill model when provider changes
+      document.getElementById("owaspProvider").addEventListener("change", (e) => {
+        const defaults = { anthropic: "claude-sonnet-4-20250514", openai: "gpt-4o", openrouter: "anthropic/claude-sonnet-4-20250514" };
+        document.getElementById("owaspModel").value = defaults[e.target.value] || "";
+      });
+
       async function runOwaspAnalysis() {
         if (owaspAnalyzing || !reportSelect.value) return;
         owaspAnalyzing = true;
@@ -2045,7 +2061,11 @@
           const res = await fetch("/api/owasp-analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reportFile: reportSelect.value }),
+            body: JSON.stringify({
+              reportFile: reportSelect.value,
+              provider: document.getElementById("owaspProvider").value,
+              model: document.getElementById("owaspModel").value,
+            }),
           });
 
           const reader = res.body.getReader();
