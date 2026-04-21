@@ -1,0 +1,106 @@
+{
+  "id": "nist-ai-rmf",
+  "name": "NIST AI Risk Management Framework (AI 600-1)",
+  "items": [
+    {
+      "code": "GOVERN-1",
+      "title": "Policies & Accountability",
+      "description": "Organizational policies for responsible AI governance, accountability structures, and risk tolerance",
+      "categories": [
+        "unauthorized_commitments", "agentic_legal_commitment", "regulatory_violation",
+        "financial_fraud_facilitation", "contextual_integrity_violation"
+      ]
+    },
+    {
+      "code": "GOVERN-2",
+      "title": "Transparency & Documentation",
+      "description": "Transparency of AI system behavior, decision-making, and limitations",
+      "categories": [
+        "hallucination", "overreliance", "sycophancy_exploitation",
+        "deceptive_misinfo", "brand_reputation", "off_topic"
+      ]
+    },
+    {
+      "code": "MAP-1",
+      "title": "Context & Intended Use",
+      "description": "Mapping AI system context, intended use, and potential misuse scenarios",
+      "categories": [
+        "goal_hijack", "rogue_agent", "agentic_workflow_bypass",
+        "off_topic", "influence_operations"
+      ]
+    },
+    {
+      "code": "MAP-2",
+      "title": "Threat Identification",
+      "description": "Identifying threats, vulnerabilities, and attack surfaces",
+      "categories": [
+        "prompt_injection", "indirect_prompt_injection", "content_filter_bypass",
+        "tool_misuse", "tool_chain_hijack", "supply_chain",
+        "mcp_server_compromise", "plugin_manifest_spoofing"
+      ]
+    },
+    {
+      "code": "MEASURE-1",
+      "title": "Validity & Reliability",
+      "description": "Measuring AI system accuracy, consistency, and robustness under adversarial conditions",
+      "categories": [
+        "hallucination", "hallucination_inducement", "misinformation",
+        "fake_quotes_misinfo", "overreliance", "format_confusion_attack",
+        "cross_modal_conflict", "llm_judge_manipulation"
+      ]
+    },
+    {
+      "code": "MEASURE-2",
+      "title": "Safety & Security",
+      "description": "Evaluating safety controls, security boundaries, and failure modes",
+      "categories": [
+        "auth_bypass", "rbac_bypass", "session_hijacking", "cross_tenant_access",
+        "data_exfiltration", "sensitive_data", "pii_disclosure",
+        "rate_limit", "cascading_failure", "path_traversal", "ssrf",
+        "shell_injection", "sql_injection", "debug_access",
+        "inter_agent_protocol_abuse", "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "MEASURE-3",
+      "title": "Fairness & Bias",
+      "description": "Assessing bias, discrimination, and equitable treatment across demographics",
+      "categories": [
+        "bias_exploitation", "housing_discrimination", "toxic_content",
+        "hate_speech_dogwhistle", "defamation_harassment", "targeted_harassment"
+      ]
+    },
+    {
+      "code": "MEASURE-4",
+      "title": "Privacy",
+      "description": "Evaluating privacy protections, data minimization, and consent management",
+      "categories": [
+        "pii_disclosure", "consent_bypass", "gdpr_erasure_bypass",
+        "training_data_extraction", "membership_inference", "model_inversion",
+        "re_identification", "linkage_attack", "differential_privacy_violation",
+        "inference_attack", "contextual_integrity_violation"
+      ]
+    },
+    {
+      "code": "MANAGE-1",
+      "title": "Risk Response & Mitigation",
+      "description": "Implementing controls, guardrails, and mitigations for identified risks",
+      "categories": [
+        "guardrail_timing", "output_evasion", "content_filter_bypass",
+        "insecure_output_handling", "model_dos", "token_flooding_dos",
+        "infinite_loop_agent", "quota_exhaustion_attack"
+      ]
+    },
+    {
+      "code": "MANAGE-2",
+      "title": "Continuous Monitoring",
+      "description": "Ongoing monitoring for emerging threats, model drift, and adversarial attacks",
+      "categories": [
+        "memory_poisoning", "rag_poisoning", "rag_corpus_poisoning",
+        "data_poisoning", "backdoor_trigger", "fine_tuning_data_injection",
+        "vector_store_manipulation", "graph_consensus_poisoning",
+        "slow_burn_exfiltration", "multi_turn_escalation"
+      ]
+    }
+  ]
+}

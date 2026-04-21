@@ -950,215 +950,229 @@
       }
 
       /* OWASP Compliance */
-      .owasp-trigger {
-        text-align: center;
-        padding: 32px;
-      }
-      .owasp-btn {
-        background: var(--surface2);
-        color: #fff;
+      /* ── Compliance Analysis Section ── */
+      .compliance-config {
+        background: var(--surface);
         border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+      }
+      .compliance-config-row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .compliance-config-row + .compliance-config-row {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .compliance-config label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .compliance-config select,
+      .compliance-config input[type="text"] {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+      }
+      .compliance-config select:focus,
+      .compliance-config input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .compliance-config input[type="text"] {
+        width: 240px;
+      }
+      .fw-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        user-select: none;
+      }
+      .fw-chip:has(input:checked) {
+        background: rgba(88, 166, 255, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .fw-chip input { display: none; }
+      .fw-chip .fw-count {
+        font-size: 10px;
+        background: var(--surface2);
+        padding: 1px 6px;
+        border-radius: 10px;
+        color: var(--text2);
+      }
+      .compliance-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 16px;
+      }
+      .compliance-run-btn {
+        background: var(--accent);
+        color: #fff;
+        border: none;
         border-radius: 8px;
-        padding: 12px 28px;
-        font-size: 14px;
+        padding: 10px 24px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: background 0.2s;
+        transition: opacity 0.15s;
       }
-      .owasp-btn:hover {
-        background: var(--surface);
+      .compliance-run-btn:hover { opacity: 0.85; }
+      .compliance-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .compliance-dl-btn {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.15s;
       }
-      .owasp-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .owasp-progress {
-        margin-top: 12px;
+      .compliance-dl-btn:hover { background: var(--surface); }
+      .compliance-progress {
+        margin-top: 14px;
         font-size: 12px;
         color: var(--text2);
       }
-      .owasp-progress-bar {
-        height: 4px;
+      .compliance-progress-bar {
+        height: 3px;
         background: var(--surface2);
         border-radius: 2px;
         margin-top: 6px;
         overflow: hidden;
       }
-      .owasp-progress-fill {
+      .compliance-progress-fill {
         height: 100%;
-        background: var(--accent);
+        background: linear-gradient(90deg, var(--accent), var(--purple));
         border-radius: 2px;
-        transition: width 0.3s;
+        transition: width 0.4s ease;
       }
-      .compliance-grid {
-        display: grid;
-        gap: 10px;
+
+      /* Framework results */
+      .compliance-fw-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
       }
-      .compliance-card {
-        background: var(--surface2);
-        border-radius: 8px;
-        border-left: 4px solid var(--border);
+      .compliance-fw-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .compliance-fw-title {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .compliance-summary-bar {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 16px;
+        height: 6px;
+        border-radius: 3px;
         overflow: hidden;
+        background: var(--surface2);
       }
-      .compliance-card.status-vulnerable {
-        border-left-color: var(--red);
+      .compliance-summary-seg {
+        height: 100%;
+        transition: width 0.4s ease;
       }
-      .compliance-card.status-at_risk {
-        border-left-color: var(--orange);
+      .compliance-summary-stats {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 16px;
       }
-      .compliance-card.status-secure {
-        border-left-color: var(--green);
+      .compliance-stat {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text2);
       }
-      .compliance-card.status-not_tested {
-        border-left-color: var(--text2);
-        opacity: 0.6;
+      .compliance-stat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
       }
-      .compliance-card.status-error {
-        border-left-color: var(--text2);
+      .compliance-stat-num {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text);
       }
+      .compliance-grid { display: grid; gap: 6px; }
+      .compliance-card {
+        background: var(--bg);
+        border-radius: 8px;
+        border-left: 3px solid var(--border);
+        overflow: hidden;
+        transition: border-color 0.15s;
+      }
+      .compliance-card.status-vulnerable { border-left-color: var(--red); }
+      .compliance-card.status-at_risk { border-left-color: var(--orange); }
+      .compliance-card.status-secure { border-left-color: var(--green); }
+      .compliance-card.status-not_tested { border-left-color: var(--text2); opacity: 0.6; }
+      .compliance-card.status-error { border-left-color: var(--text2); }
       .compliance-header {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 16px;
+        padding: 10px 14px;
         cursor: pointer;
         user-select: none;
       }
-      .compliance-header:hover {
-        background: rgba(88, 166, 255, 0.04);
-      }
-      .compliance-code {
-        font-weight: 700;
-        font-size: 12px;
-        color: var(--accent);
-        min-width: 90px;
-        flex-shrink: 0;
-      }
-      .compliance-title {
-        font-size: 13px;
-        flex: 1;
-      }
-      .compliance-meta {
-        font-size: 11px;
-        color: var(--text2);
-        min-width: 100px;
-        text-align: right;
-        flex-shrink: 0;
-      }
-      .compliance-meta .c-vuln {
-        color: var(--red);
-        font-weight: 600;
-      }
-      .compliance-meta .c-partial {
-        color: var(--orange);
-      }
-      .compliance-meta .c-safe {
-        color: var(--green);
-      }
+      .compliance-header:hover { background: rgba(88, 166, 255, 0.03); }
+      .compliance-expand { font-size: 11px; color: var(--text2); width: 16px; text-align: center; transition: transform 0.2s; }
+      .compliance-code { font-weight: 700; font-size: 11px; color: var(--accent); min-width: 80px; flex-shrink: 0; }
+      .compliance-title { font-size: 13px; flex: 1; }
+      .compliance-meta { font-size: 11px; color: var(--text2); min-width: 90px; text-align: right; flex-shrink: 0; }
+      .compliance-meta .c-vuln { color: var(--red); font-weight: 600; }
       .compliance-status {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 10px;
-        white-space: nowrap;
+        font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+        padding: 2px 8px; border-radius: 10px; white-space: nowrap;
       }
-      .compliance-status.vulnerable {
-        background: rgba(248, 81, 73, 0.15);
-        color: var(--red);
-      }
-      .compliance-status.at_risk {
-        background: rgba(210, 153, 34, 0.15);
-        color: var(--orange);
-      }
-      .compliance-status.secure {
-        background: rgba(63, 185, 80, 0.15);
-        color: var(--green);
-      }
-      .compliance-status.not_tested {
-        background: rgba(139, 148, 158, 0.15);
-        color: var(--text2);
-      }
-      .compliance-status.error {
-        background: rgba(139, 148, 158, 0.15);
-        color: var(--text2);
-      }
-      .compliance-expand {
-        font-size: 12px;
-        color: var(--text2);
-        width: 20px;
-        text-align: center;
-      }
-      .compliance-body {
-        display: none;
-        padding: 0 16px 16px;
-        border-top: 1px solid var(--border);
-      }
-      .compliance-body.open {
-        display: block;
-      }
-      .compliance-summary-text {
-        font-size: 13px;
-        color: var(--text);
-        margin: 12px 0;
-        line-height: 1.6;
-      }
+      .compliance-status.vulnerable { background: rgba(248,81,73,0.12); color: var(--red); }
+      .compliance-status.at_risk { background: rgba(210,153,34,0.12); color: var(--orange); }
+      .compliance-status.secure { background: rgba(63,185,80,0.12); color: var(--green); }
+      .compliance-status.not_tested { background: rgba(139,148,158,0.1); color: var(--text2); }
+      .compliance-status.error { background: rgba(139,148,158,0.1); color: var(--text2); }
+      .compliance-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--border); }
+      .compliance-body.open { display: block; }
+      .compliance-summary-text { font-size: 13px; color: var(--text); margin: 12px 0; line-height: 1.6; }
       .compliance-details {
-        font-size: 12px;
-        color: var(--text2);
-        white-space: pre-wrap;
-        word-break: break-word;
-        background: var(--bg);
-        border-radius: 6px;
-        padding: 12px;
-        max-height: 300px;
-        overflow: auto;
-        margin: 8px 0;
-        line-height: 1.6;
+        font-size: 12px; color: var(--text2); white-space: pre-wrap; word-break: break-word;
+        background: var(--surface2); border-radius: 6px; padding: 12px; max-height: 300px;
+        overflow: auto; margin: 8px 0; line-height: 1.6;
       }
-      .compliance-recs {
-        margin: 8px 0;
-        padding-left: 20px;
-      }
-      .compliance-recs li {
-        font-size: 12px;
-        color: var(--text);
-        margin: 4px 0;
-        line-height: 1.5;
-      }
-      .compliance-findings {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 8px;
-      }
+      .compliance-recs { margin: 8px 0; padding-left: 20px; }
+      .compliance-recs li { font-size: 12px; color: var(--text); margin: 4px 0; line-height: 1.5; }
+      .compliance-findings { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
       .compliance-finding-tag {
-        display: inline-block;
-        background: rgba(248, 81, 73, 0.1);
-        color: var(--red);
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-      }
-      .owasp-summary-bar {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 12px;
-      }
-      .owasp-summary-item {
-        text-align: center;
-        padding: 8px 16px;
-        background: var(--bg);
-        border-radius: 6px;
-      }
-      .owasp-summary-item .os-num {
-        font-size: 22px;
-        font-weight: 700;
-      }
-      .owasp-summary-item .os-label {
-        font-size: 11px;
-        color: var(--text2);
-        text-transform: uppercase;
+        display: inline-block; background: rgba(248,81,73,0.08); color: var(--red);
+        padding: 2px 8px; border-radius: 4px; font-size: 11px;
       }
 
       /* Conversation timeline */
@@ -1507,8 +1521,8 @@
         renderTrend();
         renderPagination();
 
-        // Auto-select first report if none selected
-        if (!currentFile && reportsMeta.length > 0) {
+        // Auto-select first report if nothing is selected
+        if (!currentFile && !selectedRunId && reportsMeta.length > 0) {
           selectReport(reportsMeta[0].filename);
         }
       }
@@ -1651,6 +1665,7 @@
         currentRowIndex = 0;
         render();
         document.querySelector(".main").scrollTop = 0;
+        loadFrameworkSelector();
       }
 
       // Keep old name for backward compat
@@ -1721,29 +1736,36 @@
       <div id="strategySection"></div>
     </div>
 
-    <!-- OWASP Compliance -->
+    <!-- Compliance Analysis -->
     <div class="section">
-      <h2>OWASP Compliance Mapping</h2>
-      <div id="owaspTrigger" class="owasp-trigger">
-        <button class="owasp-btn" id="owaspAnalyzeBtn" onclick="runOwaspAnalysis()">Run OWASP Mapping Analysis</button>
-        <div class="owasp-progress" id="owaspProgress" style="display:none">
+      <h2>Compliance Analysis</h2>
+      <div class="compliance-config" id="owaspTrigger">
+        <div class="compliance-config-row">
+          <label>Provider</label>
+          <select id="owaspProvider">
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter</option>
+          </select>
+          <label>Model</label>
+          <input id="owaspModel" type="text" value="claude-sonnet-4-20250514" />
+        </div>
+        <div class="compliance-config-row">
+          <label>Frameworks</label>
+          <div id="frameworkSelector" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        </div>
+        <div class="compliance-actions">
+          <button class="compliance-run-btn" id="owaspAnalyzeBtn" onclick="runOwaspAnalysis()">Run Compliance Analysis</button>
+          <button class="compliance-dl-btn" id="complianceCsvBtn" onclick="downloadComplianceCsv()" style="display:none;">Export CSV</button>
+          <button class="compliance-dl-btn" id="complianceJsonBtn" onclick="downloadComplianceJson()" style="display:none;">Export JSON</button>
+        </div>
+        <div class="compliance-progress" id="owaspProgress" style="display:none">
           <span id="owaspProgressText">Analyzing...</span>
-          <div class="owasp-progress-bar"><div class="owasp-progress-fill" id="owaspProgressFill" style="width:0%"></div></div>
+          <div class="compliance-progress-bar"><div class="compliance-progress-fill" id="owaspProgressFill" style="width:0%"></div></div>
         </div>
       </div>
       <div id="owaspResults" style="display:none">
-        <div class="two-col">
-          <div>
-            <h3 style="font-size:15px;margin-bottom:12px;">OWASP LLM Top 10 (2025)</h3>
-            <div id="owaspLlmSummary" class="owasp-summary-bar"></div>
-            <div id="owaspLlm" class="compliance-grid"></div>
-          </div>
-          <div>
-            <h3 style="font-size:15px;margin-bottom:12px;">OWASP Agentic Security Top 10</h3>
-            <div id="owaspAgenticSummary" class="owasp-summary-bar"></div>
-            <div id="owaspAgentic" class="compliance-grid"></div>
-          </div>
-        </div>
+        <div id="complianceFrameworkResults"></div>
       </div>
     </div>
 
@@ -2016,6 +2038,33 @@
       let owaspResults = [];
       let owaspAnalyzing = false;
 
+      // Auto-fill model when provider changes (use delegation since element is inside render() template)
+      document.addEventListener("change", (e) => {
+        if (e.target && e.target.id === "owaspProvider") {
+          const defaults = { anthropic: "claude-sonnet-4-20250514", openai: "gpt-4o", openrouter: "anthropic/claude-sonnet-4-20250514" };
+          const modelEl = document.getElementById("owaspModel");
+          if (modelEl) modelEl.value = defaults[e.target.value] || "";
+        }
+      });
+
+      async function loadFrameworkSelector() {
+        const el = document.getElementById("frameworkSelector");
+        if (!el) return;
+        try {
+          const resp = await fetch("/api/compliance-frameworks");
+          const frameworks = await resp.json();
+          el.innerHTML = frameworks.map(fw => `
+            <label class="fw-chip">
+              <input type="checkbox" class="fw-checkbox" value="${esc(fw.id)}" checked />
+              ${esc(fw.name)}
+              <span class="fw-count">${fw.controlCount}</span>
+            </label>
+          `).join("");
+        } catch {
+          el.innerHTML = "";
+        }
+      }
+
       async function runOwaspAnalysis() {
         if (owaspAnalyzing || !reportSelect.value) return;
         owaspAnalyzing = true;
@@ -2025,27 +2074,40 @@
         const progressText = $("#owaspProgressText");
         const progressFill = $("#owaspProgressFill");
 
-        // Reset everything for a fresh run
+        // Get selected frameworks
+        const selectedFrameworks = [];
+        document.querySelectorAll(".fw-checkbox:checked").forEach((cb) => {
+          selectedFrameworks.push(cb.value);
+        });
+
+        // Reset
         owaspResults = [];
         $("#owaspResults").style.display = "none";
-        $("#owaspLlm").innerHTML = "";
-        $("#owaspAgentic").innerHTML = "";
-        $("#owaspLlmSummary").innerHTML = "";
-        $("#owaspAgenticSummary").innerHTML = "";
+        $("#complianceFrameworkResults").innerHTML = "";
+        const csvBtnR = document.getElementById("complianceCsvBtn");
+        const jsonBtnR = document.getElementById("complianceJsonBtn");
+        if (csvBtnR) csvBtnR.style.display = "none";
+        if (jsonBtnR) jsonBtnR.style.display = "none";
 
         btn.disabled = true;
         btn.textContent = "Analyzing with LLM...";
         progress.style.display = "block";
         progressFill.style.width = "0%";
 
-        const totalItems = 20; // 10 LLM + 10 Agentic
         let completed = 0;
 
         try {
+          const providerEl = document.getElementById("owaspProvider");
+          const modelEl = document.getElementById("owaspModel");
           const res = await fetch("/api/owasp-analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reportFile: reportSelect.value }),
+            body: JSON.stringify({
+              reportFile: reportSelect.value,
+              provider: providerEl ? providerEl.value : "anthropic",
+              model: modelEl ? modelEl.value : "claude-sonnet-4-20250514",
+              frameworkIds: selectedFrameworks.length > 0 ? selectedFrameworks : undefined,
+            }),
           });
 
           const reader = res.body.getReader();
@@ -2066,14 +2128,13 @@
                 const item = JSON.parse(line);
                 owaspResults.push(item);
                 completed++;
-                progressText.textContent = `Analyzing ${item.code} — ${item.title}... (${completed}/${totalItems})`;
-                progressFill.style.width = `${(completed / totalItems) * 100}%`;
+                progressText.textContent = `Analyzing ${item.code} — ${item.title}... (${completed} items)`;
+                progressFill.style.width = `${Math.min(completed * 5, 95)}%`;
                 renderOwaspResults();
               } catch {}
             }
           }
 
-          // Process remaining buffer
           if (buffer.trim()) {
             try {
               owaspResults.push(JSON.parse(buffer));
@@ -2081,12 +2142,17 @@
             } catch {}
           }
 
-          btn.textContent = "Re-run OWASP Analysis";
+          btn.textContent = "Re-run Compliance Analysis";
           progressText.textContent = `Analysis complete — ${owaspResults.length} item${owaspResults.length !== 1 ? "s" : ""} analyzed`;
+          // Show download buttons
+          const csvBtn = document.getElementById("complianceCsvBtn");
+          const jsonBtn = document.getElementById("complianceJsonBtn");
+          if (csvBtn) csvBtn.style.display = "inline-block";
+          if (jsonBtn) jsonBtn.style.display = "inline-block";
           progressFill.style.width = "100%";
         } catch (err) {
           progressText.textContent = `Error: ${err.message}`;
-          btn.textContent = "Retry OWASP Analysis";
+          btn.textContent = "Retry Compliance Analysis";
         }
 
         btn.disabled = false;
@@ -2096,35 +2162,64 @@
       function renderOwaspResults() {
         const resultsEl = $("#owaspResults");
         resultsEl.style.display = "block";
+        const container = $("#complianceFrameworkResults");
 
-        const llmItems = owaspResults.filter((r) =>
-          r.framework.includes("LLM"),
-        );
-        const agenticItems = owaspResults.filter((r) =>
-          r.framework.includes("Agentic"),
-        );
-
-        renderOwaspSummaryBar($("#owaspLlmSummary"), llmItems);
-        renderOwaspSummaryBar($("#owaspAgenticSummary"), agenticItems);
-        renderOwaspCards($("#owaspLlm"), llmItems);
-        renderOwaspCards($("#owaspAgentic"), agenticItems);
-      }
-
-      function renderOwaspSummaryBar(el, items) {
-        if (!items.length) {
-          el.innerHTML = "";
-          return;
+        // Group results by framework
+        const byFramework = {};
+        for (const r of owaspResults) {
+          const fw = r.framework || "Unknown";
+          if (!byFramework[fw]) byFramework[fw] = [];
+          byFramework[fw].push(r);
         }
-        const vuln = items.filter((i) => i.status === "vulnerable").length;
-        const risk = items.filter((i) => i.status === "at_risk").length;
-        const secure = items.filter((i) => i.status === "secure").length;
-        const notTested = items.filter((i) => i.status === "not_tested").length;
-        el.innerHTML = `
-          <div class="owasp-summary-item"><div class="os-num" style="color:var(--red)">${vuln}</div><div class="os-label">Vulnerable</div></div>
-          <div class="owasp-summary-item"><div class="os-num" style="color:var(--orange)">${risk}</div><div class="os-label">At Risk</div></div>
-          <div class="owasp-summary-item"><div class="os-num" style="color:var(--green)">${secure}</div><div class="os-label">Secure</div></div>
-          <div class="owasp-summary-item"><div class="os-num" style="color:var(--text2)">${notTested}</div><div class="os-label">Not Tested</div></div>
-        `;
+
+        const fwNames = Object.keys(byFramework);
+
+        container.innerHTML = fwNames.map(fw => {
+          const items = byFramework[fw];
+          const fwId = fw.replace(/[^a-zA-Z0-9]/g, "_");
+          const vuln = items.filter(i => i.status === "vulnerable").length;
+          const risk = items.filter(i => i.status === "at_risk").length;
+          const secure = items.filter(i => i.status === "secure").length;
+          const notTested = items.filter(i => i.status === "not_tested").length;
+          const total = items.length || 1;
+
+          return `<div class="compliance-fw-section">
+            <div class="compliance-fw-header">
+              <div class="compliance-fw-title">${esc(fw)}</div>
+              <div style="font-size:12px;color:var(--text2)">${items.length} controls</div>
+            </div>
+            <div class="compliance-summary-bar">
+              ${vuln ? `<div class="compliance-summary-seg" style="width:${(vuln/total)*100}%;background:var(--red);"></div>` : ""}
+              ${risk ? `<div class="compliance-summary-seg" style="width:${(risk/total)*100}%;background:var(--orange);"></div>` : ""}
+              ${secure ? `<div class="compliance-summary-seg" style="width:${(secure/total)*100}%;background:var(--green);"></div>` : ""}
+              ${notTested ? `<div class="compliance-summary-seg" style="width:${(notTested/total)*100}%;background:var(--surface2);"></div>` : ""}
+            </div>
+            <div class="compliance-summary-stats">
+              <div class="compliance-stat">
+                <div class="compliance-stat-dot" style="background:var(--red)"></div>
+                <span class="compliance-stat-num">${vuln}</span> Vulnerable
+              </div>
+              <div class="compliance-stat">
+                <div class="compliance-stat-dot" style="background:var(--orange)"></div>
+                <span class="compliance-stat-num">${risk}</span> At Risk
+              </div>
+              <div class="compliance-stat">
+                <div class="compliance-stat-dot" style="background:var(--green)"></div>
+                <span class="compliance-stat-num">${secure}</span> Secure
+              </div>
+              <div class="compliance-stat">
+                <div class="compliance-stat-dot" style="background:var(--text2)"></div>
+                <span class="compliance-stat-num">${notTested}</span> Not Tested
+              </div>
+            </div>
+            <div id="cards_${fwId}" class="compliance-grid"></div>
+          </div>`;
+        }).join("");
+
+        for (const fw of fwNames) {
+          const fwId = fw.replace(/[^a-zA-Z0-9]/g, "_");
+          renderOwaspCards(document.getElementById("cards_" + fwId), byFramework[fw]);
+        }
       }
 
       function renderOwaspCards(el, items) {
@@ -3101,6 +3196,37 @@
         a.href = `/api/report/${currentFile}`;
         a.download = currentFile;
         a.click();
+      }
+
+      function downloadComplianceCsv() {
+        if (!owaspResults || owaspResults.length === 0) return;
+        const headers = ["Framework","Code","Title","Status","Attacks Analyzed","Vulnerabilities Found","Summary","Details","Recommendations"];
+        const csvEsc = (v) => { const s = String(v ?? "").replace(/"/g, '""'); return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s}"` : s; };
+        const rows = [headers.join(",")];
+        for (const r of owaspResults) {
+          rows.push([
+            r.framework, r.code, r.title, r.status,
+            r.attacksAnalyzed, r.vulnerabilitiesFound,
+            r.summary, r.details,
+            (r.recommendations || []).join(" | ")
+          ].map(csvEsc).join(","));
+        }
+        const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `compliance-${currentFile || "analysis"}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      function downloadComplianceJson() {
+        if (!owaspResults || owaspResults.length === 0) return;
+        const blob = new Blob([JSON.stringify(owaspResults, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `compliance-${currentFile || "analysis"}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
       }
 
       // ── New Run UI ──
