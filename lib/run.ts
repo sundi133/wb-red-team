@@ -355,6 +355,7 @@ export interface RunProgress {
   result?: {
     category: string;
     name: string;
+    description: string;
     severity: string;
     verdict: string;
     findings: string[];
@@ -362,6 +363,11 @@ export interface RunProgress {
     responseTimeMs: number;
     strategyName?: string;
     llmReasoning?: string;
+    payload?: string;
+    responsePreview?: string;
+    authMethod?: string;
+    role?: string;
+    conversation?: { stepIndex: number; payload: unknown; statusCode: number; responseBody: unknown; responseTimeMs: number }[];
   };
 }
 
@@ -393,6 +399,22 @@ export async function runRedTeam(
   };
 
   const emitResult = (result: AttackResult, extra?: Partial<RunProgress>) => {
+    // Extract payload message
+    const payload = typeof (result.attack.payload as Record<string, unknown>)?.message === "string"
+      ? (result.attack.payload as Record<string, unknown>).message as string
+      : JSON.stringify(result.attack.payload);
+
+    // Extract response preview (truncate to 2000 chars)
+    let responsePreview = "";
+    if (typeof result.responseBody === "string") {
+      responsePreview = result.responseBody.slice(0, 2000);
+    } else if (result.responseBody) {
+      const rb = result.responseBody as Record<string, unknown>;
+      responsePreview = typeof rb.response === "string"
+        ? (rb.response as string).slice(0, 2000)
+        : JSON.stringify(result.responseBody).slice(0, 2000);
+    }
+
     onProgress?.({
       phase: "result",
       message: `${result.attack.category}: ${result.attack.name} → ${result.verdict}`,
@@ -400,6 +422,7 @@ export async function runRedTeam(
       result: {
         category: result.attack.category,
         name: result.attack.name,
+        description: result.attack.description,
         severity: result.attack.severity,
         verdict: result.verdict,
         findings: result.findings,
@@ -407,6 +430,11 @@ export async function runRedTeam(
         responseTimeMs: result.responseTimeMs,
         strategyName: result.attack.strategyName,
         llmReasoning: result.llmReasoning,
+        payload,
+        responsePreview,
+        authMethod: result.attack.authMethod,
+        role: result.attack.role,
+        conversation: result.conversation,
       },
     });
   };

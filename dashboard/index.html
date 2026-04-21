@@ -2392,6 +2392,130 @@
         }
       }
 
+      function toggleLiveRow(idx) {
+        if (liveExpandedRows.has(idx)) {
+          liveExpandedRows.delete(idx);
+        } else {
+          liveExpandedRows.add(idx);
+        }
+        var el = document.getElementById('live-detail-' + idx);
+        if (el) el.style.display = liveExpandedRows.has(idx) ? 'table-row' : 'none';
+      }
+
+      function toggleAllLiveRows() {
+        liveExpandAll = !liveExpandAll;
+        var details = document.querySelectorAll('[id^="live-detail-"]');
+        details.forEach(function(el) {
+          var idx = parseInt(el.id.replace('live-detail-', ''));
+          if (liveExpandAll) {
+            liveExpandedRows.add(idx);
+            el.style.display = 'table-row';
+          } else {
+            liveExpandedRows.delete(idx);
+            el.style.display = 'none';
+          }
+        });
+        var btn = document.getElementById('live-toggle-all-btn');
+        if (btn) btn.textContent = liveExpandAll ? 'Collapse All' : 'Expand All';
+      }
+
+      function buildLiveResultsHtml(liveResults) {
+        const verdictColors = { PASS: "var(--red)", FAIL: "var(--green)", PARTIAL: "var(--orange)", ERROR: "var(--text2)" };
+        const sevColors = { critical: "var(--critical)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)" };
+
+        const rows = liveResults.map((r, idx) => {
+          const catLabel = r.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          const shortDetails = r.llmReasoning ? r.llmReasoning.slice(0, 140) : (r.findings?.length > 0 ? r.findings[0].slice(0, 140) : "");
+
+          // Conversation steps
+          let convHtml = "";
+          if (r.conversation && r.conversation.length > 0) {
+            convHtml = r.conversation.map((step, si) => {
+              const sp = step.payload?.message || JSON.stringify(step.payload);
+              const sr = typeof step.responseBody === "string" ? step.responseBody : JSON.stringify(step.responseBody, null, 2);
+              return '<div style="margin-bottom:8px;">' +
+                '<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:2px;">Step ' + (si + 1) + ' (' + step.statusCode + ', ' + step.responseTimeMs + 'ms)</div>' +
+                '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:2px;">REQUEST</div>' +
+                '<pre style="background:var(--bg);border-radius:4px;padding:8px;font-size:11px;max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0 0 6px 0;">' + esc(String(sp)) + '</pre>' +
+                '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:2px;">RESPONSE</div>' +
+                '<pre style="background:var(--bg);border-radius:4px;padding:8px;font-size:11px;max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0;">' + esc(String(sr).slice(0, 2000)) + '</pre>' +
+                '</div>';
+            }).join("");
+          }
+
+          const isExpanded = liveExpandAll || liveExpandedRows.has(idx);
+
+          // Summary row (clickable)
+          let html = '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="toggleLiveRow(' + idx + ')">' +
+            '<td style="padding:6px 8px;"><span style="color:' + (verdictColors[r.verdict] || "var(--text2)") + ';font-weight:600;">' + r.verdict + '</span></td>' +
+            '<td style="padding:6px 8px;"><span style="color:' + (sevColors[r.severity] || "var(--text2)") + ';text-transform:uppercase;font-size:10px;font-weight:600;">' + r.severity + '</span></td>' +
+            '<td style="padding:6px 8px;color:var(--text2);">' + esc(catLabel) + '</td>' +
+            '<td style="padding:6px 8px;">' + esc(r.name) + '</td>' +
+            '<td style="padding:6px 8px;color:var(--text2);font-size:11px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortDetails) + (shortDetails.length >= 140 ? "..." : "") + '</td>' +
+            '<td style="padding:6px 8px;color:var(--text2);font-size:11px;">' + esc(r.strategyName || "") + '</td>' +
+            '</tr>';
+
+          // Expandable detail row
+          html += '<tr id="live-detail-' + idx + '" style="display:' + (isExpanded ? 'table-row' : 'none') + ';">' +
+            '<td colspan="6" style="padding:12px 16px;background:var(--surface);">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+            '<div>' +
+            '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">REQUEST PAYLOAD</div>' +
+            '<pre style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0;">' + esc(r.payload || "") + '</pre>' +
+            '</div>' +
+            '<div>' +
+            '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">RESPONSE <span style="font-weight:400;">HTTP ' + r.statusCode + ' &middot; ' + r.responseTimeMs + 'ms</span></div>' +
+            '<pre style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0;">' + esc(r.responsePreview || "") + '</pre>' +
+            '</div>' +
+            '</div>';
+
+          if (r.llmReasoning) {
+            html += '<div style="margin-top:10px;">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">THREAT ASSESSMENT</div>' +
+              '<div style="font-size:12px;color:var(--text);line-height:1.5;background:var(--bg);border-radius:6px;padding:10px;">' + esc(r.llmReasoning) + '</div>' +
+              '</div>';
+          }
+
+          if (r.findings && r.findings.length > 0) {
+            html += '<div style="margin-top:8px;">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">FINDINGS</div>' +
+              '<div style="font-size:11px;color:var(--text);">' + r.findings.map(f => '<div style="padding:2px 0;">' + esc(f) + '</div>').join("") + '</div>' +
+              '</div>';
+          }
+
+          if (convHtml) {
+            html += '<div style="margin-top:10px;">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">CONVERSATION (' + r.conversation.length + ' steps)</div>' +
+              convHtml +
+              '</div>';
+          }
+
+          html += '<div style="margin-top:8px;font-size:10px;color:var(--text2);">' +
+            'Auth: ' + esc(r.authMethod || "n/a") + ' / ' + esc(r.role || "n/a") + ' &middot; ' + esc(r.description || "") +
+            '</div>' +
+            '</td></tr>';
+
+          return html;
+        }).join("");
+
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
+          '<span>Results <span style="color:var(--text2);font-weight:400">' + liveResults.length + ' total</span></span>' +
+          '<button id="live-toggle-all-btn" onclick="toggleAllLiveRows()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;">' + (liveExpandAll ? 'Collapse All' : 'Expand All') + '</button>' +
+          '</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+          '<thead><tr style="border-bottom:1px solid var(--border);text-align:left;">' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">VERDICT</th>' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">SEVERITY</th>' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">CATEGORY</th>' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">ATTACK</th>' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">DETAILS</th>' +
+          '<th style="padding:6px 8px;color:var(--text2);font-weight:500;">STRATEGY</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+          '</table></div>';
+      }
+
       function renderOwaspCards(el, items) {
         el.innerHTML = items
           .map(
@@ -3483,6 +3607,8 @@
       // ── Sidebar run tracking ──
       const pollingRuns = new Set();
       let selectedRunId = null;
+      const liveExpandedRows = new Set();
+      let liveExpandAll = false;
       const runDataCache = new Map();
 
       function pollRun(runId) {
@@ -3703,37 +3829,8 @@
             }).join('')}
           </div>` : "";
 
-        // Results table
-        const resultsHtml = liveResults.length > 0 ? `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
-            <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Results <span style="color:var(--text2);font-weight:400">${liveResults.length} total</span></div>
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="border-bottom:1px solid var(--border);text-align:left;">
-                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">VERDICT</th>
-                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">SEVERITY</th>
-                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">CATEGORY</th>
-                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">ATTACK</th>
-                  <th style="padding:6px 8px;color:var(--text2);font-weight:500;">DETAILS</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${liveResults.map(r => {
-                  const verdictColors = { PASS: "var(--red)", FAIL: "var(--green)", PARTIAL: "var(--orange)", ERROR: "var(--text2)" };
-                  const sevColors = { critical: "var(--critical)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)" };
-                  const catLabel = r.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                  const details = r.findings?.length > 0 ? r.findings[0].slice(0, 100) : (r.llmReasoning || "").slice(0, 100);
-                  return `<tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:6px 8px;"><span style="color:${verdictColors[r.verdict] || "var(--text2)"};font-weight:600;">${r.verdict}</span></td>
-                    <td style="padding:6px 8px;"><span style="color:${sevColors[r.severity] || "var(--text2)"};text-transform:uppercase;font-size:10px;font-weight:600;">${r.severity}</span></td>
-                    <td style="padding:6px 8px;color:var(--text2);">${esc(catLabel)}</td>
-                    <td style="padding:6px 8px;">${esc(r.name)}</td>
-                    <td style="padding:6px 8px;color:var(--text2);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(details)}</td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>` : "";
+        // Results table — built via function to avoid nested template literal issues
+        const resultsHtml = liveResults.length > 0 ? buildLiveResultsHtml(liveResults) : "";
 
         // Progress log (collapsed when results exist)
         const progressLines = (data.progress || []).filter(p => p.phase !== "result").slice(-20);
