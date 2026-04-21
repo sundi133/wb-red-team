@@ -538,10 +538,27 @@ const server = createServer(async (req, res) => {
         "Transfer-Encoding": "chunked",
       });
 
-      const config = loadConfig();
-      const llm = getJudgeProvider(config);
-      const model =
-        config.attackConfig.judgeModel || config.attackConfig.llmModel;
+      // Try loading config.json for LLM settings; fall back to env-based defaults
+      // (inside Docker, config.json may not exist)
+      let judgeProvider = "anthropic";
+      let judgeModel = "claude-sonnet-4-20250514";
+      try {
+        const config = loadConfig();
+        judgeProvider =
+          config.attackConfig.judgeProvider ??
+          config.attackConfig.llmProvider ??
+          judgeProvider;
+        judgeModel =
+          config.attackConfig.judgeModel ??
+          config.attackConfig.llmModel ??
+          judgeModel;
+      } catch {
+        // No config.json — use defaults; API keys come from env vars
+      }
+      const llm = getJudgeProvider({
+        attackConfig: { judgeProvider, llmProvider: judgeProvider },
+      } as Config);
+      const model = judgeModel;
       const allResults = reportData.rounds.flatMap(
         (r: { results: unknown[] }) => r.results,
       );
