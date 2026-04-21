@@ -104,43 +104,80 @@ For detailed security reports, risk quantification of attacks, and compliance ma
 
 ![Votal Dashboard](assets/votal-dashboard.png)
 
-## Prerequisites
+## Quick Start (5 minutes)
 
-- **Node.js** >= 18
-- **npm**
-- An API key for one of the supported LLM providers
-
-### Environment Variables
-
-Create a `.env` file in the project root (see `.env.example`):
+### Option A: CLI (simplest — no Docker needed)
 
 ```bash
-# Option 1: OpenAI (default)
-OPENAI_API_KEY=sk-...
-
-# Option 2: Anthropic Claude
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Option 3: OpenRouter (access to open-source models)
-OPENROUTER_API_KEY=sk-or-...
-
-# Optional: OpenRouter site info for rankings
-OPENROUTER_SITE_URL=https://your-site.com
-OPENROUTER_SITE_NAME=Your App Name
-```
-
-You can also export them directly in your shell.
-
-## Quick Start
-
-```bash
+# 1. Clone and install
 git clone https://github.com/sundi133/wb-red-team.git
 cd wb-red-team
 npm install
+
+# 2. Add your LLM API key
+cp .env.example .env
+# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY
+
+# 3. Create your config (or use the example)
 cp config.example.json config.json
-# Edit config.json with your target details
-npm start
+# Edit config.json — set target.baseUrl to your app's URL
+
+# 4. Run
+npx tsx red-team.ts config.json
 ```
+
+Reports are saved to `report/` as JSON + Markdown.
+
+### Option B: Dashboard + Docker (recommended)
+
+```bash
+# 1. Clone
+git clone https://github.com/sundi133/wb-red-team.git
+cd wb-red-team
+
+# 2. Add your LLM API key
+cp .env.example .env
+# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY
+
+# 3. Start
+docker compose up -d
+
+# 4. Open dashboard
+open http://localhost:4200
+```
+
+Click **+ New Run**, paste your config JSON, click **Start Run**. Watch results stream live.
+
+To test against a local app (e.g., `localhost:3000`), use `host.docker.internal:3000` as the baseUrl in your config.
+
+### Option C: Dashboard + Postgres (enterprise features)
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/sundi133/wb-red-team.git
+cd wb-red-team
+cp .env.example .env
+
+# 2. Edit .env with all keys:
+#    ANTHROPIC_API_KEY=sk-ant-...
+#    DATABASE_URL=postgres://redteam:redteam_dev@postgres:5432/redteam
+#    MASTER_ENCRYPTION_KEY=<run: openssl rand -hex 32>
+#    AUTH_MODE=dev
+
+# 3. Start (Postgres + dashboard)
+docker compose up -d
+
+# 4. Open dashboard — no login needed in dev mode
+open http://localhost:4200
+```
+
+Reports are encrypted and stored in Postgres. See [Enterprise Deployment](#enterprise-deployment) for production setup with SSO.
+
+## Prerequisites
+
+- **Node.js** >= 18 (for CLI mode)
+- **Docker** (for dashboard mode)
+- An API key for at least one LLM provider (Anthropic, OpenAI, or OpenRouter)
 
 ## Installation
 

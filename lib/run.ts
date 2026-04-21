@@ -841,8 +841,17 @@ export async function runRedTeam(
     analysis.affectedFiles,
     discoveryIntel,
   );
-  const { jsonPath, mdPath } = writeReport(report);
-  log("report", `Report written: ${jsonPath}`);
+  // Skip file write when DB is configured (server stores to DB instead)
+  let jsonPath = "";
+  let mdPath = "";
+  if (!process.env.DATABASE_URL) {
+    const paths = writeReport(report);
+    jsonPath = paths.jsonPath;
+    mdPath = paths.mdPath;
+    log("report", `Report written: ${jsonPath}`);
+  } else {
+    log("report", "Report generated (stored in database)");
+  }
 
   return { report, jsonPath, mdPath };
 }
