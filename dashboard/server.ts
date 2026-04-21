@@ -13,6 +13,14 @@ import {
   listComplianceFrameworks,
 } from "../lib/compliance-loader.js";
 import type { Config, Report } from "../lib/types.js";
+import { withMiddleware, type RequestContext } from "../lib/middleware.js";
+import { isDbConfigured, runMigrations } from "../lib/db.js";
+import { logAudit, queryAuditLog } from "../lib/audit.js";
+import {
+  storeReport,
+  listReports as listReportsFromDb,
+  getReportByFilename,
+} from "../lib/report-store.js";
 
 loadEnvFile();
 
@@ -108,6 +116,8 @@ interface Job {
   startedAt: string;
   finishedAt?: string;
   abortController?: AbortController;
+  tenantId?: string;
+  userId?: string;
 }
 
 const jobs = new Map<string, Job>();
@@ -134,6 +144,16 @@ async function startJob(job: Job): Promise<void> {
     job.reportFile = result.jsonPath;
     job.finishedAt = new Date().toISOString();
     metaCache.clear();
+    // Store report in DB if enterprise mode is active
+    if (isDbConfigured() && job.tenantId) {
+      try {
+        await storeReport(result.report, job.tenantId, job.id, {
+          skipFile: false,
+        });
+      } catch (dbErr) {
+        console.error("Failed to store report in DB:", dbErr);
+      }
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "Run cancelled") {
@@ -163,13 +183,18 @@ function drainQueue(): void {
   }
 }
 
-function enqueueJob(config: Config): Job {
+function enqueueJob(
+  config: Config,
+  ctx?: RequestContext | null,
+): Job {
   const job: Job = {
     id: randomUUID(),
     status: "queued",
     config,
     progress: [],
     startedAt: new Date().toISOString(),
+    tenantId: ctx?.tenantId,
+    userId: ctx?.userId,
   };
   jobs.set(job.id, job);
 
@@ -183,17 +208,17 @@ function enqueueJob(config: Config): Job {
 }
 
 // ── HTTP server ──
-const server = createServer(async (req, res) => {
+const server = createServer(withMiddleware(async (req, res, ctx) => {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
-  // CORS headers for local dev
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
+  // ── Auth config (public — no auth required) ──
+  if (url.pathname === "/api/auth-config" && req.method === "GET") {
+    const authMode = process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      mode: authMode,
+      clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || null,
+    }));
     return;
   }
 
@@ -218,7 +243,12 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const job = enqueueJob(config);
+      const job = enqueueJob(config, ctx);
+      if (ctx) {
+        await logAudit(ctx, "run.start", "run", job.id, {
+          targetUrl: config.target.baseUrl,
+        });
+      }
       res.writeHead(202, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -630,6 +660,25 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // API: audit log
+  if (url.pathname === "/api/audit-log" && req.method === "GET") {
+    if (!ctx) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Audit log requires authentication" }));
+      return;
+    }
+    const result = await queryAuditLog(ctx.tenantId, {
+      limit: parseInt(url.searchParams.get("limit") || "100", 10),
+      offset: parseInt(url.searchParams.get("offset") || "0", 10),
+      action: url.searchParams.get("action") || undefined,
+      since: url.searchParams.get("since") || undefined,
+    });
+    await logAudit(ctx, "audit.view");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
   // Serve static files from dashboard dir
   let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
   // Prevent path traversal
@@ -648,7 +697,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(404);
     res.end("Not found");
   }
-});
+}));
 
 // ── LLM-powered OWASP item analysis ──
 
@@ -816,9 +865,29 @@ Be specific and reference the actual attack results. Do not be generic.`;
   };
 }
 
-server.listen(PORT, () => {
-  console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
-  console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
-  console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
-  console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs\n`);
-});
+// Initialize DB and start server
+(async () => {
+  if (isDbConfigured()) {
+    try {
+      await runMigrations();
+      console.log("  Enterprise mode: Postgres connected, auth enabled");
+    } catch (err) {
+      console.error("Failed to initialize database:", err);
+      process.exit(1);
+    }
+  }
+
+  server.listen(PORT, () => {
+    console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
+    console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
+    console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
+    console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs`);
+    if (isDbConfigured()) {
+      console.log(`  Audit log          → GET  http://localhost:${PORT}/api/audit-log`);
+      console.log(`  Mode: Enterprise (Postgres + Auth + RBAC)`);
+    } else {
+      console.log(`  Mode: Local (no auth, file-based reports)`);
+    }
+    console.log();
+  });
+})();

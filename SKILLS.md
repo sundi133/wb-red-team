@@ -597,4 +597,84 @@ echo "config-prod.json" >> .gitignore
 
 ---
 
+## Platform Capabilities
+
+### Deployment Modes
+
+| Mode | Use Case | Auth | Storage |
+|------|----------|------|---------|
+| **CLI** (`npx tsx red-team.ts config.json`) | Local testing, one-off scans | None | JSON files on disk |
+| **Docker standalone** (no `DATABASE_URL`) | Quick setup, demos | None | JSON files via volume mount |
+| **Docker + Postgres** (`AUTH_MODE=dev`) | Local dev with enterprise backend | Auto-admin, no login | Encrypted in Postgres |
+| **Enterprise** (no `AUTH_MODE`) | Production deployment | OIDC SSO + API keys | Encrypted in Postgres |
+
+### 139 Attack Categories
+
+Covering prompt injection, data exfiltration, auth bypass, tool misuse, RAG poisoning, compliance violations, multimodal attacks, supply chain, sandbox escape, alignment faking, emotional manipulation, and more. See README.md for the full list.
+
+### Compliance Frameworks
+
+Extensible compliance framework system — add custom frameworks by dropping JSON files in `compliance/`:
+- OWASP LLM Top 10 (2025)
+- OWASP Agentic Security Top 10
+- NIST AI Risk Management Framework (AI 600-1)
+- Custom frameworks: create a JSON file with control-to-category mappings
+
+### Enterprise Security Features
+
+- **Postgres storage** with AES-256-GCM envelope encryption (per-tenant keys)
+- **SSO authentication** via any OIDC provider (Clerk, Okta, Azure AD, Auth0, Keycloak)
+- **API key authentication** (`X-API-Key` header) for CI/CD and programmatic access
+- **RBAC**: admin (full), viewer (read reports), auditor (compliance + audit log)
+- **Multi-tenant isolation** — every query scoped by tenant_id
+- **Immutable audit log** — who, what, when, which target, from which IP
+- **Dev mode** (`AUTH_MODE=dev`) — full enterprise backend with no login friction
+
+### API Endpoints
+
+| Endpoint | Method | Description | Auth |
+|----------|--------|-------------|------|
+| `/api/run` | POST | Start a red-team run | admin |
+| `/api/run/:id` | GET | Poll run status + progress | admin, viewer |
+| `/api/run/:id` | DELETE | Cancel a run | admin |
+| `/api/runs` | GET | List all runs | admin, viewer |
+| `/api/reports-meta` | GET | Paginated report listing | admin, viewer |
+| `/api/report/:file` | GET | Full report JSON | admin, viewer |
+| `/api/report-csv/:file` | GET | CSV export | admin, viewer |
+| `/api/compliance-frameworks` | GET | List frameworks | all roles |
+| `/api/owasp-analyze` | POST | Run compliance analysis | admin, auditor |
+| `/api/audit-log` | GET | Query audit trail | admin, auditor |
+| `/api/auth-config` | GET | Auth configuration | public |
+
+### CI/CD Integration
+
+Trigger scans against any reachable endpoint — local, staging, or production:
+
+```bash
+# Local target
+curl -X POST http://redteam-server/api/run \
+  -H "X-API-Key: rtk_..." \
+  -d '{"target":{"baseUrl":"http://host.docker.internal:3000",...}}'
+
+# Staging
+curl -X POST http://redteam-server/api/run \
+  -H "X-API-Key: rtk_..." \
+  -d '{"target":{"baseUrl":"https://staging-api.company.com",...}}'
+
+# Production
+curl -X POST http://redteam-server/api/run \
+  -H "X-API-Key: rtk_..." \
+  -d '{"target":{"baseUrl":"https://api.company.com",...}}'
+```
+
+### Dashboard Features
+
+- **Live progress** — category breakdown, results table, and log stream update in real-time during runs
+- **Report browser** — search, paginate, score trend sparkline across all historical reports
+- **Compliance analysis** — select provider/model/frameworks, run LLM-powered compliance mapping
+- **Download** — CSV and JSON exports for reports and compliance analyses
+- **Run management** — start runs with JSON config editor, monitor active runs, cancel jobs
+
+---
+
 _Remember: The goal of red team testing is to improve security, not to break systems. Always test responsibly and work collaboratively with development teams to address findings._

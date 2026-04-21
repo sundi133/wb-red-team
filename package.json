@@ -45,10 +45,12 @@
     "glob": "^11.1.0",
     "jose": "^5.0.0",
     "openai": "^4.50.0",
+    "pg": "^8.20.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

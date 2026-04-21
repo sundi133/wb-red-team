@@ -1400,9 +1400,66 @@
           grid-template-columns: 1fr;
         }
       }
+      /* Auth overlay */
+      .auth-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .auth-overlay h1 { font-size: 24px; font-weight: 700; }
+      .auth-overlay p { color: var(--text2); font-size: 14px; }
+      .auth-sign-in-btn {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 32px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .auth-sign-in-btn:hover { opacity: 0.85; }
+      .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .user-menu-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .user-menu-signout {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text2);
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .user-menu-signout:hover { color: var(--text); border-color: var(--text2); }
     </style>
   </head>
   <body>
+    <!-- Auth overlay (hidden by default, shown when OIDC auth is required) -->
+    <div id="authOverlay" class="auth-overlay" style="display:none;">
+      <h1>Red Team Dashboard</h1>
+      <p>Sign in to access security reports and run analyses</p>
+      <button class="auth-sign-in-btn" id="authSignInBtn">Sign In</button>
+      <p style="font-size:11px;color:var(--text2);margin-top:8px;">Powered by your organization's SSO</p>
+    </div>
     <div class="layout">
       <!-- Sidebar: Report Browser -->
       <div class="sidebar">
@@ -1427,6 +1484,10 @@
           <div class="loading" style="padding: 24px">Loading...</div>
         </div>
         <div class="sidebar-pagination" id="pagination"></div>
+        <div class="user-menu" id="userMenu" style="display:none;">
+          <span class="user-menu-name" id="userMenuName"></span>
+          <button class="user-menu-signout" id="userMenuSignout">Sign out</button>
+        </div>
       </div>
 
       <!-- Main content -->
@@ -1488,9 +1549,118 @@
       let searchTerm = "";
       let searchTimeout = null;
 
+      // ── Auth state ──
+      let authToken = null;
+      let authMode = "none";
+      let clerkInstance = null;
+
+      // Wrap fetch to include auth token
+      const _origFetch = window.fetch;
+      window.fetch = function(url, opts = {}) {
+        if (authToken && typeof url === "string" && url.startsWith("/api/") && url !== "/api/auth-config") {
+          opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${authToken}` };
+        }
+        return _origFetch.call(this, url, opts);
+      };
+
+      async function initAuth() {
+        try {
+          const res = await _origFetch("/api/auth-config");
+          const config = await res.json();
+          authMode = config.mode;
+
+          if (authMode === "none" || authMode === "dev") {
+            // No auth needed — hide overlay, proceed
+            document.getElementById("authOverlay").style.display = "none";
+            return;
+          }
+
+          if (authMode === "oidc" && config.clerkPublishableKey) {
+            // Load Clerk SDK
+            await loadClerkSdk();
+            const Clerk = window.Clerk;
+            clerkInstance = new Clerk(config.clerkPublishableKey);
+            await clerkInstance.load();
+
+            if (clerkInstance.user) {
+              // Already signed in
+              await onClerkSignedIn();
+            } else {
+              // Show sign-in overlay
+              document.getElementById("authOverlay").style.display = "flex";
+              document.getElementById("authSignInBtn").addEventListener("click", () => {
+                clerkInstance.openSignIn({ redirectUrl: window.location.href });
+              });
+
+              // Listen for sign-in
+              clerkInstance.addListener(({ user }) => {
+                if (user) onClerkSignedIn();
+              });
+            }
+            return;
+          }
+
+          // OIDC without Clerk key — show message
+          if (authMode === "oidc") {
+            document.getElementById("authOverlay").style.display = "flex";
+            document.getElementById("authSignInBtn").textContent = "SSO Not Configured";
+            document.getElementById("authSignInBtn").disabled = true;
+          }
+        } catch {
+          // Auth config failed — proceed without auth (backward compat)
+        }
+      }
+
+      async function onClerkSignedIn() {
+        document.getElementById("authOverlay").style.display = "none";
+
+        // Get session token
+        const session = clerkInstance.session;
+        if (session) {
+          authToken = await session.getToken();
+          // Auto-refresh token before expiry
+          setInterval(async () => {
+            try {
+              authToken = await clerkInstance.session?.getToken();
+            } catch {}
+          }, 50000);
+        }
+
+        // Show user menu
+        const user = clerkInstance.user;
+        const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "User";
+        document.getElementById("userMenu").style.display = "flex";
+        document.getElementById("userMenuName").textContent = name;
+        document.getElementById("userMenuSignout").addEventListener("click", async () => {
+          await clerkInstance.signOut();
+          authToken = null;
+          document.getElementById("userMenu").style.display = "none";
+          document.getElementById("authOverlay").style.display = "flex";
+        });
+
+        // Now load data
+        await loadReportsMeta();
+        refreshActiveRuns();
+      }
+
+      function loadClerkSdk() {
+        return new Promise((resolve, reject) => {
+          if (window.Clerk) { resolve(); return; }
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
       // ── Bootstrap ──
       (async () => {
-        await loadReportsMeta();
+        await initAuth();
+        if (authMode === "none" || authMode === "dev") {
+          await loadReportsMeta();
+        }
+        // If OIDC mode, loadReportsMeta is called from onClerkSignedIn
       })();
 
       // Search with debounce
