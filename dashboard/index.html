@@ -2419,11 +2419,28 @@
         if (btn) btn.textContent = liveExpandAll ? 'Collapse All' : 'Expand All';
       }
 
+      function onLiveFilterChange() {
+        const v = document.getElementById("liveFilterVerdict");
+        const s = document.getElementById("liveFilterSeverity");
+        if (v) liveFilterVerdict = v.value;
+        if (s) liveFilterSeverity = s.value;
+        // Re-render — the cached data triggers a fresh build
+        const cached = selectedRunId ? runDataCache.get(selectedRunId) : null;
+        if (cached) renderRunMainPanel(selectedRunId, cached);
+      }
+
       function buildLiveResultsHtml(liveResults) {
         const verdictColors = { PASS: "var(--red)", FAIL: "var(--green)", PARTIAL: "var(--orange)", ERROR: "var(--text2)" };
         const sevColors = { critical: "var(--critical)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)" };
 
-        const rows = liveResults.map((r, idx) => {
+        // Apply filters
+        const filtered = liveResults.filter(r => {
+          if (liveFilterVerdict && r.verdict !== liveFilterVerdict) return false;
+          if (liveFilterSeverity && r.severity !== liveFilterSeverity) return false;
+          return true;
+        });
+
+        const rows = filtered.map((r, idx) => {
           const catLabel = r.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
           const shortDetails = r.llmReasoning ? r.llmReasoning.slice(0, 140) : (r.findings?.length > 0 ? r.findings[0].slice(0, 140) : "");
 
@@ -2498,10 +2515,30 @@
           return html;
         }).join("");
 
+        const filterCountText = filtered.length < liveResults.length
+          ? filtered.length + ' of ' + liveResults.length
+          : liveResults.length + ' total';
+
         return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">' +
-          '<div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">' +
-          '<span>Results <span style="color:var(--text2);font-weight:400">' + liveResults.length + ' total</span></span>' +
-          '<button id="live-toggle-all-btn" onclick="toggleAllLiveRows()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;">' + (liveExpandAll ? 'Collapse All' : 'Expand All') + '</button>' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+          '<span>Results <span style="color:var(--text2);font-weight:400">' + filterCountText + '</span></span>' +
+          '<div style="display:flex;gap:8px;align-items:center;">' +
+          '<select id="liveFilterVerdict" onchange="onLiveFilterChange()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;">' +
+          '<option value=""' + (liveFilterVerdict === "" ? ' selected' : '') + '>All Verdicts</option>' +
+          '<option value="PASS"' + (liveFilterVerdict === "PASS" ? ' selected' : '') + '>PASS</option>' +
+          '<option value="FAIL"' + (liveFilterVerdict === "FAIL" ? ' selected' : '') + '>FAIL</option>' +
+          '<option value="PARTIAL"' + (liveFilterVerdict === "PARTIAL" ? ' selected' : '') + '>PARTIAL</option>' +
+          '<option value="ERROR"' + (liveFilterVerdict === "ERROR" ? ' selected' : '') + '>ERROR</option>' +
+          '</select>' +
+          '<select id="liveFilterSeverity" onchange="onLiveFilterChange()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;">' +
+          '<option value=""' + (liveFilterSeverity === "" ? ' selected' : '') + '>All Severities</option>' +
+          '<option value="critical"' + (liveFilterSeverity === "critical" ? ' selected' : '') + '>Critical</option>' +
+          '<option value="high"' + (liveFilterSeverity === "high" ? ' selected' : '') + '>High</option>' +
+          '<option value="medium"' + (liveFilterSeverity === "medium" ? ' selected' : '') + '>Medium</option>' +
+          '<option value="low"' + (liveFilterSeverity === "low" ? ' selected' : '') + '>Low</option>' +
+          '</select>' +
+          '<button id="live-toggle-all-btn" onclick="toggleAllLiveRows()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 12px;font-size:11px;cursor:pointer;">' + (liveExpandAll ? 'Collapse All' : 'Expand All') + '</button>' +
+          '</div>' +
           '</div>' +
           '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
           '<thead><tr style="border-bottom:1px solid var(--border);text-align:left;">' +
@@ -3609,6 +3646,8 @@
       let selectedRunId = null;
       const liveExpandedRows = new Set();
       let liveExpandAll = false;
+      let liveFilterVerdict = "";
+      let liveFilterSeverity = "";
       const runDataCache = new Map();
 
       function pollRun(runId) {
