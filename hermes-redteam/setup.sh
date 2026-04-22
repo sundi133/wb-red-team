@@ -145,15 +145,26 @@ if hermes mcp list 2>/dev/null | grep -qw "$MCP_NAME"; then
   hermes mcp remove "$MCP_NAME" 2>/dev/null || hermes mcp rm "$MCP_NAME" 2>/dev/null || true
 fi
 
-# Try the most common `hermes mcp add` forms.
-if ! hermes mcp add "$MCP_NAME" -- "$mcp_entry" 2>/dev/null; then
-  if ! hermes mcp add "$MCP_NAME" --command "$mcp_entry" 2>/dev/null; then
-    if ! hermes mcp add --name "$MCP_NAME" --command "$mcp_entry" 2>/dev/null; then
-      warn "automatic 'hermes mcp add' failed — your Hermes version likely uses different flags."
-      warn "Run this manually, adapting to 'hermes mcp add --help' output:"
-      warn "  hermes mcp add $MCP_NAME -- $mcp_entry"
-    fi
-  fi
+# Hermes v0.10 documented form: --command <cmd> [--args <args...>].
+# The `-- <cmd>` positional form was accepted but did NOT persist in v0.10.0.
+log "registration: hermes mcp add $MCP_NAME --command $mcp_entry"
+if hermes mcp add "$MCP_NAME" --command "$mcp_entry"; then
+  :
+elif hermes mcp add "$MCP_NAME" --command /bin/bash --args "$mcp_entry"; then
+  :
+elif hermes mcp add --name "$MCP_NAME" --command "$mcp_entry"; then
+  :
+else
+  warn "automatic 'hermes mcp add' failed — run 'hermes mcp add --help' and adapt manually."
+  warn "  hermes mcp add $MCP_NAME --command $mcp_entry"
+fi
+
+# Verify registration actually persisted (the connection test during `add`
+# can succeed even when the entry is not written to config).
+if ! hermes mcp list 2>&1 | grep -qw "$MCP_NAME"; then
+  warn "MCP server '$MCP_NAME' registered (connection tested) but NOT visible in 'hermes mcp list'."
+  warn "This usually means the flag form was wrong. Run 'hermes mcp add --help' and retry manually:"
+  warn "  hermes mcp add $MCP_NAME --command $mcp_entry"
 fi
 
 # ── 6. Verify ──
