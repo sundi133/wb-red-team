@@ -3245,7 +3245,7 @@
       })();
 
       // Search with debounce
-      $("#reportSearch").addEventListener("input", (e) => {
+      $("#reportSearch")?.addEventListener("input", (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
           searchTerm = e.target.value;
@@ -3291,6 +3291,7 @@
 
       function renderReportList() {
         const el = $("#reportList");
+        if (!el) return;
         if (!reportsMeta.length) {
           el.innerHTML =
             '<div class="loading" style="padding:24px">No reports found</div>';
@@ -3324,6 +3325,7 @@
 
       function renderPagination() {
         const el = $("#pagination");
+        if (!el) return;
         if (totalPages <= 1) {
           el.innerHTML = `<span>${reportsMeta.length ? reportsMeta.length + " reports" : ""}</span>`;
           return;
