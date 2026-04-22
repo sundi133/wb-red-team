@@ -5540,7 +5540,11 @@
               clearInterval(interval);
               pollingRuns.delete(runId);
               if (data.status === "done") {
-                loadReportsMeta();
+                // Small delay to ensure DB write is fully committed
+                setTimeout(function() {
+                  loadReportsMeta();
+                  if (currentTab === "dashboard") renderDashboardTab();
+                }, 1500);
               }
               renderSidebarRuns();
             }
