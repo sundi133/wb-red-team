@@ -139,7 +139,9 @@ export type AttackCategory =
   | "state_persistence_attack"
   | "encoding_serialization_attack"
   | "multi_hop_reasoning_exploit"
-  | "emotional_manipulation";
+  | "emotional_manipulation"
+  | "reward_hacking"
+  | "universal_adversarial_trigger";
 
 /** Runtime list of all attack categories (kept in sync with {@link AttackCategory}). */
 export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
@@ -282,6 +284,8 @@ export const ALL_ATTACK_CATEGORIES: readonly AttackCategory[] = [
   "encoding_serialization_attack",
   "multi_hop_reasoning_exploit",
   "emotional_manipulation",
+  "reward_hacking",
+  "universal_adversarial_trigger",
 ];
 
 const ATTACK_CATEGORY_SET = new Set<string>(ALL_ATTACK_CATEGORIES);

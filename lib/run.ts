@@ -191,6 +191,8 @@ import { statePersistenceAttackModule } from "../attacks/state-persistence-attac
 import { encodingSerializationAttackModule } from "../attacks/encoding-serialization-attack.js";
 import { multiHopReasoningExploitModule } from "../attacks/multi-hop-reasoning-exploit.js";
 import { emotionalManipulationModule } from "../attacks/emotional-manipulation.js";
+import { rewardHackingModule } from "../attacks/reward-hacking.js";
+import { universalAdversarialTriggerModule } from "../attacks/universal-adversarial-trigger.js";
 
 export const ALL_MODULES: AttackModule[] = [
   authBypassModule, rbacBypassModule, promptInjectionModule, outputEvasionModule,
@@ -248,6 +250,7 @@ export const ALL_MODULES: AttackModule[] = [
   agenticScopeCreepModule, statePersistenceAttackModule,
   encodingSerializationAttackModule, multiHopReasoningExploitModule,
   emotionalManipulationModule,
+  rewardHackingModule, universalAdversarialTriggerModule,
 ];
 
 export const MCP_MODULES: AttackModule[] = [

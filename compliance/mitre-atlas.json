@@ -20,7 +20,8 @@
       "categories": [
         "content_filter_bypass", "output_evasion", "guardrail_timing",
         "alignment_faking", "over_refusal", "conversation_manipulation",
-        "multi_turn_escalation", "format_confusion_attack", "encoding_serialization_attack"
+        "multi_turn_escalation", "format_confusion_attack", "encoding_serialization_attack",
+        "universal_adversarial_trigger"
       ]
     },
     {
@@ -137,7 +138,7 @@
       "categories": [
         "hallucination_inducement", "sycophancy_exploitation", "overreliance",
         "conversation_manipulation", "multi_turn_escalation", "emotional_manipulation",
-        "psychological_manipulation", "llm_judge_manipulation"
+        "psychological_manipulation", "llm_judge_manipulation", "reward_hacking"
       ]
     },
     {

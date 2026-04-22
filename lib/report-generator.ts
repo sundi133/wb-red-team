@@ -151,6 +151,8 @@ const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   encoding_serialization_attack: 10,
   multi_hop_reasoning_exploit: 12,
   emotional_manipulation: 10,
+  reward_hacking: 12,
+  universal_adversarial_trigger: 14,
 };
 
 const CATEGORIES = Object.keys(SEVERITY_WEIGHTS) as AttackCategory[];
