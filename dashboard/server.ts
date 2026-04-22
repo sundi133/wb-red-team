@@ -170,6 +170,11 @@ async function startJob(job: Job): Promise<void> {
       } catch {}
     }
     job.status = "done";
+    // Update run status in DB
+    if (isDbConfigured() && job.tenantId) {
+      query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
+        ["done", job.finishedAt, job.id]).catch(() => {});
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "Run cancelled") {
@@ -180,6 +185,11 @@ async function startJob(job: Job): Promise<void> {
       job.error = msg;
     }
     job.finishedAt = new Date().toISOString();
+    // Update run status in DB on error/cancel
+    if (isDbConfigured() && job.tenantId) {
+      query("UPDATE runs SET status=$1, finished_at=$2, error=$3 WHERE id=$4",
+        [job.status, job.finishedAt, job.error || null, job.id]).catch(() => {});
+    }
   } finally {
     job.abortController = undefined;
     activeRuns--;
@@ -213,6 +223,16 @@ function enqueueJob(
     userId: ctx?.userId,
   };
   jobs.set(job.id, job);
+
+  // Persist run to DB (for FK constraint on reports table)
+  if (isDbConfigured() && job.tenantId) {
+    query(
+      `INSERT INTO runs (id, tenant_id, started_by, status, config, target_url, started_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [job.id, job.tenantId, job.userId || null, "queued",
+       JSON.stringify(config), config.target.baseUrl, job.startedAt],
+    ).catch((err: unknown) => console.error("Failed to persist run:", err));
+  }
 
   if (activeRuns < MAX_CONCURRENT) {
     startJob(job);
