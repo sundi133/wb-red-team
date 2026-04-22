@@ -2599,7 +2599,13 @@
           '<div><div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Model</div>' +
           '<input id="riskModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;width:240px;font-family:inherit;" /></div>' +
           '<div style="align-self:flex-end;">' +
-          '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze' : 'Analyze with AI') + '</button></div>' +
+          '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze' : 'Analyze with AI') + '</button>' +
+          (riskLlmResults && riskLlmResults.length > 0 ?
+            '<button onclick="toggleAllRiskCards()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:8px;" id="riskToggleAllBtn">Collapse All</button>' +
+            '<button onclick="downloadRiskCsv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:4px;">Export CSV</button>' +
+            '<button onclick="downloadRiskJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:4px;">Export JSON</button>'
+          : '') +
+          '</div>' +
           '<span id="riskLlmProgress" style="font-size:12px;color:var(--text2);"></span>' +
           '</div>' +
 
@@ -2700,6 +2706,43 @@
 
         if (btn) btn.disabled = false;
         riskAnalyzing = false;
+      }
+
+      let riskCardsExpanded = true;
+
+      function toggleAllRiskCards() {
+        riskCardsExpanded = !riskCardsExpanded;
+        document.querySelectorAll('#riskLlmResultsArea > div > div:nth-child(2)').forEach(function(el) {
+          el.style.display = riskCardsExpanded ? 'block' : 'none';
+        });
+        var btn = document.getElementById('riskToggleAllBtn');
+        if (btn) btn.textContent = riskCardsExpanded ? 'Collapse All' : 'Expand All';
+      }
+
+      function downloadRiskCsv() {
+        if (!riskLlmResults || riskLlmResults.length === 0) return;
+        var headers = ["Attack","Category","Severity","Impact Level","Business Impact","Financial Exposure","Related Incidents","Compliance Risk","Remediation Estimate"];
+        var csvEsc = function(v) { var s = String(v || "").replace(/"/g, '""'); return (s.includes(",") || s.includes('"') || s.includes("\n")) ? '"' + s + '"' : s; };
+        var rows = [headers.join(",")];
+        riskLlmResults.forEach(function(r) {
+          rows.push([r.attack, r.category, r.severity, r.impactLevel, r.businessImpact, r.financialExposure, r.relatedIncidents, r.complianceRisk, r.remediationEstimate].map(csvEsc).join(","));
+        });
+        var blob = new Blob([rows.join("\n")], { type: "text/csv" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "risk-analysis-" + (riskSelectedReport || "report") + ".csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      function downloadRiskJson() {
+        if (!riskLlmResults || riskLlmResults.length === 0) return;
+        var blob = new Blob([JSON.stringify(riskLlmResults, null, 2)], { type: "application/json" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "risk-analysis-" + (riskSelectedReport || "report") + ".json";
+        a.click();
+        URL.revokeObjectURL(a.href);
       }
 
       function buildRiskResultsOnly(results) {
