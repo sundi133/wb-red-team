@@ -14,7 +14,7 @@ import {
 } from "../lib/compliance-loader.js";
 import type { Config, Report } from "../lib/types.js";
 import { withMiddleware, type RequestContext } from "../lib/middleware.js";
-import { isDbConfigured, runMigrations } from "../lib/db.js";
+import { isDbConfigured, runMigrations, query } from "../lib/db.js";
 import { logAudit, queryAuditLog } from "../lib/audit.js";
 import {
   storeReport,
@@ -713,6 +713,62 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+    }
+    return;
+  }
+
+  // API: list reports with compliance analysis status
+  if (url.pathname === "/api/compliance-status" && req.method === "GET") {
+    if (isDbConfigured() && ctx) {
+      try {
+        const result = await query<{
+          report_id: string;
+          filename: string;
+          target_url: string;
+          report_ts: string;
+          score: number;
+          frameworks: string;
+        }>(
+          `SELECT r.id as report_id, r.filename, r.target_url, r.report_ts, r.score,
+                  COALESCE(string_agg(DISTINCT ca.framework, ', '), '') as frameworks
+           FROM reports r
+           LEFT JOIN compliance_analyses ca ON ca.report_id = r.id AND ca.tenant_id = r.tenant_id
+           WHERE r.tenant_id = $1
+           GROUP BY r.id, r.filename, r.target_url, r.report_ts, r.score
+           ORDER BY r.report_ts DESC
+           LIMIT 50`,
+          [ctx.tenantId],
+        );
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result.rows.map(r => ({
+          reportId: r.report_id,
+          filename: r.filename,
+          targetUrl: r.target_url,
+          timestamp: r.report_ts,
+          score: r.score,
+          analyzedFrameworks: r.frameworks ? r.frameworks.split(", ").filter(Boolean) : [],
+        }))));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: String(err) }));
+      }
+    } else {
+      // Non-enterprise: return reports from filesystem with no compliance status
+      try {
+        const files = readdirSync(REPORT_DIR).filter(f => f.endsWith(".json")).sort().reverse().slice(0, 50);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(files.map(f => ({
+          reportId: f,
+          filename: f,
+          targetUrl: "",
+          timestamp: "",
+          score: 0,
+          analyzedFrameworks: [],
+        }))));
+      } catch {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("[]");
+      }
     }
     return;
   }

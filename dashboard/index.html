@@ -41,16 +41,187 @@
         text-decoration: none;
       }
 
-      /* Layout — sidebar + main */
+      /* Top navigation — Linear/Vercel style */
+      .top-nav {
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        height: 52px;
+        gap: 0;
+        flex-shrink: 0;
+      }
+      .top-nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-right: 36px;
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .top-nav-brand-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: linear-gradient(135deg, #f85149 0%, #bc8cff 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.5px;
+      }
+      .top-nav-brand-text {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.3px;
+      }
+      .top-nav-brand-text span {
+        font-weight: 400;
+        color: var(--text2);
+        margin-left: 2px;
+      }
+      .top-nav-sep {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        margin: 0 8px;
+      }
+      .top-nav-tabs {
+        display: flex;
+        gap: 2px;
+        height: 100%;
+        align-items: center;
+      }
+      .top-nav-tab {
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text2);
+        cursor: pointer;
+        border: none;
+        background: none;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        transition: color 0.15s, background 0.15s;
+        position: relative;
+        font-family: inherit;
+      }
+      .top-nav-tab:hover {
+        color: var(--text);
+        background: var(--surface);
+      }
+      .top-nav-tab.active {
+        color: var(--text);
+        background: var(--surface);
+      }
+      .top-nav-tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 16px;
+        height: 2px;
+        background: var(--accent);
+        border-radius: 1px;
+      }
+      .top-nav-tab svg {
+        width: 15px;
+        height: 15px;
+        opacity: 0.6;
+      }
+      .top-nav-tab.active svg { opacity: 1; }
+      .top-nav-tab .tab-badge {
+        background: var(--accent);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 10px;
+        min-width: 16px;
+        text-align: center;
+      }
+      .top-nav-spacer { flex: 1; }
+      .top-nav-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .top-nav-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .top-nav-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--surface2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent);
+        border: 1px solid var(--border);
+      }
+      .top-nav-signout {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text2);
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+      }
+      .top-nav-signout:hover { color: var(--text); background: var(--surface); }
+
+      /* App shell */
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      .app-body {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Layout — sidebar + main (Reports tab) */
       .layout {
         display: grid;
         grid-template-columns: 320px 1fr;
-        height: 100vh;
+        height: 100%;
+      }
+      .layout.no-sidebar {
+        grid-template-columns: 1fr;
       }
       @media (max-width: 1000px) {
         .layout {
           grid-template-columns: 260px 1fr;
         }
+      }
+
+      /* Tab panels */
+      .tab-panel { display: none !important; height: 100%; overflow: hidden; }
+      .tab-panel.active { display: block !important; }
+
+      /* Full-width panel (Dashboard, Runs, Audit) */
+      .full-panel {
+        height: 100%;
+        overflow-y: auto;
+        padding: 24px;
       }
 
       /* Sidebar */
@@ -1460,53 +1631,92 @@
       <button class="auth-sign-in-btn" id="authSignInBtn">Sign In</button>
       <p style="font-size:11px;color:var(--text2);margin-top:8px;">Powered by your organization's SSO</p>
     </div>
-    <div class="layout">
-      <!-- Sidebar: Report Browser -->
-      <div class="sidebar">
-        <div class="sidebar-header">
-          <h1>Red Team Dashboard</h1>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <input
-              class="sidebar-search"
-              id="reportSearch"
-              placeholder="Search reports..."
-              style="flex:1"
-            />
-            <button id="newRunBtn" style="background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">+ New Run</button>
+    <div class="app-shell">
+      <!-- Top Navigation -->
+      <nav class="top-nav">
+        <div class="top-nav-brand" onclick="switchTab('dashboard')">
+          <div class="top-nav-brand-icon">RT</div>
+          <div class="top-nav-brand-text">Red Team<span> AI</span></div>
+        </div>
+        <div class="top-nav-sep"></div>
+        <div class="top-nav-tabs">
+          <button class="top-nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Dashboard
+          </button>
+          <button class="top-nav-tab" data-tab="runs" onclick="switchTab('runs')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Runs
+            <span class="tab-badge" id="runsBadge" style="display:none;">0</span>
+          </button>
+          <button class="top-nav-tab" data-tab="reports" onclick="switchTab('reports')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Reports
+          </button>
+          <button class="top-nav-tab" data-tab="compliance" onclick="switchTab('compliance')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Compliance
+          </button>
+          <button class="top-nav-tab" data-tab="audit" onclick="switchTab('audit')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Audit Log
+          </button>
+        </div>
+        <div class="top-nav-spacer"></div>
+        <div class="top-nav-right">
+          <div class="top-nav-user" id="userMenu" style="display:none;">
+            <div class="top-nav-avatar" id="userMenuAvatar"></div>
+            <span id="userMenuName"></span>
+            <button class="top-nav-signout" id="userMenuSignout">Sign out</button>
           </div>
         </div>
-        <div class="trend-section">
-          <div class="trend-label">Score Trend</div>
-          <canvas class="trend-canvas" id="trendCanvas"></canvas>
-        </div>
-        <div id="sidebarRuns"></div>
-        <div class="report-list" id="reportList">
-          <div class="loading" style="padding: 24px">Loading...</div>
-        </div>
-        <div class="sidebar-pagination" id="pagination"></div>
-        <div class="user-menu" id="userMenu" style="display:none;">
-          <span class="user-menu-name" id="userMenuName"></span>
-          <button class="user-menu-signout" id="userMenuSignout">Sign out</button>
-        </div>
-      </div>
+      </nav>
 
-      <!-- Main content -->
-      <div class="main">
-        <div class="main-header">
-          <span
-            id="metaTarget"
-            style="font-weight: 600; font-size: 14px"
-          ></span>
-          <div class="meta">
-            <span id="metaDate"></span>
-            <span id="metaScore"></span>
-            <button id="downloadCsvBtn" onclick="downloadCsv()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:8px;">Download CSV</button>
-            <button id="downloadJsonBtn" onclick="downloadJson()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">Download JSON</button>
+      <div class="app-body">
+        <!-- TAB: Dashboard (overview) -->
+        <div class="tab-panel active" id="tab-dashboard">
+          <div class="full-panel" id="dashboardPanel">
+            <div class="loading">Loading dashboard...</div>
           </div>
         </div>
-        <div class="container" id="app">
-          <div class="loading">Select a report from the sidebar</div>
+
+        <!-- TAB: Runs -->
+        <div class="tab-panel" id="tab-runs">
+          <div class="full-panel" id="runsPanel">
+            <div class="loading">Loading runs...</div>
+          </div>
         </div>
+
+        <!-- TAB: Reports (keeps sidebar) -->
+        <div class="tab-panel" id="tab-reports">
+          <div class="layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+              <div class="sidebar-header">
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                  <input class="sidebar-search" id="reportSearch" placeholder="Search reports..." style="flex:1" />
+                </div>
+              </div>
+              <div class="report-list" id="reportList">
+                <div class="loading" style="padding: 24px">Loading...</div>
+              </div>
+              <div class="sidebar-pagination" id="pagination"></div>
+            </div>
+
+            <!-- Report detail -->
+            <div class="main">
+              <div class="main-header">
+                <span id="metaTarget" style="font-weight: 600; font-size: 14px"></span>
+                <div class="meta">
+                  <span id="metaDate"></span>
+                  <span id="metaScore"></span>
+                  <button id="downloadCsvBtn" onclick="downloadCsv()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:8px;">Download CSV</button>
+                  <button id="downloadJsonBtn" onclick="downloadJson()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">Download JSON</button>
+                </div>
+              </div>
+              <div class="container" id="app">
+                <div class="loading">Select a report from the sidebar</div>
+              </div>
 
         <!-- New Run Panel (hidden by default) -->
         <div id="newRunPanel" style="display:none;position:absolute;inset:0;background:var(--bg);z-index:100;overflow-y:auto;padding:24px;">
@@ -1526,15 +1736,51 @@
               <span id="runError" style="color:var(--red);font-size:12px;"></span>
             </div>
 
-            <!-- Active Runs -->
+            <!-- Active Runs (in New Run panel) -->
             <div id="activeRunsSection" style="display:none;">
               <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text2);">Active Runs</h3>
               <div id="activeRunsList"></div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+            </div><!-- /main -->
+          </div><!-- /layout -->
+        </div><!-- /tab-reports -->
+
+        <!-- TAB: Audit Log -->
+        <!-- TAB: Compliance -->
+        <div class="tab-panel" id="tab-compliance">
+          <div class="full-panel" id="compliancePanel">
+            <div class="loading">Loading compliance...</div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-audit">
+          <div class="full-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+              <h2 style="font-size:18px;font-weight:600;">Audit Log</h2>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select id="auditFilterAction" onchange="loadAuditLog()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;">
+                  <option value="">All Actions</option>
+                  <option value="run.start">Run Started</option>
+                  <option value="run.cancel">Run Cancelled</option>
+                  <option value="report.view">Report Viewed</option>
+                  <option value="report.list">Reports Listed</option>
+                  <option value="report.export_csv">CSV Export</option>
+                  <option value="compliance.analyze">Compliance Analysis</option>
+                  <option value="audit.view">Audit Log Viewed</option>
+                </select>
+                <button onclick="loadAuditLog()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;">Refresh</button>
+              </div>
+            </div>
+            <div id="auditLogContent">
+              <div class="loading">Select Audit Log tab to load</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /app-body -->
+    </div><!-- /app-shell -->
 
     <script>
       const $ = (s) => document.querySelector(s);
@@ -1631,6 +1877,8 @@
         const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "User";
         document.getElementById("userMenu").style.display = "flex";
         document.getElementById("userMenuName").textContent = name;
+        const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+        document.getElementById("userMenuAvatar").textContent = initials;
         document.getElementById("userMenuSignout").addEventListener("click", async () => {
           await clerkInstance.signOut();
           authToken = null;
@@ -1654,6 +1902,735 @@
         });
       }
 
+      // ── Tab navigation ──
+      let currentTab = "dashboard";
+
+      function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll(".top-nav-tab").forEach(t => {
+          t.classList.toggle("active", t.dataset.tab === tab);
+        });
+        document.querySelectorAll(".tab-panel").forEach(p => {
+          p.classList.toggle("active", p.id === "tab-" + tab);
+        });
+
+        if (tab === "dashboard") renderDashboardTab();
+        if (tab === "runs") renderRunsTab();
+        if (tab === "compliance") renderComplianceTab();
+        if (tab === "audit") loadAuditLog();
+      }
+
+      function renderDashboardTab() {
+        const panel = document.getElementById("dashboardPanel");
+        const n = reportsMeta.length;
+        const latest = n > 0 ? reportsMeta[0] : null;
+        const latestScore = latest ? latest.score : "-";
+        const prevScore = n > 1 ? reportsMeta[1].score : null;
+        const latestScoreColor = typeof latestScore === "number" ? scoreColor(latestScore) : "var(--text2)";
+        const totalVulns = reportsMeta.reduce((s, r) => s + r.passed, 0);
+        const totalBlocked = reportsMeta.reduce((s, r) => s + r.failed, 0);
+        const totalAttacks = reportsMeta.reduce((s, r) => s + r.totalAttacks, 0);
+        const avgScore = n > 0 ? Math.round(reportsMeta.reduce((s, r) => s + r.score, 0) / n) : 0;
+        const activeRunCount = [...runDataCache.values()].filter(r => r.status === "running" || r.status === "queued").length;
+
+        // Trend delta
+        const scoreDelta = (typeof latestScore === "number" && prevScore !== null) ? latestScore - prevScore : null;
+        const deltaHtml = scoreDelta !== null
+          ? '<div style="font-size:11px;margin-top:4px;color:' + (scoreDelta > 0 ? 'var(--green)' : scoreDelta < 0 ? 'var(--red)' : 'var(--text2)') + ';">' +
+            (scoreDelta > 0 ? '+' : '') + scoreDelta + ' vs prev</div>'
+          : '';
+
+        // Vuln rate
+        const vulnRate = totalAttacks > 0 ? Math.round((totalVulns / totalAttacks) * 100) : 0;
+
+        // Top vulnerability categories from all reports
+        const topVulnTargets = {};
+        reportsMeta.forEach(r => {
+          if (r.passed > 0 && r.targetUrl) {
+            const key = r.targetUrl.replace(/https?:\/\//, "").split("/")[0];
+            topVulnTargets[key] = (topVulnTargets[key] || 0) + r.passed;
+          }
+        });
+        const topTargets = Object.entries(topVulnTargets).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+        // Trend data
+        const trendScores = (trendData.length > 0 ? trendData : reportsMeta.slice().reverse()).slice(-30);
+
+        // Severity distribution (estimate from scores)
+        const criticalScans = reportsMeta.filter(r => r.score < 30).length;
+        const highScans = reportsMeta.filter(r => r.score >= 30 && r.score < 60).length;
+        const mediumScans = reportsMeta.filter(r => r.score >= 60 && r.score < 80).length;
+        const secureScans = reportsMeta.filter(r => r.score >= 80).length;
+
+        panel.innerHTML = '<div style="max-width:1200px;margin:0 auto;">' +
+
+          // Row 1: Security Posture + Key Metrics
+          '<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:16px;">' +
+
+          // Security Posture Card
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+          '<div style="position:relative;width:140px;height:140px;">' +
+          buildScoreRing(typeof latestScore === "number" ? latestScore : 0, 140) +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-top:8px;">Security Score</div>' +
+          deltaHtml +
+          '<div style="margin-top:12px;font-size:11px;color:var(--text2);">Avg: <span style="color:var(--text);font-weight:600;">' + avgScore + '</span> across ' + n + ' scans</div>' +
+          '</div>' +
+
+          // Metrics Grid
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:12px;">' +
+          buildMetricCard(totalAttacks, "Total Attacks", "var(--text)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>') +
+          buildMetricCard(totalVulns, "Vulnerabilities Found", "var(--red)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>') +
+          buildMetricCard(totalBlocked, "Attacks Blocked", "var(--green)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>') +
+          buildMetricCard(vulnRate + '%', "Vuln Rate", vulnRate > 30 ? "var(--red)" : vulnRate > 10 ? "var(--orange)" : "var(--green)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>') +
+          buildMetricCard(n, "Scans Completed", "var(--accent)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>') +
+          buildMetricCard(activeRunCount, "Active Runs", "var(--accent)", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>') +
+          '</div>' +
+
+          '</div>' +
+
+          // Row 2: Score Trend + Risk Distribution + Top Targets
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">' +
+
+          // Score Trend
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<div style="font-size:13px;font-weight:600;">Score Trend</div>' +
+          '<div style="font-size:10px;color:var(--text2);">Last ' + trendScores.length + ' scans</div>' +
+          '</div>' +
+          (trendScores.length > 1 ? buildTrendSvg(trendScores) : '<div style="color:var(--text2);font-size:12px;text-align:center;padding:30px;">Not enough data</div>') +
+          '</div>' +
+
+          // Risk Distribution
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:16px;">Scan Risk Distribution</div>' +
+          buildRiskDistribution(criticalScans, highScans, mediumScans, secureScans, n) +
+          '</div>' +
+
+          // Top Targets
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:16px;">Top Targets by Vulnerabilities</div>' +
+          (topTargets.length > 0 ? topTargets.map(function(entry) {
+            var target = entry[0], count = entry[1];
+            var maxCount = topTargets[0][1];
+            var pct = (count / maxCount) * 100;
+            return '<div style="margin-bottom:10px;">' +
+              '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">' +
+              '<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;" title="' + esc(target) + '">' + esc(target) + '</span>' +
+              '<span style="color:var(--red);font-weight:600;">' + count + '</span>' +
+              '</div>' +
+              '<div style="height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">' +
+              '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--red),var(--orange));border-radius:2px;"></div>' +
+              '</div></div>';
+          }).join("") : '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">No vulnerabilities found</div>') +
+          '</div>' +
+
+          '</div>' +
+
+          // Row 3: Recent Scans
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+          '<div style="font-size:13px;font-weight:600;">Recent Scans</div>' +
+          '<button onclick="switchTab(\'reports\')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 14px;font-size:11px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">View All</button>' +
+          '</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+          '<thead><tr style="border-bottom:1px solid var(--border);text-align:left;">' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Date</th>' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Target</th>' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Score</th>' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Attacks</th>' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Vulns</th>' +
+          '<th style="padding:8px 10px;color:var(--text2);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;">Blocked</th>' +
+          '</tr></thead><tbody>' +
+          reportsMeta.slice(0, 8).map(function(r) {
+            var d = new Date(r.timestamp);
+            var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+            var sc = typeof r.score === "number" ? scoreColor(r.score) : "var(--text2)";
+            return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'" onclick="switchTab(\'reports\');selectReport(\'' + r.filename + '\')">' +
+              '<td style="padding:8px 10px;">' + esc(dateStr) + '</td>' +
+              '<td style="padding:8px 10px;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || "") + '</td>' +
+              '<td style="padding:8px 10px;"><span style="font-weight:700;color:' + sc + ';background:' + sc.replace(')', ',0.1)').replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--green', '63,185,80').replace('--orange', '210,153,34') + ';padding:2px 8px;border-radius:10px;font-size:11px;">' + r.score + '</span></td>' +
+              '<td style="padding:8px 10px;">' + r.totalAttacks + '</td>' +
+              '<td style="padding:8px 10px;color:var(--red);font-weight:500;">' + r.passed + '</td>' +
+              '<td style="padding:8px 10px;color:var(--green);font-weight:500;">' + r.failed + '</td>' +
+              '</tr>';
+          }).join("") +
+          '</tbody></table>' +
+          '</div>' +
+
+          '</div>';
+      }
+
+      function buildStatCard(value, label, color) {
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;">' +
+          '<div style="font-size:28px;font-weight:700;color:' + color + ';">' + value + '</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-top:4px;">' + label + '</div>' +
+          '</div>';
+      }
+
+      function buildMetricCard(value, label, color, icon) {
+        return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;color:var(--text2);">' + icon + '<span style="font-size:11px;">' + label + '</span></div>' +
+          '<div style="font-size:24px;font-weight:700;color:' + color + ';">' + value + '</div>' +
+          '</div>';
+      }
+
+      function buildScoreRing(score, size) {
+        var r = (size / 2) - 12;
+        var circ = 2 * Math.PI * r;
+        var offset = circ * (1 - score / 100);
+        var color = scoreColor(score);
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="var(--surface2)" stroke-width="8"/>' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="8" ' +
+          'stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '" stroke-linecap="round" transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>' +
+          '<text x="' + (size/2) + '" y="' + (size/2 + 8) + '" text-anchor="middle" fill="' + color + '" font-size="32" font-weight="800">' + score + '</text>' +
+          '</svg>';
+      }
+
+      function buildRiskDistribution(critical, high, medium, secure, total) {
+        if (total === 0) return '<div style="color:var(--text2);font-size:12px;text-align:center;padding:20px;">No scans</div>';
+        var items = [
+          { label: "Critical", count: critical, color: "var(--red)", bg: "rgba(248,81,73,0.12)" },
+          { label: "High Risk", count: high, color: "var(--orange)", bg: "rgba(210,153,34,0.12)" },
+          { label: "Medium", count: medium, color: "var(--accent)", bg: "rgba(88,166,255,0.12)" },
+          { label: "Secure", count: secure, color: "var(--green)", bg: "rgba(63,185,80,0.12)" },
+        ];
+        var html = '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:16px;">';
+        items.forEach(function(it) {
+          if (it.count > 0) html += '<div style="flex:' + it.count + ';background:' + it.color + ';"></div>';
+        });
+        html += '</div>';
+        items.forEach(function(it) {
+          var pct = total > 0 ? Math.round((it.count / total) * 100) : 0;
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:' + it.color + ';"></div>' +
+            '<span style="font-size:12px;">' + it.label + '</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:12px;font-weight:600;">' + it.count + '</span>' +
+            '<span style="font-size:11px;color:var(--text2);background:' + it.bg + ';padding:1px 6px;border-radius:8px;">' + pct + '%</span>' +
+            '</div></div>';
+        });
+        return html;
+      }
+
+      function buildTrendSvg(scores) {
+        var w = 500, h = 100, pad = 16;
+        var vals = scores.map(function(s) { return typeof s.score === "number" ? s.score : (s.score || 0); });
+        var min = Math.min.apply(null, vals.concat([0]));
+        var max = Math.max.apply(null, vals.concat([100]));
+        var range = max - min || 1;
+        var points = vals.map(function(v, i) {
+          var x = pad + (i / Math.max(vals.length - 1, 1)) * (w - pad * 2);
+          var y = h - pad - ((v - min) / range) * (h - pad * 2);
+          return x + "," + y;
+        });
+        var line = points.join(" ");
+        var area = pad + "," + (h - pad) + " " + line + " " + (w - pad) + "," + (h - pad);
+        var lastVal = vals[vals.length - 1];
+        var lastColor = scoreColor(lastVal);
+        var lastX = pad + ((vals.length - 1) / Math.max(vals.length - 1, 1)) * (w - pad * 2);
+        var lastY = h - pad - ((lastVal - min) / range) * (h - pad * 2);
+
+        return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:100px;">' +
+          '<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="#58a6ff" stop-opacity="0.12"/>' +
+          '<stop offset="100%" stop-color="#58a6ff" stop-opacity="0"/>' +
+          '</linearGradient></defs>' +
+          '<polygon points="' + area + '" fill="url(#tg)"/>' +
+          '<polyline points="' + line + '" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<circle cx="' + lastX + '" cy="' + lastY + '" r="3.5" fill="' + lastColor + '" stroke="var(--surface)" stroke-width="2"/>' +
+          '</svg>';
+      }
+
+      async function renderRunsTab() {
+        const panel = document.getElementById("runsPanel");
+
+        // Merge in-memory runs with server-side runs list
+        try {
+          const resp = await fetch("/api/runs");
+          if (resp.ok) {
+            const serverRuns = await resp.json();
+            for (const run of serverRuns) {
+              if (!runDataCache.has(run.runId)) {
+                runDataCache.set(run.runId, run);
+              }
+            }
+          }
+        } catch {}
+
+        const allRuns = [...runDataCache.entries()].sort((a, b) =>
+          new Date(b[1].startedAt).getTime() - new Date(a[1].startedAt).getTime()
+        );
+
+        let html = '<div style="max-width:1200px;margin:0 auto;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<h2 style="font-size:20px;font-weight:700;">Runs</h2>' +
+          '<button onclick="switchTab(\'reports\');document.getElementById(\'newRunPanel\').style.display=\'block\';" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">+ New Run</button>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-bottom:20px;">Shows active, queued, and recently completed runs from the current session. Completed reports are available in the Reports tab.</div>';
+
+        if (allRuns.length === 0) {
+          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center;">' +
+            '<div style="color:var(--text2);margin-bottom:8px;">No active runs</div>' +
+            '<div style="font-size:12px;color:var(--text2);">Click "+ New Run" to start a red-team security scan, or trigger one via the API.</div>' +
+            '</div>';
+        } else {
+          html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+          for (const [runId, data] of allRuns) {
+            const statusColors = { queued:"var(--text2)", running:"var(--accent)", done:"var(--green)", error:"var(--red)", cancelled:"var(--orange)" };
+            const statusColor = statusColors[data.status] || "var(--text2)";
+            const targetUrl = data.targetUrl || "unknown";
+            const time = new Date(data.startedAt).toLocaleString();
+            const lastProgress = data.progress?.length > 0 ? data.progress[data.progress.length - 1] : null;
+            const progressText = lastProgress ? "[" + lastProgress.phase + "] " + lastProgress.message.slice(0, 80) : "";
+            const summary = data.summary;
+
+            const isSelected = selectedRunId === runId;
+
+            html += '<div style="background:var(--surface);border:1px solid ' + (isSelected ? 'var(--accent)' : 'var(--border)') + ';border-radius:10px;overflow:hidden;">' +
+
+              // Header (clickable)
+              '<div style="padding:16px;cursor:pointer;" onclick="toggleRunDetail(\'' + runId + '\')">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<span style="color:' + statusColor + ';font-weight:600;font-size:12px;text-transform:uppercase;">' + data.status + '</span>' +
+              '<span style="font-size:12px;color:var(--text2);">' + esc(time) + '</span>' +
+              '</div>' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span style="font-size:11px;color:var(--text2);">' + runId.slice(0, 8) + '</span>' +
+              ((data.status === "running" || data.status === "queued") ?
+                '<button onclick="event.stopPropagation();cancelRun(\'' + runId + '\')" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;">Cancel</button>' : '') +
+              '</div>' +
+              '</div>' +
+              '<div style="font-size:13px;margin-bottom:4px;">' + esc(targetUrl) + '</div>';
+
+            if (summary) {
+              html += '<div style="font-size:12px;color:var(--text2);">' +
+                'Score: <span style="color:' + scoreColor(summary.score) + ';font-weight:600;">' + summary.score + '</span> &middot; ' +
+                summary.totalAttacks + ' attacks &middot; ' +
+                '<span style="color:var(--red);">' + summary.passed + ' vulns</span> &middot; ' +
+                '<span style="color:var(--green);">' + summary.failed + ' blocked</span>' +
+                '</div>';
+            } else if (progressText) {
+              html += '<div style="font-size:11px;color:var(--text2);font-family:monospace;">' + esc(progressText) + '</div>';
+            }
+
+            html += '</div>'; // close header
+
+            // Inline detail panel (shown when selected)
+            if (isSelected) {
+              html += '<div id="runDetailInline" style="border-top:1px solid var(--border);padding:16px;background:var(--bg);">' +
+                buildRunDetailContent(runId, data) +
+                '</div>';
+            }
+
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div>';
+        panel.innerHTML = html;
+      }
+
+      function toggleRunDetail(runId) {
+        if (selectedRunId === runId) {
+          selectedRunId = null;
+        } else {
+          selectedRunId = runId;
+          // Start polling if not already
+          pollRun(runId);
+        }
+        renderRunsTab();
+      }
+
+      function buildRunDetailContent(runId, data) {
+        // Extract live results
+        const liveResults = (data.progress || []).filter(p => p.result).map(p => p.result);
+        const totalAttacks = liveResults.length;
+        const passed = liveResults.filter(r => r.verdict === "PASS").length;
+        const failed = liveResults.filter(r => r.verdict === "FAIL").length;
+        const errors = liveResults.filter(r => r.verdict === "ERROR").length;
+        const liveScore = totalAttacks > 0 ? Math.round(((failed + errors) / totalAttacks) * 100) : 0;
+
+        // Category breakdown
+        const categories = {};
+        for (const r of liveResults) {
+          if (!categories[r.category]) categories[r.category] = { pass: 0, fail: 0, partial: 0, error: 0, total: 0 };
+          categories[r.category].total++;
+          if (r.verdict === "PASS") categories[r.category].pass++;
+          else if (r.verdict === "FAIL") categories[r.category].fail++;
+          else if (r.verdict === "PARTIAL") categories[r.category].partial++;
+          else categories[r.category].error++;
+        }
+        const catEntries = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
+        const maxCatTotal = catEntries.length > 0 ? Math.max(...catEntries.map(([,v]) => v.total)) : 1;
+
+        let html = '';
+
+        // Stats row
+        if (totalAttacks > 0) {
+          html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+            buildStatCard(liveScore, "Score (live)", scoreColor(liveScore)) +
+            buildStatCard(totalAttacks, "Attacks", "var(--text)") +
+            buildStatCard(passed, "Vulns", "var(--red)") +
+            buildStatCard(failed, "Blocked", "var(--green)") +
+            '</div>';
+        }
+
+        // Category bars
+        if (catEntries.length > 0) {
+          html += '<div style="margin-bottom:16px;">' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">Category Breakdown</div>';
+          for (const [cat, v] of catEntries) {
+            const catLabel = cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const barW = (v.total / maxCatTotal) * 100;
+            const passW = v.total > 0 ? (v.pass / v.total) * barW : 0;
+            const failW = v.total > 0 ? (v.fail / v.total) * barW : 0;
+            const partialW = v.total > 0 ? (v.partial / v.total) * barW : 0;
+            const errorW = v.total > 0 ? (v.error / v.total) * barW : 0;
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">' +
+              '<div style="width:140px;text-align:right;font-size:11px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(catLabel) + '</div>' +
+              '<div style="flex:1;height:12px;background:var(--surface2);border-radius:3px;overflow:hidden;display:flex;">' +
+              (passW > 0 ? '<div style="width:' + passW + '%;background:var(--red);"></div>' : '') +
+              (partialW > 0 ? '<div style="width:' + partialW + '%;background:var(--orange);"></div>' : '') +
+              (failW > 0 ? '<div style="width:' + failW + '%;background:var(--green);"></div>' : '') +
+              (errorW > 0 ? '<div style="width:' + errorW + '%;background:var(--text2);opacity:0.4;"></div>' : '') +
+              '</div>' +
+              '<div style="width:30px;font-size:11px;color:var(--text2);text-align:right;">' + v.pass + '/' + v.total + '</div>' +
+              '</div>';
+          }
+          html += '</div>';
+        }
+
+        // Results table
+        if (liveResults.length > 0) {
+          html += buildLiveResultsHtml(liveResults);
+        }
+
+        // Progress log
+        const progressLines = (data.progress || []).filter(p => p.phase !== "result").slice(-15);
+        if (progressLines.length > 0) {
+          html += '<details style="margin-top:12px;">' +
+            '<summary style="font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);">Progress Log (' + (data.progressTotal || data.progress?.length || 0) + ' events)</summary>' +
+            '<div style="max-height:200px;overflow-y:auto;background:var(--surface);border-radius:6px;padding:10px;margin-top:8px;">';
+          for (const p of progressLines) {
+            const phaseColor = {config:"#58a6ff",analyze:"#58a6ff",auth:"#58a6ff",discovery:"#d29922",attacks:"#f85149",refine:"#d29922",report:"#3fb950"}[p.phase] || "#8b949e";
+            html += '<div style="font-size:11px;font-family:monospace;padding:1px 0;"><span style="color:' + phaseColor + ';">[' + esc(p.phase) + ']</span> ' + esc(p.message).slice(0, 120) + '</div>';
+          }
+          html += '</div></details>';
+        }
+
+        return html;
+      }
+
+      let complianceSelectedReport = null;
+      let complianceResults = [];
+      let complianceAnalyzing = false;
+
+      async function renderComplianceTab() {
+        const panel = document.getElementById("compliancePanel");
+        panel.innerHTML = '<div class="loading">Loading...</div>';
+
+        try {
+          const fwResp = await fetch("/api/compliance-frameworks");
+          const frameworks = fwResp.ok ? await fwResp.json() : [];
+
+          // Use reportsMeta for the report list (already loaded)
+          const reports = reportsMeta.length > 0 ? reportsMeta : [];
+
+          var html = '<div style="max-width:1200px;margin:0 auto;">';
+
+          // Header
+          html += '<div style="margin-bottom:20px;">' +
+            '<h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">Compliance Analysis</h2>' +
+            '<div style="font-size:12px;color:var(--text2);">Select a report, choose frameworks, and run LLM-powered compliance mapping. Results stream in real-time.</div>' +
+            '</div>';
+
+          // Two-column layout: Report selector + Analysis panel
+          html += '<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">';
+
+          // Left: Report list
+          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
+            '<div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;">Select Report</div>' +
+            '<div style="max-height:500px;overflow-y:auto;">';
+
+          if (reports.length === 0) {
+            html += '<div style="padding:30px;text-align:center;color:var(--text2);font-size:12px;">No reports found</div>';
+          } else {
+            reports.forEach(function(r) {
+              var d = new Date(r.timestamp);
+              var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+              var sc = typeof r.score === "number" ? scoreColor(r.score) : "var(--text2)";
+              var isSelected = complianceSelectedReport === r.filename;
+              html += '<div onclick="selectComplianceReport(\'' + esc(r.filename) + '\')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);border-left:3px solid ' + (isSelected ? 'var(--accent)' : 'transparent') + ';background:' + (isSelected ? 'rgba(88,166,255,0.06)' : 'none') + ';transition:background 0.1s;" onmouseover="if(!' + isSelected + ')this.style.background=\'var(--surface2)\'" onmouseout="if(!' + isSelected + ')this.style.background=\'none\'">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                '<span style="font-size:12px;font-weight:500;">' + esc(dateStr) + '</span>' +
+                '<span style="font-size:11px;font-weight:700;color:' + sc + ';">' + r.score + '</span>' +
+                '</div>' +
+                '<div style="font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || r.filename) + '</div>' +
+                '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + r.totalAttacks + ' attacks &middot; ' + r.passed + ' vulns</div>' +
+                '</div>';
+            });
+          }
+          html += '</div></div>';
+
+          // Right: Analysis panel
+          html += '<div>' +
+            '<div id="complianceAnalysisPanel">';
+
+          if (!complianceSelectedReport) {
+            html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:60px;text-align:center;color:var(--text2);">' +
+              '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
+              '<div style="font-size:14px;margin-bottom:4px;">Select a report to analyze</div>' +
+              '<div style="font-size:12px;">Choose a report from the left panel to run compliance analysis</div>' +
+              '</div>';
+          } else {
+            // Config card
+            html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">' +
+              '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">Analysis Configuration</div>' +
+              '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
+              '<label style="font-size:11px;color:var(--text2);font-weight:600;">PROVIDER</label>' +
+              '<select id="compProvider" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;">' +
+              '<option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option></select>' +
+              '<label style="font-size:11px;color:var(--text2);font-weight:600;">MODEL</label>' +
+              '<input id="compModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;width:220px;" />' +
+              '</div>' +
+              '<div style="margin-bottom:12px;">' +
+              '<label style="font-size:11px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px;">FRAMEWORKS</label>' +
+              '<div id="compFrameworks" style="display:flex;gap:8px;flex-wrap:wrap;">';
+            frameworks.forEach(function(fw) {
+              html += '<label class="fw-chip"><input type="checkbox" class="comp-fw-checkbox" value="' + esc(fw.id) + '" checked />' + esc(fw.name) + ' <span class="fw-count">' + fw.controlCount + '</span></label>';
+            });
+            html += '</div></div>' +
+              '<button id="compRunBtn" onclick="runComplianceInline()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer;">Run Compliance Analysis</button>' +
+              '<span id="compProgressText" style="margin-left:12px;font-size:12px;color:var(--text2);"></span>' +
+              '</div>';
+
+            // Results area
+            html += '<div id="compResultsArea">';
+            if (complianceResults.length > 0) {
+              html += buildComplianceResultsHtml(complianceResults);
+            }
+            html += '</div>';
+          }
+
+          html += '</div></div>'; // close analysis panel + right column
+          html += '</div>'; // close grid
+          html += '</div>'; // close container
+
+          panel.innerHTML = html;
+        } catch (err) {
+          panel.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">Failed to load: ' + esc(String(err)) + '</div>';
+        }
+      }
+
+      function selectComplianceReport(filename) {
+        complianceSelectedReport = filename;
+        complianceResults = [];
+        renderComplianceTab();
+      }
+
+      async function runComplianceInline() {
+        if (complianceAnalyzing || !complianceSelectedReport) return;
+        complianceAnalyzing = true;
+        complianceResults = [];
+
+        var btn = document.getElementById("compRunBtn");
+        var progressText = document.getElementById("compProgressText");
+        if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; }
+
+        var selectedFw = [];
+        document.querySelectorAll(".comp-fw-checkbox:checked").forEach(function(cb) { selectedFw.push(cb.value); });
+
+        var providerEl = document.getElementById("compProvider");
+        var modelEl = document.getElementById("compModel");
+
+        try {
+          var res = await fetch("/api/owasp-analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reportFile: complianceSelectedReport,
+              provider: providerEl ? providerEl.value : "anthropic",
+              model: modelEl ? modelEl.value : "claude-sonnet-4-20250514",
+              frameworkIds: selectedFw.length > 0 ? selectedFw : undefined,
+            }),
+          });
+
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = "";
+          var count = 0;
+
+          while (true) {
+            var chunk = await reader.read();
+            if (chunk.done) break;
+            buffer += decoder.decode(chunk.value, { stream: true });
+            var lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (var i = 0; i < lines.length; i++) {
+              if (!lines[i].trim()) continue;
+              try {
+                var item = JSON.parse(lines[i]);
+                complianceResults.push(item);
+                count++;
+                if (progressText) progressText.textContent = count + " controls analyzed...";
+                var area = document.getElementById("compResultsArea");
+                if (area) area.innerHTML = buildComplianceResultsHtml(complianceResults);
+              } catch(e) {}
+            }
+          }
+          if (buffer.trim()) {
+            try { complianceResults.push(JSON.parse(buffer)); } catch(e) {}
+          }
+
+          if (btn) btn.textContent = "Re-run Analysis";
+          if (progressText) progressText.textContent = "Complete — " + complianceResults.length + " controls analyzed";
+        } catch (err) {
+          if (progressText) progressText.textContent = "Error: " + err.message;
+          if (btn) btn.textContent = "Retry";
+        }
+
+        if (btn) btn.disabled = false;
+        complianceAnalyzing = false;
+      }
+
+      function buildComplianceResultsHtml(results) {
+        // Group by framework
+        var byFw = {};
+        results.forEach(function(r) {
+          var fw = r.framework || "Unknown";
+          if (!byFw[fw]) byFw[fw] = [];
+          byFw[fw].push(r);
+        });
+
+        var html = '';
+        Object.keys(byFw).forEach(function(fw) {
+          var items = byFw[fw];
+          var vuln = items.filter(function(i) { return i.status === "vulnerable"; }).length;
+          var risk = items.filter(function(i) { return i.status === "at_risk"; }).length;
+          var secure = items.filter(function(i) { return i.status === "secure"; }).length;
+          var notTested = items.filter(function(i) { return i.status === "not_tested"; }).length;
+          var total = items.length || 1;
+
+          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+            '<div style="font-size:14px;font-weight:600;">' + esc(fw) + '</div>' +
+            '<div style="font-size:11px;color:var(--text2);">' + items.length + ' controls</div>' +
+            '</div>' +
+
+            // Segmented bar
+            '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin-bottom:12px;">' +
+            (vuln > 0 ? '<div style="flex:' + vuln + ';background:var(--red);"></div>' : '') +
+            (risk > 0 ? '<div style="flex:' + risk + ';background:var(--orange);"></div>' : '') +
+            (secure > 0 ? '<div style="flex:' + secure + ';background:var(--green);"></div>' : '') +
+            (notTested > 0 ? '<div style="flex:' + notTested + ';background:var(--surface2);"></div>' : '') +
+            '</div>' +
+
+            // Stats
+            '<div style="display:flex;gap:20px;margin-bottom:14px;font-size:12px;">' +
+            '<span><span style="color:var(--red);font-weight:700;">' + vuln + '</span> Vulnerable</span>' +
+            '<span><span style="color:var(--orange);font-weight:700;">' + risk + '</span> At Risk</span>' +
+            '<span><span style="color:var(--green);font-weight:700;">' + secure + '</span> Secure</span>' +
+            '<span><span style="color:var(--text2);font-weight:700;">' + notTested + '</span> Not Tested</span>' +
+            '</div>';
+
+          // Control cards
+          items.forEach(function(item) {
+            var statusColors = { vulnerable: "var(--red)", at_risk: "var(--orange)", secure: "var(--green)", not_tested: "var(--text2)", error: "var(--text2)" };
+            var statusLabels = { vulnerable: "VULNERABLE", at_risk: "AT RISK", secure: "SECURE", not_tested: "NOT TESTED", error: "ERROR" };
+            var borderColor = statusColors[item.status] || "var(--border)";
+
+            html += '<div style="border-left:3px solid ' + borderColor + ';background:var(--bg);border-radius:6px;padding:12px 14px;margin-bottom:6px;cursor:pointer;" onclick="this.querySelector(\'.comp-body\').style.display=this.querySelector(\'.comp-body\').style.display===\'none\'?\'block\':\'none\'">' +
+              '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<span style="font-size:11px;font-weight:700;color:var(--accent);min-width:70px;">' + esc(item.code) + '</span>' +
+              '<span style="font-size:12px;flex:1;">' + esc(item.title) + '</span>' +
+              '<span style="font-size:10px;color:var(--text2);">' + (item.attacksAnalyzed || 0) + ' attacks</span>' +
+              '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:' + borderColor.replace(')', ',0.12)').replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--green', '63,185,80').replace('--orange', '210,153,34').replace('--text2', '139,148,158') + ';color:' + borderColor + ';">' + (statusLabels[item.status] || item.status) + '</span>' +
+              '</div>' +
+              '<div class="comp-body" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">' +
+              '<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:8px;">' + esc(item.summary || "") + '</div>' +
+              (item.details ? '<div style="font-size:11px;color:var(--text2);background:var(--surface);border-radius:6px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap;margin-bottom:8px;">' + esc(item.details) + '</div>' : '') +
+              (item.recommendations && item.recommendations.length > 0 ? '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;">Recommendations:</div><ol style="margin:0;padding-left:18px;font-size:11px;color:var(--text);">' + item.recommendations.map(function(r) { return '<li style="margin:3px 0;">' + esc(r) + '</li>'; }).join("") + '</ol>' : '') +
+              '</div></div>';
+          });
+
+          html += '</div>';
+        });
+
+        // Export buttons
+        if (results.length > 0) {
+          html += '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<button onclick="downloadComplianceCsv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;">Export CSV</button>' +
+            '<button onclick="downloadComplianceJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;">Export JSON</button>' +
+            '</div>';
+        }
+
+        return html;
+      }
+
+      async function loadAuditLog() {
+        const container = document.getElementById("auditLogContent");
+        const actionFilter = document.getElementById("auditFilterAction");
+        const action = actionFilter ? actionFilter.value : "";
+
+        container.innerHTML = '<div class="loading">Loading audit log...</div>';
+
+        try {
+          const params = new URLSearchParams({ limit: "100" });
+          if (action) params.set("action", action);
+          const res = await fetch("/api/audit-log?" + params);
+
+          if (res.status === 403 || res.status === 401) {
+            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">Audit log requires enterprise mode (DATABASE_URL).</div>';
+            return;
+          }
+
+          const data = await res.json();
+          const entries = data.entries || [];
+
+          if (entries.length === 0) {
+            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">No audit log entries found.</div>';
+            return;
+          }
+
+          container.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+            '<thead><tr style="border-bottom:1px solid var(--border);text-align:left;">' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">Time</th>' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">Action</th>' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">Target</th>' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">User</th>' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">IP</th>' +
+            '<th style="padding:8px;color:var(--text2);font-weight:500;">Details</th>' +
+            '</tr></thead><tbody>' +
+            entries.map(e => {
+              const time = new Date(e.createdAt).toLocaleString();
+              const actionColors = {
+                "run.start": "var(--accent)", "run.cancel": "var(--orange)",
+                "report.view": "var(--green)", "report.export_csv": "var(--green)",
+                "compliance.analyze": "var(--purple)", "audit.view": "var(--text2)"
+              };
+              const meta = e.metadata ? JSON.stringify(e.metadata).slice(0, 80) : "";
+              return '<tr style="border-bottom:1px solid var(--border);">' +
+                '<td style="padding:8px;white-space:nowrap;">' + esc(time) + '</td>' +
+                '<td style="padding:8px;"><span style="color:' + (actionColors[e.action] || "var(--text)") + ';font-weight:500;">' + esc(e.action) + '</span></td>' +
+                '<td style="padding:8px;color:var(--text2);">' + esc(e.targetId || "-") + '</td>' +
+                '<td style="padding:8px;color:var(--text2);">' + esc(e.userId ? e.userId.slice(0, 8) : "-") + '</td>' +
+                '<td style="padding:8px;color:var(--text2);">' + esc(e.ipAddress || "-") + '</td>' +
+                '<td style="padding:8px;color:var(--text2);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(meta) + '</td>' +
+                '</tr>';
+            }).join("") +
+            '</tbody></table>' +
+            '<div style="margin-top:12px;font-size:11px;color:var(--text2);">Showing ' + entries.length + ' of ' + (data.total || entries.length) + ' entries</div>';
+        } catch (err) {
+          container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">Failed to load audit log: ' + esc(err.message) + '</div>';
+        }
+      }
+
       // ── Bootstrap ──
       (async () => {
         await initAuth();
@@ -1661,6 +2638,7 @@
           await loadReportsMeta();
         }
         // If OIDC mode, loadReportsMeta is called from onClerkSignedIn
+        renderDashboardTab();
       })();
 
       // Search with debounce
@@ -1691,8 +2669,8 @@
         renderTrend();
         renderPagination();
 
-        // Auto-select first report if nothing is selected
-        if (!currentFile && !selectedRunId && reportsMeta.length > 0) {
+        // Auto-select first report only if already on Reports tab
+        if (currentTab === "reports" && !currentFile && !selectedRunId && reportsMeta.length > 0) {
           selectReport(reportsMeta[0].filename);
         }
       }
@@ -1820,6 +2798,9 @@
       }
 
       async function selectReport(filename) {
+        // Ensure Reports tab is active
+        if (currentTab !== "reports") switchTab("reports");
+
         currentFile = filename;
         selectedRunId = null;
         // Highlight in sidebar
@@ -1828,14 +2809,25 @@
         });
         renderSidebarRuns();
 
+        // Hide download buttons until report loads
+        const csvBtn = $("#downloadCsvBtn");
+        const jsonBtn = $("#downloadJsonBtn");
+        if (csvBtn) csvBtn.style.display = "none";
+        if (jsonBtn) jsonBtn.style.display = "none";
+
         app.innerHTML = '<div class="loading">Loading report...</div>';
-        const res = await fetch(`/api/report/${filename}`);
-        report = await res.json();
-        activeRound = 0;
-        currentRowIndex = 0;
-        render();
-        document.querySelector(".main").scrollTop = 0;
-        loadFrameworkSelector();
+        try {
+          const res = await fetch(`/api/report/${filename}`);
+          report = await res.json();
+          activeRound = 0;
+          currentRowIndex = 0;
+          render();
+          const mainEl = document.querySelector("#tab-reports .main");
+          if (mainEl) mainEl.scrollTop = 0;
+          loadFrameworkSelector();
+        } catch (err) {
+          app.innerHTML = '<div class="loading">Failed to load report: ' + (err.message || err) + '</div>';
+        }
       }
 
       // Keep old name for backward compat
@@ -3530,11 +4522,12 @@
       }
 
       function downloadComplianceCsv() {
-        if (!owaspResults || owaspResults.length === 0) return;
+        var results = (currentTab === "compliance" && complianceResults.length > 0) ? complianceResults : owaspResults;
+        if (!results || results.length === 0) return;
         const headers = ["Framework","Code","Title","Status","Attacks Analyzed","Vulnerabilities Found","Summary","Details","Recommendations"];
         const csvEsc = (v) => { const s = String(v ?? "").replace(/"/g, '""'); return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s}"` : s; };
         const rows = [headers.join(",")];
-        for (const r of owaspResults) {
+        for (const r of results) {
           rows.push([
             r.framework, r.code, r.title, r.status,
             r.attacksAnalyzed, r.vulnerabilitiesFound,
@@ -3551,8 +4544,9 @@
       }
 
       function downloadComplianceJson() {
-        if (!owaspResults || owaspResults.length === 0) return;
-        const blob = new Blob([JSON.stringify(owaspResults, null, 2)], { type: "application/json" });
+        var results = (currentTab === "compliance" && complianceResults.length > 0) ? complianceResults : owaspResults;
+        if (!results || results.length === 0) return;
+        const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `compliance-${currentFile || "analysis"}.json`;
@@ -3594,11 +4588,6 @@
 
       const runConfigEditor = document.getElementById("runConfigEditor");
       runConfigEditor.value = JSON.stringify(defaultConfig, null, 2);
-
-      document.getElementById("newRunBtn").addEventListener("click", () => {
-        document.getElementById("newRunPanel").style.display = "block";
-        refreshActiveRuns();
-      });
 
       document.getElementById("closeRunPanel").addEventListener("click", () => {
         document.getElementById("newRunPanel").style.display = "none";
@@ -3679,7 +4668,10 @@
             runDataCache.set(runId, merged);
 
             renderSidebarRuns();
-            if (selectedRunId === runId) renderRunMainPanel(runId, merged);
+            if (selectedRunId === runId) {
+              if (currentTab === "runs") renderRunsTab();
+              else renderRunMainPanel(runId, merged);
+            }
 
             if (data.status === "done" || data.status === "error") {
               clearInterval(interval);
@@ -3716,8 +4708,20 @@
           .filter(([, d]) => d.status === "queued" || d.status === "running" || d.status === "error" || d.status === "cancelled")
           .sort((a, b) => new Date(b[1].startedAt).getTime() - new Date(a[1].startedAt).getTime());
 
+        // Update runs badge in nav
+        const runningCount = activeRuns.filter(([, d]) => d.status === "running" || d.status === "queued").length;
+        const badge = document.getElementById("runsBadge");
+        if (badge) {
+          if (runningCount > 0) {
+            badge.textContent = runningCount;
+            badge.style.display = "inline-block";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+
         if (activeRuns.length === 0) {
-          container.innerHTML = "";
+          if (container) container.innerHTML = "";
           return;
         }
 
@@ -3924,6 +4928,8 @@
             }
           }
           renderSidebarRuns();
+          if (currentTab === "runs") renderRunsTab();
+          if (currentTab === "dashboard") renderDashboardTab();
         } catch {
           // ignore
         }
