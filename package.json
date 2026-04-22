@@ -39,6 +39,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "dashboard": "tsx dashboard/server.ts 4200",
+    "hermes:setup": "bash hermes-redteam/setup.sh",
     "hermes:tools": "tsx hermes-redteam/tool-server.ts"
   },
   "dependencies": {

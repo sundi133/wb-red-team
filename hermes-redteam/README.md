@@ -15,43 +15,45 @@ Contents of this directory:
 
 ## Step-by-step (local)
 
-### 1. Install Hermes Agent
+### 1. One-shot setup (steps 1–3 automated)
+
+```bash
+npm run hermes:setup
+```
+
+This script installs Hermes if needed, creates a dedicated profile at
+`$HERMES_HOME` (default `~/.hermes-redteam-analyst`), prompts for a provider,
+and copies the skill + tool manifest into the profile. It's idempotent —
+re-run any time to sync skill/manifest updates.
+
+Non-interactive:
+
+```bash
+PROVIDER=anthropic MODEL=claude-sonnet-4-5 npm run hermes:setup
+HERMES_HOME=~/.hermes-redteam-acme  PROVIDER=openrouter  npm run hermes:setup
+```
+
+<details>
+<summary>Manual equivalent, if you prefer</summary>
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | sh
-hermes --version
-```
-
-### 2. Create a dedicated profile for red-team config authoring
-
-```bash
 export HERMES_HOME="$HOME/.hermes-redteam-analyst"
 hermes init
-```
-
-Point Hermes at any provider you like:
-
-```bash
-# Pick one
-hermes config set provider.type anthropic      && export ANTHROPIC_API_KEY=sk-ant-...
-hermes config set provider.type openai         && export OPENAI_API_KEY=sk-...
-hermes config set provider.type openrouter     && export OPENROUTER_API_KEY=sk-or-...
-hermes config set provider.model claude-sonnet-4-5   # or whatever fits your provider
-```
-
-### 3. Install the skill and tool manifest into the profile
-
-```bash
+hermes config set provider.type anthropic
+hermes config set provider.model claude-sonnet-4-5
+export ANTHROPIC_API_KEY=sk-ant-...
 cp hermes-redteam/skills/target-analyst.md   "$HERMES_HOME/skills/"
 cp hermes-redteam/tools.toml                 "$HERMES_HOME/tools/redteam.toml"
-hermes tools list     # should show read_repo, probe_target, read_prior_reports, write_config, write_custom_attacks, write_policy
+hermes tools list
 ```
 
-(If your Hermes version uses a slightly different tool-manifest path or syntax,
-see https://hermes-agent.nousresearch.com/docs/user-guide/configuration/ and
-adjust `tools.toml` accordingly.)
+If your Hermes version uses a different tool-manifest path or syntax, see
+https://hermes-agent.nousresearch.com/docs/user-guide/configuration/ and
+adjust `tools.toml` accordingly.
+</details>
 
-### 4. Start the tool server
+### 2. Start the tool server
 
 In terminal A, from the repo root:
 
@@ -60,7 +62,7 @@ npx tsx hermes-redteam/tool-server.ts
 # [hermes-redteam] tool server listening on http://127.0.0.1:4300
 ```
 
-### 5. Make sure the target is reachable
+### 3. Make sure the target is reachable
 
 For the demo:
 
@@ -73,7 +75,7 @@ cd demo-agentic-app && npm install && npm run dev   # http://localhost:3000
 For an enterprise deployment, make sure the tool server can reach the target URL
 (VPN, in-cluster, bastion — whichever applies).
 
-### 6. Run the analyst
+### 4. Run the analyst
 
 In terminal B. `repoPath` is **optional** — omit it for black-box /
 enterprise targets where you only have the running endpoint.
@@ -124,7 +126,7 @@ configs/attacks-demo.csv
 configs/policy-demo.json
 ```
 
-### 7. Run wb-red-team with the generated config
+### 5. Run wb-red-team with the generated config
 
 ```bash
 npx tsx red-team.ts configs/config.demo.json
@@ -132,7 +134,7 @@ npx tsx red-team.ts configs/config.demo.json
 
 Reports land in `report/` and show up in the dashboard (`npm run dashboard`).
 
-### 8. Iterate
+### 6. Iterate
 
 Every time the target changes (new tool, new role, new endpoint), re-run
 step 6. Hermes's memory means it picks up where the last analysis left off
