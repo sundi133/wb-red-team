@@ -325,6 +325,17 @@
         color: var(--red);
         border-color: var(--red);
       }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+        flex-shrink: 0;
+      }
       @keyframes pulse-run {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.4; }
@@ -2606,7 +2617,7 @@
             '<button onclick="downloadRiskJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:4px;">Export JSON</button>'
           : '') +
           '</div>' +
-          '<span id="riskLlmProgress" style="font-size:12px;color:var(--text2);"></span>' +
+          '<span id="riskLlmProgress" style="font-size:12px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;"></span>' +
           '</div>' +
 
           '<div id="riskLlmResultsArea">';
@@ -2651,7 +2662,7 @@
 
         var btn = document.getElementById("riskLlmBtn");
         var progress = document.getElementById("riskLlmProgress");
-        if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; }
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing...'; }
 
         var allResults = riskReportData.rounds ? riskReportData.rounds.flatMap(function(rd) { return rd.results || []; }) : [];
         var passResults = allResults.filter(function(r) { return r.verdict === "PASS"; });
@@ -2688,7 +2699,7 @@
               try {
                 riskLlmResults.push(JSON.parse(lines[i]));
                 count++;
-                if (progress) progress.textContent = count + " of " + attacks.length + " analyzed...";
+                if (progress) progress.innerHTML = '<span class="spinner"></span> ' + count + " of " + attacks.length + " analyzed...";
                 var area = document.getElementById("riskLlmResultsArea");
                 if (area) area.innerHTML = buildRiskResultsOnly(riskLlmResults);
               } catch(e) {}
@@ -2696,8 +2707,8 @@
           }
           if (buffer.trim()) { try { riskLlmResults.push(JSON.parse(buffer)); } catch(e) {} }
 
-          if (btn) btn.textContent = "Re-analyze";
-          if (progress) progress.textContent = "Complete — " + riskLlmResults.length + " vulnerabilities analyzed";
+          if (btn) btn.innerHTML = "Re-analyze";
+          if (progress) progress.innerHTML = "Complete — " + riskLlmResults.length + " vulnerabilities analyzed";
           renderRiskTab();
         } catch(err) {
           if (btn) btn.textContent = "Retry";
@@ -2919,7 +2930,7 @@
 
         var btn = document.getElementById("compRunBtn");
         var progressText = document.getElementById("compProgressText");
-        if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; btn.style.opacity = "0.5"; }
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing...'; btn.style.opacity = "0.5"; }
 
         var selectedFw = [];
         document.querySelectorAll(".comp-fw-checkbox:checked").forEach(function(cb) { selectedFw.push(cb.value); });
@@ -2956,7 +2967,7 @@
                 var item = JSON.parse(lines[i]);
                 complianceResults.push(item);
                 count++;
-                if (progressText) progressText.textContent = "Analyzing " + esc(item.code) + "... (" + count + " done)";
+                if (progressText) progressText.innerHTML = '<span class="spinner" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Analyzing ' + esc(item.code) + '... (' + count + ' done)';
                 var area = document.getElementById("compResultsArea");
                 if (area) area.innerHTML = buildComplianceResultsHtml(complianceResults);
               } catch(e) {}
