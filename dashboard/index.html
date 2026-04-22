@@ -2364,13 +2364,17 @@
           '</div>';
 
         if (!selReport) {
+          html += '<div style="padding:12px 20px;border-bottom:1px solid var(--border);">' +
+            '<input type="text" placeholder="Search by target URL or date..." oninput="filterRiskReports(this.value)" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:12px;font-family:inherit;" />' +
+            '</div>';
           html += '<div style="padding:0;max-height:300px;overflow-y:auto;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>';
-          reports.slice(0, 20).forEach(function(r) {
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;" id="riskReportTable"><tbody>';
+          reports.forEach(function(r) {
             var d = new Date(r.timestamp);
             var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
             var sc = scoreColor(r.score);
-            html += '<tr onclick="selectRiskReport(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
+            var searchStr = (dateStr + " " + (r.targetUrl || r.filename)).toLowerCase();
+            html += '<tr data-search="' + esc(searchStr) + '" onclick="selectRiskReport(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
               '<td style="padding:10px 20px;">' + esc(dateStr) + '</td>' +
               '<td style="padding:10px;color:var(--text2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || "") + '</td>' +
               '<td style="padding:10px;text-align:center;font-weight:700;color:' + sc + ';">' + r.score + '</td>' +
@@ -2573,32 +2577,61 @@
         return html;
       }
 
+      function filterRiskReports(query) {
+        var q = query.toLowerCase();
+        document.querySelectorAll("#riskReportTable tbody tr").forEach(function(row) {
+          row.style.display = (!q || (row.dataset.search && row.dataset.search.includes(q))) ? "" : "none";
+        });
+      }
+
       function buildLlmRiskSection(passResults) {
         if (passResults.length === 0) return '';
 
         var html = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-          '<div style="font-size:14px;font-weight:700;">Business Impact & Real-World Incidents</div>' +
-          '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze' : 'Analyze with AI') + '</button>' +
+          '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Business Impact & Real-World Incidents</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:16px;">AI-powered analysis of each vulnerability — business risk, financial exposure, compliance violations, and related real-world breaches.</div>' +
+
+          // Provider/model selector
+          '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">' +
+          '<div><div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Provider</div>' +
+          '<select id="riskProvider" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;">' +
+          '<option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option></select></div>' +
+          '<div><div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Model</div>' +
+          '<input id="riskModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;width:240px;font-family:inherit;" /></div>' +
+          '<div style="align-self:flex-end;">' +
+          '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze' : 'Analyze with AI') + '</button></div>' +
+          '<span id="riskLlmProgress" style="font-size:12px;color:var(--text2);"></span>' +
           '</div>' +
-          '<div style="font-size:11px;color:var(--text2);margin-bottom:16px;">Uses AI to map vulnerabilities to business risks, estimate financial impact, and find related real-world breaches.</div>' +
+
           '<div id="riskLlmResultsArea">';
 
-        if (riskLlmResults) {
+        if (riskLlmResults && riskLlmResults.length > 0) {
           riskLlmResults.forEach(function(item) {
-            html += '<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:8px;cursor:pointer;" onclick="var b=this.querySelector(\'.risk-body\');b.style.display=b.style.display===\'none\'?\'block\':\'none\'">' +
-              '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<span style="font-size:12px;font-weight:600;flex:1;">' + esc(item.attack) + '</span>' +
-              '<span style="font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(248,81,73,0.1);color:var(--red);font-weight:600;">' + esc(item.impactLevel || "HIGH") + '</span>' +
+            var impactColors = { CRITICAL: "var(--red)", HIGH: "var(--orange)", MEDIUM: "var(--accent)", LOW: "var(--text2)" };
+            var ic = impactColors[item.impactLevel] || "var(--orange)";
+            var icBg = ic.replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--orange', '210,153,34').replace('--accent', '88,166,255').replace('--text2', '139,148,158').replace(')', ',0.1)');
+
+            html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;">' +
+              '<div style="padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;" onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'">' +
+              '<div style="width:4px;height:28px;border-radius:2px;background:' + ic + ';flex-shrink:0;"></div>' +
+              '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + esc(item.attack) + '</div>' +
+              '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + esc(item.category || "") + ' &middot; ' + esc(item.severity || "") + '</div></div>' +
+              '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:' + icBg + ';color:' + ic + ';">' + esc(item.impactLevel || "HIGH") + '</span>' +
               '</div>' +
-              '<div class="risk-body" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">' +
-              '<div style="margin-bottom:8px;"><span style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;">Business Impact</span><div style="font-size:12px;color:var(--text);line-height:1.5;margin-top:4px;">' + esc(item.businessImpact || "") + '</div></div>' +
-              '<div style="margin-bottom:8px;"><span style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;">Financial Exposure</span><div style="font-size:12px;color:var(--red);font-weight:600;margin-top:4px;">' + esc(item.financialExposure || "Not estimated") + '</div></div>' +
-              '<div><span style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;">Related Incidents</span><div style="font-size:12px;color:var(--text);line-height:1.5;margin-top:4px;">' + esc(item.relatedIncidents || "No known incidents") + '</div></div>' +
+              '<div style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+              '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Business Impact</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.businessImpact || "") + '</div></div>' +
+              '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Financial Exposure</div><div style="font-size:14px;color:var(--red);font-weight:700;">' + esc(item.financialExposure || "Not estimated") + '</div></div>' +
+              '</div>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+              '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Related Real-World Incidents</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.relatedIncidents || "No known incidents") + '</div></div>' +
+              '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Compliance Risk</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.complianceRisk || "Review required") + '</div>' +
+              (item.remediationEstimate ? '<div style="margin-top:8px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;">Remediation</div><div style="font-size:12px;color:var(--text);margin-top:2px;">' + esc(item.remediationEstimate) + '</div>' : '') +
+              '</div></div>' +
               '</div></div>';
           });
         } else {
-          html += '<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px;">Click "Analyze with AI" to generate business impact assessment and find related real-world incidents.</div>';
+          html += '<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px;">Click "Analyze with AI" to generate per-vulnerability business impact assessment with real-world incident mapping.</div>';
         }
 
         html += '</div></div>';
@@ -2611,60 +2644,90 @@
         riskLlmResults = [];
 
         var btn = document.getElementById("riskLlmBtn");
+        var progress = document.getElementById("riskLlmProgress");
         if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; }
 
         var allResults = riskReportData.rounds ? riskReportData.rounds.flatMap(function(rd) { return rd.results || []; }) : [];
         var passResults = allResults.filter(function(r) { return r.verdict === "PASS"; });
 
-        // Build a summary of all PASS attacks for a single LLM call
-        var attackSummaries = passResults.slice(0, 20).map(function(r) {
-          return { name: r.attack?.name, category: r.attack?.category, severity: r.attack?.severity, findings: (r.findings || []).slice(0, 2) };
+        var attacks = passResults.slice(0, 20).map(function(r) {
+          return { name: r.attack?.name, category: r.attack?.category, severity: r.attack?.severity, findings: (r.findings || []).slice(0, 3) };
         });
 
+        var providerEl = document.getElementById("riskProvider");
+        var modelEl = document.getElementById("riskModel");
+        var provider = providerEl ? providerEl.value : "anthropic";
+        var model = modelEl ? modelEl.value : "claude-sonnet-4-20250514";
+
         try {
-          var res = await fetch("/api/owasp-analyze", {
+          var res = await fetch("/api/risk-analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              reportFile: riskSelectedReport,
-              provider: "anthropic",
-              model: "claude-sonnet-4-20250514",
-              frameworkIds: [],
-              riskAnalysis: true,
-              attacks: attackSummaries,
-            }),
+            body: JSON.stringify({ attacks: attacks, provider: provider, model: model }),
           });
 
-          // For now, generate client-side assessments based on category mappings
-          // (The LLM endpoint would need modification to support risk analysis mode)
-          riskLlmResults = passResults.slice(0, 15).map(function(r) {
-            var cat = r.attack?.category || "";
-            var impactMap = {
-              auth_bypass: { impact: "Unauthorized access to all user accounts and sensitive data. Attacker can impersonate any user.", financial: "$1M - $50M (regulatory fines + breach notification costs)", incidents: "2023 MOVEit breach ($75M), 2024 Change Healthcare ($22B impact)" },
-              data_exfiltration: { impact: "Bulk extraction of customer PII, financial records, or trade secrets. Regulatory violations (GDPR, CCPA, HIPAA).", financial: "$500K - $10M per incident (avg $4.45M per IBM 2023 report)", incidents: "2023 T-Mobile breach (37M records), 2024 AT&T data leak" },
-              prompt_injection: { impact: "Complete override of AI safety controls. Agent can be weaponized to perform unauthorized actions, leak data, or spread misinformation.", financial: "$100K - $5M (remediation + reputation damage)", incidents: "2024 ChatGPT plugin exploits, 2023 Bing Chat manipulation" },
-              sensitive_data: { impact: "Exposure of API keys, credentials, internal configurations. Can lead to lateral movement and infrastructure compromise.", financial: "$200K - $2M (incident response + key rotation)", incidents: "2024 Microsoft AI research leak, 2023 Samsung ChatGPT code leak" },
-              rbac_bypass: { impact: "Privilege escalation allowing regular users to access admin functions, modify data, or delete records.", financial: "$100K - $5M (unauthorized transactions + remediation)", incidents: "2024 Okta support system breach via privilege escalation" },
-              tool_misuse: { impact: "AI agent executing unintended actions — file deletion, unauthorized API calls, data modification.", financial: "$50K - $2M per incident", incidents: "2024 autonomous agent incidents in financial services" },
-            };
-            var mapped = impactMap[cat] || { impact: "Potential unauthorized access or data exposure. Security boundary violation.", financial: "$50K - $1M estimated", incidents: "Category-specific incidents under review" };
-            return {
-              attack: r.attack?.name || "Unknown",
-              impactLevel: r.attack?.severity === "critical" ? "CRITICAL" : "HIGH",
-              businessImpact: mapped.impact,
-              financialExposure: mapped.financial,
-              relatedIncidents: mapped.incidents,
-            };
-          });
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = "";
+          var count = 0;
+
+          while (true) {
+            var chunk = await reader.read();
+            if (chunk.done) break;
+            buffer += decoder.decode(chunk.value, { stream: true });
+            var lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (var i = 0; i < lines.length; i++) {
+              if (!lines[i].trim()) continue;
+              try {
+                riskLlmResults.push(JSON.parse(lines[i]));
+                count++;
+                if (progress) progress.textContent = count + " of " + attacks.length + " analyzed...";
+                var area = document.getElementById("riskLlmResultsArea");
+                if (area) area.innerHTML = buildRiskResultsOnly(riskLlmResults);
+              } catch(e) {}
+            }
+          }
+          if (buffer.trim()) { try { riskLlmResults.push(JSON.parse(buffer)); } catch(e) {} }
 
           if (btn) btn.textContent = "Re-analyze";
+          if (progress) progress.textContent = "Complete — " + riskLlmResults.length + " vulnerabilities analyzed";
           renderRiskTab();
         } catch(err) {
           if (btn) btn.textContent = "Retry";
+          if (progress) progress.textContent = "Error: " + err.message;
         }
 
         if (btn) btn.disabled = false;
         riskAnalyzing = false;
+      }
+
+      function buildRiskResultsOnly(results) {
+        var html = '';
+        results.forEach(function(item) {
+          var impactColors = { CRITICAL: "var(--red)", HIGH: "var(--orange)", MEDIUM: "var(--accent)", LOW: "var(--text2)" };
+          var ic = impactColors[item.impactLevel] || "var(--orange)";
+          var icBg = ic.replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--orange', '210,153,34').replace('--accent', '88,166,255').replace('--text2', '139,148,158').replace(')', ',0.1)');
+
+          html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;">' +
+            '<div style="padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;" onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'">' +
+            '<div style="width:4px;height:28px;border-radius:2px;background:' + ic + ';flex-shrink:0;"></div>' +
+            '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + esc(item.attack) + '</div>' +
+            '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + esc(item.category || "") + ' &middot; ' + esc(item.severity || "") + '</div></div>' +
+            '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:' + icBg + ';color:' + ic + ';">' + esc(item.impactLevel || "HIGH") + '</span>' +
+            '</div>' +
+            '<div style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+            '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Business Impact</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.businessImpact || "") + '</div></div>' +
+            '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Financial Exposure</div><div style="font-size:14px;color:var(--red);font-weight:700;">' + esc(item.financialExposure || "Not estimated") + '</div></div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+            '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Related Incidents</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.relatedIncidents || "No known incidents") + '</div></div>' +
+            '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Compliance Risk</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.complianceRisk || "Review required") + '</div>' +
+            (item.remediationEstimate ? '<div style="margin-top:8px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;">Remediation</div><div style="font-size:12px;color:var(--text);margin-top:2px;">' + esc(item.remediationEstimate) + '</div>' : '') +
+            '</div></div></div></div>';
+        });
+        return html;
       }
 
       let complianceSelectedReport = null;

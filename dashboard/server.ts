@@ -773,6 +773,107 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
     return;
   }
 
+  // API: risk analysis — LLM-powered per-vulnerability business impact
+  if (url.pathname === "/api/risk-analyze" && req.method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const { attacks, provider, model } = body;
+
+      if (!attacks || !Array.isArray(attacks) || attacks.length === 0) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "attacks array is required" }));
+        return;
+      }
+
+      const judgeProvider = provider || "anthropic";
+      const judgeModel = model || "claude-sonnet-4-20250514";
+
+      const llm = getJudgeProvider({
+        attackConfig: { judgeProvider, llmProvider: judgeProvider },
+      } as Config);
+
+      // Stream results as NDJSON
+      res.writeHead(200, {
+        "Content-Type": "application/x-ndjson",
+        "Transfer-Encoding": "chunked",
+      });
+
+      for (const atk of attacks.slice(0, 25)) {
+        try {
+          const prompt = `You are a cybersecurity risk analyst. Analyze this specific AI security vulnerability and provide a business risk assessment.
+
+VULNERABILITY:
+- Attack: ${atk.name}
+- Category: ${atk.category}
+- Severity: ${atk.severity}
+- Findings: ${(atk.findings || []).join("; ")}
+
+Provide your analysis as JSON with these exact fields:
+{
+  "impactLevel": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+  "businessImpact": "2-3 sentences describing the specific business risk — data breach, financial loss, regulatory violations, reputation damage. Be specific to this attack category, not generic.",
+  "financialExposure": "Estimated financial range (e.g. '$500K - $5M') based on industry data for this type of vulnerability. Consider regulatory fines (GDPR: up to 4% of revenue, CCPA, HIPAA), breach notification costs, remediation, and business disruption.",
+  "relatedIncidents": "2-3 real-world incidents or breaches where this type of vulnerability was exploited. Include company name, year, and brief impact. Use well-known public incidents.",
+  "complianceRisk": "Which regulations/standards this violates (GDPR, HIPAA, SOC2, PCI-DSS, etc.) and potential penalties.",
+  "remediationEstimate": "Estimated effort to fix (hours/days) and recommended approach in 1-2 sentences."
+}
+
+Be specific and factual. Reference real incidents and realistic financial figures.`;
+
+          const text = await llm.chat({
+            model: judgeModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.3,
+            maxTokens: 1024,
+          });
+
+          let parsed;
+          try {
+            const cleaned = text.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "");
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            parsed = JSON.parse(jsonMatch?.[0] ?? "{}");
+          } catch {
+            parsed = {
+              impactLevel: atk.severity === "critical" ? "CRITICAL" : "HIGH",
+              businessImpact: text.slice(0, 300),
+              financialExposure: "Not estimated",
+              relatedIncidents: "Analysis pending",
+              complianceRisk: "Review required",
+              remediationEstimate: "Assessment needed",
+            };
+          }
+
+          res.write(JSON.stringify({
+            attack: atk.name,
+            category: atk.category,
+            severity: atk.severity,
+            ...parsed,
+          }) + "\n");
+        } catch (err) {
+          res.write(JSON.stringify({
+            attack: atk.name,
+            category: atk.category,
+            severity: atk.severity,
+            impactLevel: "UNKNOWN",
+            businessImpact: `Analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+            financialExposure: "Not estimated",
+            relatedIncidents: "Analysis failed",
+            complianceRisk: "Review required",
+            remediationEstimate: "Assessment needed",
+          }) + "\n");
+        }
+      }
+
+      res.end();
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+      }
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
   // API: audit log
   if (url.pathname === "/api/audit-log" && req.method === "GET") {
     if (!ctx) {

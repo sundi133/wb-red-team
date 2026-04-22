@@ -40,6 +40,11 @@ const PERMISSIONS: RoutePermission[] = [
     pattern: /^\/api\/owasp-analyze$/,
     roles: ["admin", "auditor"],
   },
+  {
+    method: "POST",
+    pattern: /^\/api\/risk-analyze$/,
+    roles: ["admin", "auditor"],
+  },
 
   // Audit log
   { method: "GET", pattern: /^\/api\/audit-log/, roles: ["admin", "auditor"] },
