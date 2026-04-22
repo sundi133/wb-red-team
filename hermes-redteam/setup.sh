@@ -130,8 +130,14 @@ cp "$skill_src" "$skill_dst"
 log "installed skill: $skill_dst"
 
 # ── 5. Register MCP tool server ──
-mcp_entry="npx tsx $REPO_ROOT/hermes-redteam/mcp-server.ts"
+mcp_entry="$REPO_ROOT/hermes-redteam/mcp-entry"
+[ -x "$mcp_entry" ] || chmod +x "$mcp_entry" 2>/dev/null || true
 log "registering MCP server '$MCP_NAME' -> $mcp_entry"
+
+# Pre-req: the wrapper depends on node_modules/.bin/tsx
+if [ ! -x "$REPO_ROOT/node_modules/.bin/tsx" ]; then
+  warn "node_modules/.bin/tsx not found — run 'npm install' before invoking Hermes"
+fi
 
 # `hermes mcp list` — check if already registered
 if hermes mcp list 2>/dev/null | grep -qw "$MCP_NAME"; then
@@ -139,14 +145,13 @@ if hermes mcp list 2>/dev/null | grep -qw "$MCP_NAME"; then
   hermes mcp remove "$MCP_NAME" 2>/dev/null || hermes mcp rm "$MCP_NAME" 2>/dev/null || true
 fi
 
-# Try the most common `hermes mcp add` forms. If your Hermes version uses
-# different flags, run `hermes mcp add --help` and adapt manually.
-if ! hermes mcp add "$MCP_NAME" -- npx tsx "$REPO_ROOT/hermes-redteam/mcp-server.ts" 2>/dev/null; then
-  if ! hermes mcp add "$MCP_NAME" --command "npx" --args "tsx $REPO_ROOT/hermes-redteam/mcp-server.ts" 2>/dev/null; then
-    if ! hermes mcp add --name "$MCP_NAME" --command "npx tsx $REPO_ROOT/hermes-redteam/mcp-server.ts" 2>/dev/null; then
+# Try the most common `hermes mcp add` forms.
+if ! hermes mcp add "$MCP_NAME" -- "$mcp_entry" 2>/dev/null; then
+  if ! hermes mcp add "$MCP_NAME" --command "$mcp_entry" 2>/dev/null; then
+    if ! hermes mcp add --name "$MCP_NAME" --command "$mcp_entry" 2>/dev/null; then
       warn "automatic 'hermes mcp add' failed — your Hermes version likely uses different flags."
       warn "Run this manually, adapting to 'hermes mcp add --help' output:"
-      warn "  hermes mcp add $MCP_NAME -- npx tsx $REPO_ROOT/hermes-redteam/mcp-server.ts"
+      warn "  hermes mcp add $MCP_NAME -- $mcp_entry"
     fi
   fi
 fi

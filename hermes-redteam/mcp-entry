@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# Wrapper launched by Hermes (or any MCP client) to start the wb-redteam
+# MCP server with a reliable cwd and an absolute path to the tsx binary.
+#
+# Hermes registers this file as the MCP command, not `npx tsx ...` directly,
+# because Hermes may spawn it with a working dir / PATH that can't resolve
+# the repo-local tsx — which manifests as "Connection closed".
+#
+# Anything printed here goes to stderr so it does NOT corrupt the MCP
+# JSON-RPC stream on stdout.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$HERE/.." && pwd)"
+TSX="$REPO/node_modules/.bin/tsx"
+SERVER="$HERE/mcp-server.ts"
+
+if [ ! -x "$TSX" ]; then
+  echo "[mcp-entry] tsx not found at $TSX" >&2
+  echo "[mcp-entry] run 'npm install' in $REPO first" >&2
+  exit 127
+fi
+
+if [ ! -f "$SERVER" ]; then
+  echo "[mcp-entry] server file missing: $SERVER" >&2
+  exit 127
+fi
+
+cd "$REPO"
+echo "[mcp-entry] launching: $TSX $SERVER (cwd=$REPO)" >&2
+exec "$TSX" "$SERVER"
