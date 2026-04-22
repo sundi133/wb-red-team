@@ -3161,9 +3161,9 @@
         await initAuth();
         if (authMode === "none" || authMode === "dev") {
           await loadReportsMeta();
+          renderDashboardTab();
         }
-        // If OIDC mode, loadReportsMeta is called from onClerkSignedIn
-        renderDashboardTab();
+        // If OIDC mode, loadReportsMeta + renderDashboardTab called from onClerkSignedIn
       })();
 
       // Search with debounce
@@ -3193,6 +3193,9 @@
         renderReportList();
         renderTrend();
         renderPagination();
+
+        // Re-render dashboard if it's the active tab (data just loaded)
+        if (currentTab === "dashboard") renderDashboardTab();
 
         // Auto-select first report only if already on Reports tab
         if (currentTab === "reports" && !currentFile && !selectedRunId && reportsMeta.length > 0) {
