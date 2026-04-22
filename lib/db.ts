@@ -4,7 +4,7 @@
  */
 
 import pg from "pg";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 let pool: pg.Pool | null = null;
@@ -54,23 +54,29 @@ export async function runMigrations(): Promise<void> {
     );
     const appliedVersions = new Set(applied.rows.map((r) => r.version));
 
-    // Run migration 001 if not applied
-    if (!appliedVersions.has(1)) {
-      const migrationsDir = join(
-        import.meta.dirname ?? process.cwd(),
-        "migrations",
-      );
-      const sql = readFileSync(join(migrationsDir, "001-enterprise.sql"), "utf-8");
+    // Discover all migration files (NNN-name.sql, sorted by number)
+    const migrationsDir = join(
+      import.meta.dirname ?? process.cwd(),
+      "migrations",
+    );
+    const files = readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql") && /^\d{3}-/.test(f))
+      .sort();
 
+    for (const file of files) {
+      const version = parseInt(file.slice(0, 3), 10);
+      if (appliedVersions.has(version)) continue;
+
+      const sql = readFileSync(join(migrationsDir, file), "utf-8");
       await client.query("BEGIN");
       try {
         await client.query(sql);
         await client.query(
           "INSERT INTO schema_migrations (version) VALUES ($1)",
-          [1],
+          [version],
         );
         await client.query("COMMIT");
-        console.log("  Migration 001-enterprise applied successfully");
+        console.log(`  Migration ${file} applied successfully`);
       } catch (err) {
         await client.query("ROLLBACK");
         throw err;
