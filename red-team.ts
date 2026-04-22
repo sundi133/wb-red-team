@@ -434,8 +434,9 @@ async function main() {
       const progress = `[${i + 1}/${attacks.length}]`;
 
       // Handle rate-limit rapid-fire attacks specially
-      const rapidFire = (attack.payload as Record<string, unknown>)
-        ._rapidFire as number | undefined;
+      const rapidFire = (
+        attack.payload as Record<string, unknown> | undefined
+      )?._rapidFire as number | undefined;
       if (rapidFire && attack.category === "rate_limit") {
         console.log(
           `  ${progress} ${attack.name} (${rapidFire}x rapid-fire)...`,
