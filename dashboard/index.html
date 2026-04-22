@@ -1787,6 +1787,72 @@
               <textarea id="runConfigEditor" spellcheck="false" style="width:100%;height:420px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.6;resize:vertical;tab-size:2;"></textarea>
             </div>
 
+            <!-- Reference Guide -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden;">
+              <details>
+                <summary style="padding:16px 20px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;user-select:none;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Configuration Reference — Attack Categories, Strategies & Parameters
+                </summary>
+                <div style="padding:0 20px 20px;border-top:1px solid var(--border);">
+
+                  <!-- Config Parameters -->
+                  <div style="margin-top:16px;margin-bottom:20px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">KEY PARAMETERS</div>
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                      <thead><tr style="border-bottom:1px solid var(--border);">
+                        <th style="padding:6px 10px;text-align:left;color:var(--text2);font-weight:600;">Field</th>
+                        <th style="padding:6px 10px;text-align:left;color:var(--text2);font-weight:600;">Default</th>
+                        <th style="padding:6px 10px;text-align:left;color:var(--text2);font-weight:600;">Description</th>
+                      </tr></thead>
+                      <tbody style="color:var(--text);">
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">target.baseUrl</td><td style="padding:5px 10px;">—</td><td style="padding:5px 10px;">Your app's URL (use host.docker.internal for local)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">target.agentEndpoint</td><td style="padding:5px 10px;">—</td><td style="padding:5px 10px;">Chat/agent API path (e.g., /api/chat, /v1/chat/completions)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">target.applicationDetails</td><td style="padding:5px 10px;">—</td><td style="padding:5px 10px;">Describe your app — tools, roles, data access. More detail = better attacks</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.adaptiveRounds</td><td style="padding:5px 10px;">3</td><td style="padding:5px 10px;">Number of attack rounds (each adapts based on prior results)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.maxAttacksPerCategory</td><td style="padding:5px 10px;">15</td><td style="padding:5px 10px;">Max attacks generated per category per round</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.llmProvider</td><td style="padding:5px 10px;">anthropic</td><td style="padding:5px 10px;">anthropic, openai, or openrouter</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.enableLlmGeneration</td><td style="padding:5px 10px;">true</td><td style="padding:5px 10px;">Use AI to generate novel attacks (disable for seed-only)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.enableAdaptiveMultiTurn</td><td style="padding:5px 10px;">true</td><td style="padding:5px 10px;">Auto-generate multi-turn conversation attacks</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.enableDiscovery</td><td style="padding:5px 10px;">false</td><td style="padding:5px 10px;">Run reconnaissance round to discover tools/surfaces before attacking</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">attackConfig.enabledCategories</td><td style="padding:5px 10px;">all</td><td style="padding:5px 10px;">Array of category IDs to test (empty = all 139 categories)</td></tr>
+                        <tr><td style="padding:5px 10px;font-family:monospace;color:var(--accent);">sensitivePatterns</td><td style="padding:5px 10px;">[]</td><td style="padding:5px 10px;">Strings that should never appear in responses (API keys, passwords, etc.)</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Attack Categories -->
+                  <div style="margin-bottom:20px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">ATTACK CATEGORIES <span style="font-weight:400;color:var(--text2);">(139 total — use in enabledCategories array)</span></div>
+                    <div id="refCategories" style="display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto;padding:4px 0;"></div>
+                  </div>
+
+                  <!-- Strategies -->
+                  <div>
+                    <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">ATTACK STRATEGIES <span style="font-weight:400;color:var(--text2);">(use in enabledStrategies array — empty = all)</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow-y:auto;padding:4px 0;">
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">base64_context_hint</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">rot13_cipher_trick</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">reverse_instruction</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">json_format_bypass</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">multi_language_obfuscation</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">poetic_metaphor_request</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">educational_series_framing</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">fiction_writing_escape</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">academic_computation_disguise</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">benign_wrapper_hidden_core</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">incremental_escalation_setup</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">building_on_previous_context</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">simulated_multi_turn_conversation</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">translation_request_disguise</span>
+                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">role_consistency_override</span>
+                    </div>
+                  </div>
+
+                </div>
+              </details>
+            </div>
+
             <!-- Actions -->
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;">
               <button id="startRunBtn" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Start Run</button>
@@ -5320,6 +5386,68 @@
 
       const runConfigEditor = document.getElementById("runConfigEditor");
       runConfigEditor.value = JSON.stringify(configTemplates["openai-compatible"], null, 2);
+
+      // Populate category reference chips
+      var allCategories = [
+        "prompt_injection","indirect_prompt_injection","content_filter_bypass","auth_bypass","rbac_bypass",
+        "data_exfiltration","sensitive_data","pii_disclosure","output_evasion","tool_misuse","tool_chain_hijack",
+        "tool_output_manipulation","session_hijacking","cross_tenant_access","rate_limit","ssrf","path_traversal",
+        "shell_injection","sql_injection","debug_access","api_abuse","supply_chain","memory_poisoning",
+        "rag_poisoning","rag_corpus_poisoning","rag_attribution","cross_session_injection","goal_hijack",
+        "rogue_agent","agentic_workflow_bypass","multi_agent_delegation","agent_reflection_exploit",
+        "unauthorized_commitments","agentic_legal_commitment","agentic_scope_creep","identity_privilege",
+        "unexpected_code_exec","generated_code_rce","cascading_failure","guardrail_timing","multi_turn_escalation",
+        "conversation_manipulation","context_window_attack","slow_burn_exfiltration","steganographic_exfiltration",
+        "out_of_band_exfiltration","training_data_extraction","side_channel_inference","toxic_content",
+        "harmful_advice","drug_synthesis","weapons_violence","financial_crime","cyber_crime","csam_minor_safety",
+        "misinformation","hallucination","hallucination_inducement","fake_quotes_misinfo","deceptive_misinfo",
+        "sycophancy_exploitation","overreliance","over_refusal","bias_exploitation","hate_speech_dogwhistle",
+        "radicalization_content","targeted_harassment","defamation_harassment","brand_impersonation",
+        "brand_reputation","competitor_endorsement","competitor_sabotage","influence_operations",
+        "psychological_manipulation","emotional_manipulation","social_engineering","copyright_infringement",
+        "regulatory_violation","consent_bypass","gdpr_erasure_bypass","contextual_integrity_violation",
+        "financial_fraud_facilitation","model_extraction","model_inversion","membership_inference",
+        "model_fingerprinting","backdoor_trigger","data_poisoning","gradient_leakage","fine_tuning_data_injection",
+        "retrieval_ranking_attack","vector_store_manipulation","chunk_boundary_injection","embedding_inversion",
+        "structured_output_injection","markdown_link_injection","format_confusion_attack","special_token_injection",
+        "cross_lingual_attack","insecure_output_handling","model_dos","token_flooding_dos","infinite_loop_agent",
+        "quota_exhaustion_attack","divergent_repetition","inference_attack","re_identification","linkage_attack",
+        "differential_privacy_violation","logic_bomb_conditional","off_topic","prompt_template_injection",
+        "mcp_server_compromise","plugin_manifest_spoofing","sdk_dependency_attack","mcp_tool_namespace_collision",
+        "inter_agent_protocol_abuse","multimodal_ghost_injection","computer_use_injection",
+        "streaming_voice_injection","cross_modal_conflict","graph_consensus_poisoning","llm_judge_manipulation",
+        "retrieval_tenant_bleed","sandbox_escape","tool_permission_escalation","alignment_faking",
+        "capability_elicitation","instruction_hierarchy_violation","state_persistence_attack",
+        "encoding_serialization_attack","multi_hop_reasoning_exploit",
+        "medical_safety","financial_compliance","pharmacy_safety","insurance_compliance",
+        "ecommerce_security","telecom_compliance","housing_discrimination"
+      ];
+      var refCatEl = document.getElementById("refCategories");
+      if (refCatEl) {
+        refCatEl.innerHTML = allCategories.map(function(c) {
+          return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="insertCategory(this.textContent)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'">' + c + '</span>';
+        }).join("");
+      }
+
+      function insertCategory(cat) {
+        // Copy to clipboard for easy pasting
+        navigator.clipboard.writeText('"' + cat + '"').then(function() {
+          // Brief flash feedback
+          var el = event.target;
+          el.style.background = 'var(--accent)';
+          el.style.color = '#fff';
+          setTimeout(function() { el.style.background = 'var(--bg)'; el.style.color = 'var(--text2)'; }, 300);
+        });
+      }
+
+      function insertStrategy(strat) {
+        navigator.clipboard.writeText('"' + strat + '"').then(function() {
+          var el = event.target;
+          el.style.background = 'var(--accent)';
+          el.style.color = '#fff';
+          setTimeout(function() { el.style.background = 'var(--bg)'; el.style.color = 'var(--text2)'; }, 300);
+        });
+      }
 
       document.getElementById("closeRunPanel").addEventListener("click", () => {
         document.getElementById("newRunPanel").style.display = "none";
