@@ -3507,39 +3507,6 @@
       <div id="strategySection"></div>
     </div>
 
-    <!-- Compliance Analysis -->
-    <div class="section">
-      <h2>Compliance Analysis</h2>
-      <div class="compliance-config" id="owaspTrigger">
-        <div class="compliance-config-row">
-          <label>Provider</label>
-          <select id="owaspProvider">
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
-            <option value="openrouter">OpenRouter</option>
-          </select>
-          <label>Model</label>
-          <input id="owaspModel" type="text" value="claude-sonnet-4-20250514" />
-        </div>
-        <div class="compliance-config-row">
-          <label>Frameworks</label>
-          <div id="frameworkSelector" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-        </div>
-        <div class="compliance-actions">
-          <button class="compliance-run-btn" id="owaspAnalyzeBtn" onclick="runOwaspAnalysis()">Run Compliance Analysis</button>
-          <button class="compliance-dl-btn" id="complianceCsvBtn" onclick="downloadComplianceCsv()" style="display:none;">Export CSV</button>
-          <button class="compliance-dl-btn" id="complianceJsonBtn" onclick="downloadComplianceJson()" style="display:none;">Export JSON</button>
-        </div>
-        <div class="compliance-progress" id="owaspProgress" style="display:none">
-          <span id="owaspProgressText">Analyzing...</span>
-          <div class="compliance-progress-bar"><div class="compliance-progress-fill" id="owaspProgressFill" style="width:0%"></div></div>
-        </div>
-      </div>
-      <div id="owaspResults" style="display:none">
-        <div id="complianceFrameworkResults"></div>
-      </div>
-    </div>
-
     <!-- Results -->
     <div class="section">
       <h2>Results <span class="badge">${r.rounds.reduce((sum, round) => sum + round.results.length, 0)} total</span></h2>
