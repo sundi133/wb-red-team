@@ -147,12 +147,27 @@ async function startJob(job: Job): Promise<void> {
     // (client polls for "done" and immediately fetches report list)
     if (isDbConfigured() && job.tenantId) {
       try {
-        await storeReport(result.report, job.tenantId, job.id, {
+        const storeResult = await storeReport(result.report, job.tenantId, job.id, {
           skipFile: true,
         });
+        console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
       } catch (dbErr) {
         console.error("Failed to store report in DB:", dbErr);
+        // Fallback: write to file so report isn't lost
+        try {
+          const { writeReport } = await import("../lib/report-generator.js");
+          const paths = writeReport(result.report);
+          job.reportFile = paths.jsonPath;
+          console.log(`  Fallback: report written to file ${paths.jsonPath}`);
+        } catch {}
       }
+    } else {
+      // No DB — write to file
+      try {
+        const { writeReport } = await import("../lib/report-generator.js");
+        const paths = writeReport(result.report);
+        job.reportFile = paths.jsonPath;
+      } catch {}
     }
     job.status = "done";
   } catch (err) {
