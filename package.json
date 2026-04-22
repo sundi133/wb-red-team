@@ -40,6 +40,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "dashboard": "tsx dashboard/server.ts 4200",
     "hermes:setup": "bash hermes-redteam/setup.sh",
+    "hermes:run": "bash hermes-redteam/run-analyst.sh",
     "hermes:tools": "tsx hermes-redteam/tool-server.ts",
     "hermes:mcp": "tsx hermes-redteam/mcp-server.ts"
   },
