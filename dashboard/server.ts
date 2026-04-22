@@ -139,12 +139,12 @@ async function startJob(job: Job): Promise<void> {
       undefined,
       ac.signal,
     );
-    job.status = "done";
     job.report = result.report;
     job.reportFile = result.jsonPath;
     job.finishedAt = new Date().toISOString();
     metaCache.clear();
-    // Store report in DB if enterprise mode is active (skip file write — DB is primary)
+    // Store report in DB BEFORE setting status to done
+    // (client polls for "done" and immediately fetches report list)
     if (isDbConfigured() && job.tenantId) {
       try {
         await storeReport(result.report, job.tenantId, job.id, {
@@ -154,6 +154,7 @@ async function startJob(job: Job): Promise<void> {
         console.error("Failed to store report in DB:", dbErr);
       }
     }
+    job.status = "done";
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "Run cancelled") {
