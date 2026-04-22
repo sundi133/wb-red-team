@@ -255,6 +255,28 @@ class OpenRouterProvider implements LlmProvider {
   }
 }
 
+// ── Together AI Provider (OpenAI-compatible API) ──
+
+class TogetherAIProvider implements LlmProvider {
+  private client: OpenAI;
+
+  constructor() {
+    const key = process.env.TOGETHER_API_KEY;
+    if (!key)
+      throw new Error(
+        "TOGETHER_API_KEY environment variable is required for together provider",
+      );
+    this.client = new OpenAI({
+      baseURL: "https://api.together.xyz/v1",
+      apiKey: key,
+    });
+  }
+
+  async chat(options: ChatOptions): Promise<string> {
+    return createOpenAICompatibleChatCompletion(this.client, options);
+  }
+}
+
 // ── Factory ──
 
 const providerCache = new Map<string, LlmProvider>();
@@ -275,9 +297,12 @@ function createProvider(name: string): LlmProvider {
     case "openrouter":
       provider = new OpenRouterProvider();
       break;
+    case "together":
+      provider = new TogetherAIProvider();
+      break;
     default:
       throw new Error(
-        `Unknown LLM provider: "${name}". Use "openai", "anthropic", or "openrouter".`,
+        `Unknown LLM provider: "${name}". Use "openai", "anthropic", "openrouter", or "together".`,
       );
   }
 
