@@ -2338,94 +2338,126 @@
         try {
           const fwResp = await fetch("/api/compliance-frameworks");
           const frameworks = fwResp.ok ? await fwResp.json() : [];
-
-          // Use reportsMeta for the report list (already loaded)
           const reports = reportsMeta.length > 0 ? reportsMeta : [];
+
+          // Find selected report info
+          const selReport = complianceSelectedReport ? reports.find(function(r) { return r.filename === complianceSelectedReport; }) : null;
 
           var html = '<div style="max-width:1200px;margin:0 auto;">';
 
-          // Header
-          html += '<div style="margin-bottom:20px;">' +
+          // Header with context
+          html += '<div style="margin-bottom:24px;">' +
             '<h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">Compliance Analysis</h2>' +
-            '<div style="font-size:12px;color:var(--text2);">Select a report, choose frameworks, and run LLM-powered compliance mapping. Results stream in real-time.</div>' +
+            '<div style="font-size:13px;color:var(--text2);">Map security scan results against industry compliance frameworks using AI-powered analysis.</div>' +
             '</div>';
 
-          // Two-column layout: Report selector + Analysis panel
-          html += '<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">';
-
-          // Left: Report list
-          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
-            '<div style="padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;">Select Report</div>' +
-            '<div style="max-height:500px;overflow-y:auto;">';
+          // Step 1: Select Report
+          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden;">' +
+            '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:24px;height:24px;border-radius:50%;background:' + (selReport ? 'var(--green)' : 'var(--accent)') + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">1</div>' +
+            '<div style="font-size:14px;font-weight:600;">Select Report</div>' +
+            (selReport ? '<div style="font-size:12px;color:var(--text2);margin-left:auto;">' + esc(new Date(selReport.timestamp).toLocaleDateString()) + ' &middot; ' + esc(selReport.targetUrl || "") + ' &middot; Score: <span style="font-weight:700;color:' + scoreColor(selReport.score) + ';">' + selReport.score + '</span></div>' : '') +
+            '</div>';
 
           if (reports.length === 0) {
-            html += '<div style="padding:30px;text-align:center;color:var(--text2);font-size:12px;">No reports found</div>';
+            html += '<div style="padding:30px;text-align:center;color:var(--text2);font-size:12px;">No reports available. Run a security scan first.</div>';
+          } else if (selReport) {
+            // Collapsed — show selected report summary + change link
+            html += '<div style="padding:8px 20px;border-top:1px solid var(--border);">' +
+              '<a href="#" onclick="event.preventDefault();complianceSelectedReport=null;complianceResults=[];renderComplianceTab();" style="font-size:11px;color:var(--accent);">Change report</a></div>';
           } else {
+            // Search + report table
+            html += '<div style="padding:12px 20px;border-bottom:1px solid var(--border);">' +
+              '<input id="compReportSearch" type="text" placeholder="Search by target URL or date..." oninput="filterCompReports(this.value)" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:12px;font-family:inherit;" />' +
+              '</div>';
+            html += '<div style="padding:0;max-height:400px;overflow-y:auto;" id="compReportTableWrap">' +
+              '<table style="width:100%;border-collapse:collapse;font-size:12px;" id="compReportTable">' +
+              '<thead><tr style="border-bottom:1px solid var(--border);">' +
+              '<th style="padding:8px 20px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Date</th>' +
+              '<th style="padding:8px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Target</th>' +
+              '<th style="padding:8px 10px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Score</th>' +
+              '<th style="padding:8px 10px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Attacks</th>' +
+              '<th style="padding:8px 20px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Vulns</th>' +
+              '</tr></thead><tbody>';
             reports.forEach(function(r) {
               var d = new Date(r.timestamp);
               var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
               var sc = typeof r.score === "number" ? scoreColor(r.score) : "var(--text2)";
-              var isSelected = complianceSelectedReport === r.filename;
-              html += '<div onclick="selectComplianceReport(\'' + esc(r.filename) + '\')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);border-left:3px solid ' + (isSelected ? 'var(--accent)' : 'transparent') + ';background:' + (isSelected ? 'rgba(88,166,255,0.06)' : 'none') + ';transition:background 0.1s;" onmouseover="if(!' + isSelected + ')this.style.background=\'var(--surface2)\'" onmouseout="if(!' + isSelected + ')this.style.background=\'none\'">' +
-                '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                '<span style="font-size:12px;font-weight:500;">' + esc(dateStr) + '</span>' +
-                '<span style="font-size:11px;font-weight:700;color:' + sc + ';">' + r.score + '</span>' +
-                '</div>' +
-                '<div style="font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || r.filename) + '</div>' +
-                '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + r.totalAttacks + ' attacks &middot; ' + r.passed + ' vulns</div>' +
-                '</div>';
+              var searchStr = (dateStr + " " + (r.targetUrl || r.filename)).toLowerCase();
+              html += '<tr data-search="' + esc(searchStr) + '" onclick="selectComplianceReport(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
+                '<td style="padding:10px 20px;white-space:nowrap;">' + esc(dateStr) + '</td>' +
+                '<td style="padding:10px 10px;color:var(--text2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || r.filename) + '</td>' +
+                '<td style="padding:10px 10px;text-align:center;"><span style="font-weight:700;color:' + sc + ';">' + r.score + '</span></td>' +
+                '<td style="padding:10px 10px;text-align:center;color:var(--text2);">' + r.totalAttacks + '</td>' +
+                '<td style="padding:10px 20px;text-align:center;color:var(--red);font-weight:500;">' + r.passed + '</td>' +
+                '</tr>';
             });
+            html += '</tbody></table></div>';
           }
-          html += '</div></div>';
+          html += '</div>';
 
-          // Right: Analysis panel
-          html += '<div>' +
-            '<div id="complianceAnalysisPanel">';
-
-          if (!complianceSelectedReport) {
-            html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:60px;text-align:center;color:var(--text2);">' +
-              '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
-              '<div style="font-size:14px;margin-bottom:4px;">Select a report to analyze</div>' +
-              '<div style="font-size:12px;">Choose a report from the left panel to run compliance analysis</div>' +
-              '</div>';
-          } else {
-            // Config card
-            html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">' +
-              '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">Analysis Configuration</div>' +
-              '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
-              '<label style="font-size:11px;color:var(--text2);font-weight:600;">PROVIDER</label>' +
-              '<select id="compProvider" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;">' +
-              '<option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option></select>' +
-              '<label style="font-size:11px;color:var(--text2);font-weight:600;">MODEL</label>' +
-              '<input id="compModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;width:220px;" />' +
+          // Step 2: Configure & Run (only if report selected)
+          if (selReport) {
+            html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden;">' +
+              '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">2</div>' +
+              '<div style="font-size:14px;font-weight:600;">Configure & Run</div>' +
+              '<span id="compProgressText" style="margin-left:auto;font-size:12px;color:var(--text2);"></span>' +
               '</div>' +
-              '<div style="margin-bottom:12px;">' +
-              '<label style="font-size:11px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px;">FRAMEWORKS</label>' +
-              '<div id="compFrameworks" style="display:flex;gap:8px;flex-wrap:wrap;">';
+              '<div style="padding:20px;">' +
+
+              // Provider + Model row
+              '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
+              '<div><div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Provider</div>' +
+              '<select id="compProvider" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;font-family:inherit;">' +
+              '<option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option></select></div>' +
+              '<div><div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Model</div>' +
+              '<input id="compModel" type="text" value="claude-sonnet-4-20250514" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;width:240px;font-family:inherit;" /></div>' +
+              '</div>' +
+
+              // Frameworks
+              '<div style="margin-bottom:16px;">' +
+              '<div style="font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Frameworks</div>' +
+              '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
             frameworks.forEach(function(fw) {
               html += '<label class="fw-chip"><input type="checkbox" class="comp-fw-checkbox" value="' + esc(fw.id) + '" checked />' + esc(fw.name) + ' <span class="fw-count">' + fw.controlCount + '</span></label>';
             });
             html += '</div></div>' +
-              '<button id="compRunBtn" onclick="runComplianceInline()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer;">Run Compliance Analysis</button>' +
-              '<span id="compProgressText" style="margin-left:12px;font-size:12px;color:var(--text2);"></span>' +
-              '</div>';
 
-            // Results area
-            html += '<div id="compResultsArea">';
+              // Run button
+              '<button id="compRunBtn" onclick="runComplianceInline()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">Run Compliance Analysis</button>' +
+              '</div></div>';
+
+            // Step 3: Results
             if (complianceResults.length > 0) {
-              html += buildComplianceResultsHtml(complianceResults);
+              html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden;">' +
+                '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+                '<div style="width:24px;height:24px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">3</div>' +
+                '<div style="font-size:14px;font-weight:600;">Results</div>' +
+                '<div style="margin-left:auto;display:flex;gap:8px;">' +
+                '<button onclick="downloadComplianceCsv()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;">Export CSV</button>' +
+                '<button onclick="downloadComplianceJson()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;">Export JSON</button>' +
+                '</div></div>' +
+                '<div style="padding:20px;" id="compResultsArea">' + buildComplianceResultsHtml(complianceResults) + '</div>' +
+                '</div>';
+            } else {
+              html += '<div id="compResultsArea"></div>';
             }
-            html += '</div>';
           }
 
-          html += '</div></div>'; // close analysis panel + right column
-          html += '</div>'; // close grid
-          html += '</div>'; // close container
-
+          html += '</div>';
           panel.innerHTML = html;
         } catch (err) {
           panel.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">Failed to load: ' + esc(String(err)) + '</div>';
         }
+      }
+
+      function filterCompReports(query) {
+        var q = query.toLowerCase();
+        document.querySelectorAll("#compReportTable tbody tr").forEach(function(row) {
+          var match = !q || (row.dataset.search && row.dataset.search.includes(q));
+          row.style.display = match ? "" : "none";
+        });
       }
 
       function selectComplianceReport(filename) {
@@ -2441,7 +2473,7 @@
 
         var btn = document.getElementById("compRunBtn");
         var progressText = document.getElementById("compProgressText");
-        if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; }
+        if (btn) { btn.disabled = true; btn.textContent = "Analyzing..."; btn.style.opacity = "0.5"; }
 
         var selectedFw = [];
         document.querySelectorAll(".comp-fw-checkbox:checked").forEach(function(cb) { selectedFw.push(cb.value); });
@@ -2478,7 +2510,7 @@
                 var item = JSON.parse(lines[i]);
                 complianceResults.push(item);
                 count++;
-                if (progressText) progressText.textContent = count + " controls analyzed...";
+                if (progressText) progressText.textContent = "Analyzing " + esc(item.code) + "... (" + count + " done)";
                 var area = document.getElementById("compResultsArea");
                 if (area) area.innerHTML = buildComplianceResultsHtml(complianceResults);
               } catch(e) {}
@@ -2488,11 +2520,13 @@
             try { complianceResults.push(JSON.parse(buffer)); } catch(e) {}
           }
 
-          if (btn) btn.textContent = "Re-run Analysis";
-          if (progressText) progressText.textContent = "Complete — " + complianceResults.length + " controls analyzed";
+          if (btn) { btn.textContent = "Re-run Analysis"; btn.style.opacity = "1"; }
+          if (progressText) progressText.textContent = "Complete — " + complianceResults.length + " controls";
+          // Re-render to show Step 3 card properly
+          renderComplianceTab();
         } catch (err) {
           if (progressText) progressText.textContent = "Error: " + err.message;
-          if (btn) btn.textContent = "Retry";
+          if (btn) { btn.textContent = "Retry"; btn.style.opacity = "1"; }
         }
 
         if (btn) btn.disabled = false;
@@ -2500,7 +2534,6 @@
       }
 
       function buildComplianceResultsHtml(results) {
-        // Group by framework
         var byFw = {};
         results.forEach(function(r) {
           var fw = r.framework || "Unknown";
@@ -2517,60 +2550,83 @@
           var notTested = items.filter(function(i) { return i.status === "not_tested"; }).length;
           var total = items.length || 1;
 
-          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-            '<div style="font-size:14px;font-weight:600;">' + esc(fw) + '</div>' +
-            '<div style="font-size:11px;color:var(--text2);">' + items.length + ' controls</div>' +
+          // Framework header with donut summary
+          html += '<div style="margin-bottom:24px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+            '<div style="font-size:15px;font-weight:700;">' + esc(fw) + '</div>' +
+            '<div style="font-size:12px;color:var(--text2);">' + items.length + ' controls evaluated</div>' +
             '</div>' +
 
-            // Segmented bar
-            '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin-bottom:12px;">' +
+            // Summary cards row
+            '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+            buildCompStatCard(vuln, "Vulnerable", "var(--red)", "rgba(248,81,73,0.08)") +
+            buildCompStatCard(risk, "At Risk", "var(--orange)", "rgba(210,153,34,0.08)") +
+            buildCompStatCard(secure, "Secure", "var(--green)", "rgba(63,185,80,0.08)") +
+            buildCompStatCard(notTested, "Not Tested", "var(--text2)", "rgba(139,148,158,0.06)") +
+            '</div>' +
+
+            // Segmented progress bar
+            '<div style="display:flex;height:4px;border-radius:2px;overflow:hidden;margin-bottom:20px;">' +
             (vuln > 0 ? '<div style="flex:' + vuln + ';background:var(--red);"></div>' : '') +
             (risk > 0 ? '<div style="flex:' + risk + ';background:var(--orange);"></div>' : '') +
             (secure > 0 ? '<div style="flex:' + secure + ';background:var(--green);"></div>' : '') +
             (notTested > 0 ? '<div style="flex:' + notTested + ';background:var(--surface2);"></div>' : '') +
-            '</div>' +
-
-            // Stats
-            '<div style="display:flex;gap:20px;margin-bottom:14px;font-size:12px;">' +
-            '<span><span style="color:var(--red);font-weight:700;">' + vuln + '</span> Vulnerable</span>' +
-            '<span><span style="color:var(--orange);font-weight:700;">' + risk + '</span> At Risk</span>' +
-            '<span><span style="color:var(--green);font-weight:700;">' + secure + '</span> Secure</span>' +
-            '<span><span style="color:var(--text2);font-weight:700;">' + notTested + '</span> Not Tested</span>' +
             '</div>';
 
-          // Control cards
+          // Control items
           items.forEach(function(item) {
             var statusColors = { vulnerable: "var(--red)", at_risk: "var(--orange)", secure: "var(--green)", not_tested: "var(--text2)", error: "var(--text2)" };
             var statusLabels = { vulnerable: "VULNERABLE", at_risk: "AT RISK", secure: "SECURE", not_tested: "NOT TESTED", error: "ERROR" };
-            var borderColor = statusColors[item.status] || "var(--border)";
+            var sc = statusColors[item.status] || "var(--text2)";
+            var bgMap = { vulnerable: "rgba(248,81,73,0.08)", at_risk: "rgba(210,153,34,0.08)", secure: "rgba(63,185,80,0.08)", not_tested: "rgba(139,148,158,0.05)" };
 
-            html += '<div style="border-left:3px solid ' + borderColor + ';background:var(--bg);border-radius:6px;padding:12px 14px;margin-bottom:6px;cursor:pointer;" onclick="this.querySelector(\'.comp-body\').style.display=this.querySelector(\'.comp-body\').style.display===\'none\'?\'block\':\'none\'">' +
-              '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<span style="font-size:11px;font-weight:700;color:var(--accent);min-width:70px;">' + esc(item.code) + '</span>' +
-              '<span style="font-size:12px;flex:1;">' + esc(item.title) + '</span>' +
-              '<span style="font-size:10px;color:var(--text2);">' + (item.attacksAnalyzed || 0) + ' attacks</span>' +
-              '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:' + borderColor.replace(')', ',0.12)').replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--green', '63,185,80').replace('--orange', '210,153,34').replace('--text2', '139,148,158') + ';color:' + borderColor + ';">' + (statusLabels[item.status] || item.status) + '</span>' +
+            html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;transition:border-color 0.15s;" onmouseover="this.style.borderColor=\'var(--text2)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+
+              // Header row
+              '<div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;" onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'">' +
+              '<div style="width:4px;height:28px;border-radius:2px;background:' + sc + ';flex-shrink:0;"></div>' +
+              '<div style="min-width:72px;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:0.3px;">' + esc(item.code) + '</div>' +
+              '<div style="flex:1;font-size:13px;font-weight:500;">' + esc(item.title) + '</div>' +
+              '<div style="font-size:11px;color:var(--text2);white-space:nowrap;">' + (item.attacksAnalyzed || 0) + ' attacks</div>' +
+              '<div style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:' + (bgMap[item.status] || "rgba(139,148,158,0.05)") + ';color:' + sc + ';white-space:nowrap;letter-spacing:0.3px;">' + (statusLabels[item.status] || item.status) + '</div>' +
               '</div>' +
-              '<div class="comp-body" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">' +
-              '<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:8px;">' + esc(item.summary || "") + '</div>' +
-              (item.details ? '<div style="font-size:11px;color:var(--text2);background:var(--surface);border-radius:6px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap;margin-bottom:8px;">' + esc(item.details) + '</div>' : '') +
-              (item.recommendations && item.recommendations.length > 0 ? '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;">Recommendations:</div><ol style="margin:0;padding-left:18px;font-size:11px;color:var(--text);">' + item.recommendations.map(function(r) { return '<li style="margin:3px 0;">' + esc(r) + '</li>'; }).join("") + '</ol>' : '') +
+
+              // Expandable body
+              '<div style="display:none;padding:0 16px 16px 16px;border-top:1px solid var(--border);">' +
+
+              // Summary
+              (item.summary ? '<div style="font-size:13px;color:var(--text);line-height:1.6;margin:14px 0;padding:12px;background:' + (bgMap[item.status] || "var(--bg)") + ';border-radius:8px;">' + esc(item.summary) + '</div>' : '') +
+
+              // Details
+              (item.details ? '<details style="margin-bottom:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;margin-bottom:6px;">Detailed Analysis</summary>' +
+                '<div style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:6px;padding:12px;max-height:250px;overflow:auto;white-space:pre-wrap;line-height:1.6;">' + esc(item.details) + '</div></details>' : '') +
+
+              // Recommendations
+              (item.recommendations && item.recommendations.length > 0 ?
+                '<div style="margin-top:10px;">' +
+                '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px;">Recommendations</div>' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                item.recommendations.map(function(r, i) {
+                  return '<div style="display:flex;gap:8px;font-size:12px;color:var(--text);line-height:1.5;">' +
+                    '<span style="color:var(--accent);font-weight:600;flex-shrink:0;">' + (i + 1) + '.</span>' +
+                    '<span>' + esc(r) + '</span></div>';
+                }).join("") +
+                '</div></div>' : '') +
+
               '</div></div>';
           });
 
           html += '</div>';
         });
 
-        // Export buttons
-        if (results.length > 0) {
-          html += '<div style="display:flex;gap:8px;margin-top:8px;">' +
-            '<button onclick="downloadComplianceCsv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;">Export CSV</button>' +
-            '<button onclick="downloadComplianceJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;">Export JSON</button>' +
-            '</div>';
-        }
-
         return html;
+      }
+
+      function buildCompStatCard(count, label, color, bg) {
+        return '<div style="background:' + bg + ';border-radius:8px;padding:12px;text-align:center;">' +
+          '<div style="font-size:22px;font-weight:700;color:' + color + ';">' + count + '</div>' +
+          '<div style="font-size:10px;color:var(--text2);margin-top:2px;text-transform:uppercase;letter-spacing:0.3px;">' + label + '</div>' +
+          '</div>';
       }
 
       async function loadAuditLog() {
