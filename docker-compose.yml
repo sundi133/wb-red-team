@@ -1,9 +1,33 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: redteam
+      POSTGRES_USER: redteam
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-redteam_dev}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redteam"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   red-team:
     build: .
     ports:
       - "4200:4200"
     env_file: .env
+    environment:
+      DATABASE_URL: postgres://redteam:${POSTGRES_PASSWORD:-redteam_dev}@postgres:5432/redteam
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./report:/app/report
     restart: unless-stopped
+
+volumes:
+  pgdata:

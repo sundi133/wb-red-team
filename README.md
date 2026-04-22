@@ -104,43 +104,80 @@ For detailed security reports, risk quantification of attacks, and compliance ma
 
 ![Votal Dashboard](assets/votal-dashboard.png)
 
-## Prerequisites
+## Quick Start (5 minutes)
 
-- **Node.js** >= 18
-- **npm**
-- An API key for one of the supported LLM providers
-
-### Environment Variables
-
-Create a `.env` file in the project root (see `.env.example`):
+### Option A: CLI (simplest — no Docker needed)
 
 ```bash
-# Option 1: OpenAI (default)
-OPENAI_API_KEY=sk-...
-
-# Option 2: Anthropic Claude
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Option 3: OpenRouter (access to open-source models)
-OPENROUTER_API_KEY=sk-or-...
-
-# Optional: OpenRouter site info for rankings
-OPENROUTER_SITE_URL=https://your-site.com
-OPENROUTER_SITE_NAME=Your App Name
-```
-
-You can also export them directly in your shell.
-
-## Quick Start
-
-```bash
+# 1. Clone and install
 git clone https://github.com/sundi133/wb-red-team.git
 cd wb-red-team
 npm install
+
+# 2. Add your LLM API key
+cp .env.example .env
+# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY
+
+# 3. Create your config (or use the example)
 cp config.example.json config.json
-# Edit config.json with your target details
-npm start
+# Edit config.json — set target.baseUrl to your app's URL
+
+# 4. Run
+npx tsx red-team.ts config.json
 ```
+
+Reports are saved to `report/` as JSON + Markdown.
+
+### Option B: Dashboard + Docker (recommended)
+
+```bash
+# 1. Clone
+git clone https://github.com/sundi133/wb-red-team.git
+cd wb-red-team
+
+# 2. Add your LLM API key
+cp .env.example .env
+# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY
+
+# 3. Start
+docker compose up -d
+
+# 4. Open dashboard
+open http://localhost:4200
+```
+
+Click **+ New Run**, paste your config JSON, click **Start Run**. Watch results stream live.
+
+To test against a local app (e.g., `localhost:3000`), use `host.docker.internal:3000` as the baseUrl in your config.
+
+### Option C: Dashboard + Postgres (enterprise features)
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/sundi133/wb-red-team.git
+cd wb-red-team
+cp .env.example .env
+
+# 2. Edit .env with all keys:
+#    ANTHROPIC_API_KEY=sk-ant-...
+#    DATABASE_URL=postgres://redteam:redteam_dev@postgres:5432/redteam
+#    MASTER_ENCRYPTION_KEY=<run: openssl rand -hex 32>
+#    AUTH_MODE=dev
+
+# 3. Start (Postgres + dashboard)
+docker compose up -d
+
+# 4. Open dashboard — no login needed in dev mode
+open http://localhost:4200
+```
+
+Reports are encrypted and stored in Postgres. See [Enterprise Deployment](#enterprise-deployment) for production setup with SSO.
+
+## Prerequisites
+
+- **Node.js** >= 18 (for CLI mode)
+- **Docker** (for dashboard mode)
+- An API key for at least one LLM provider (Anthropic, OpenAI, or OpenRouter)
 
 ## Installation
 
@@ -667,13 +704,36 @@ The analysis uses the configured `judgeModel` and can be re-run at any time.
 
 ## Docker
 
-Run the dashboard and run API as a container:
+### Quick Start (Local Dev)
+
+The fastest way to get started with Postgres-backed reports and no auth friction:
 
 ```bash
-# Build
-docker build -t red-team .
+# 1. Set up .env
+cp .env.example .env
+# Edit .env and add your LLM API keys, then add:
+#   DATABASE_URL=postgres://redteam:redteam_dev@postgres:5432/redteam
+#   MASTER_ENCRYPTION_KEY=<run: openssl rand -hex 32>
+#   AUTH_MODE=dev
 
-# Run
+# 2. Start everything (Postgres + dashboard)
+docker compose up -d
+
+# 3. Import existing reports (if any)
+npx tsx scripts/import-reports.ts
+
+# 4. Open dashboard
+open http://localhost:4200
+```
+
+In `AUTH_MODE=dev`, no login is required — the server auto-authenticates all requests as admin. Reports are encrypted and stored in Postgres. This is the recommended mode for local development and testing.
+
+### Standalone (No Postgres)
+
+For quick usage without a database — reports stored as JSON files on disk:
+
+```bash
+docker build -t red-team .
 docker run -d --name red-team -p 4200:4200 \
   -e ANTHROPIC_API_KEY=sk-ant-... \
   -e OPENROUTER_API_KEY=sk-or-... \
@@ -681,21 +741,50 @@ docker run -d --name red-team -p 4200:4200 \
   red-team
 ```
 
-Or with docker compose (reads `.env` automatically):
+No `DATABASE_URL` = no auth, no encryption, file-based reports. Good for quick one-off testing.
+
+### Enterprise (Postgres + SSO)
+
+For production deployment with authentication, RBAC, audit logging, and tenant isolation:
 
 ```bash
+# .env
+DATABASE_URL=postgres://user:pass@host:5432/redteam
+MASTER_ENCRYPTION_KEY=<openssl rand -hex 32>
+CLERK_PUBLISHABLE_KEY=pk_live_...   # or any OIDC provider
+# No AUTH_MODE — defaults to OIDC authentication
+
 docker compose up -d
-docker compose logs -f
-docker compose down
 ```
 
-Once running, open [http://localhost:4200](http://localhost:4200) to access the dashboard. You can trigger runs from the UI (click **+ New Run**) or via the API:
+Users sign in via Clerk/Okta/Azure AD. All API calls require a valid JWT or API key.
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes (one LLM key) | Anthropic API key for attack generation and judging |
+| `OPENROUTER_API_KEY` | No | OpenRouter API key (alternative LLM provider) |
+| `OPENAI_API_KEY` | No | OpenAI API key (alternative LLM provider) |
+| `DATABASE_URL` | No | Postgres connection string. Enables enterprise features when set |
+| `MASTER_ENCRYPTION_KEY` | With DB | 64 hex chars (32 bytes). Encrypts report data at rest |
+| `AUTH_MODE` | No | `dev` = no login required (auto-admin). Omit for OIDC auth |
+| `CLERK_PUBLISHABLE_KEY` | No | Clerk publishable key for browser-based SSO login |
+| `DEV_API_KEY` | No | Custom dev API key (default: `dev-key`). Only used in `AUTH_MODE=dev` |
+
+### API Usage
 
 ```bash
-# Start a run
+# Start a run (dev mode — no auth needed)
 curl -X POST http://localhost:4200/api/run \
   -H "Content-Type: application/json" \
-  -d @config-litellm.json
+  -d @config.json
+
+# With API key (enterprise mode)
+curl -X POST http://localhost:4200/api/run \
+  -H "X-API-Key: rtk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d @config.json
 
 # Poll status
 curl http://localhost:4200/api/run/<runId>
@@ -705,11 +794,271 @@ curl http://localhost:4200/api/runs
 
 # Cancel a run
 curl -X DELETE http://localhost:4200/api/run/<runId>
+
+# Audit log (enterprise mode)
+curl http://localhost:4200/api/audit-log
+```
+
+### Generating API Keys (Enterprise)
+
+For CI/CD pipelines and programmatic access:
+
+```bash
+npx tsx scripts/create-api-key.ts --name "CI pipeline" --role admin
+# Output: rtk_a1b2c3d4e5...
+
+# Use in CI:
+curl -X POST https://redteam.internal/api/run \
+  -H "X-API-Key: rtk_a1b2c3d4e5..." \
+  -H "Content-Type: application/json" \
+  -d @config.json
+```
+
+### Importing Existing Reports
+
+Migrate file-based reports into Postgres:
+
+```bash
+npx tsx scripts/import-reports.ts
 ```
 
 **Note:** Inside the container, `localhost` refers to the container itself. To reach services on your host machine, use `host.docker.internal` instead of `localhost` in your config (e.g., `"baseUrl": "http://host.docker.internal:4000"`).
 
-Reports are persisted to the mounted `report/` volume and accessible from the dashboard sidebar alongside live run progress.
+## Enterprise Deployment
+
+Production-grade deployment with SSO authentication, RBAC, encrypted reports, audit logging, and tenant isolation. Deploy anywhere — AWS, GCP, Azure, Railway, on-prem, or any environment that runs Docker + Postgres.
+
+### Prerequisites
+
+- **Docker** runtime (ECS, GKE, Cloud Run, Railway, K8s, or any container platform)
+- **Postgres 13+** (RDS, Cloud SQL, Supabase, Azure Database, or self-hosted)
+- **OIDC identity provider** (Clerk, Okta, Azure AD, Auth0, Keycloak, or any OIDC-compliant provider)
+
+### Step 1: Provision Postgres
+
+Use any Postgres 13+ instance. Example providers:
+
+| Provider | Connection string format |
+|----------|------------------------|
+| AWS RDS | `postgresql://user:pass@mydb.xxxx.us-east-1.rds.amazonaws.com:5432/redteam` |
+| GCP Cloud SQL | `postgresql://user:pass@/redteam?host=/cloudsql/project:region:instance` |
+| Azure Database | `postgresql://user:pass@mydb.postgres.database.azure.com:5432/redteam?sslmode=require` |
+| Supabase | `postgresql://postgres.xxxx:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres` |
+| Self-hosted | `postgresql://user:pass@10.0.1.50:5432/redteam` |
+
+Tables are created automatically on first startup (auto-migration).
+
+### Step 2: Configure Identity Provider
+
+Any OIDC-compliant provider works. The server validates JWTs against the provider's JWKS endpoint.
+
+**Clerk:**
+1. Create an application at [clerk.com](https://clerk.com)
+2. Enable SSO providers (Google, SAML, email, etc.)
+3. Go to **Sessions → Customize session token** → add: `{ "red_team_role": "{{user.public_metadata.red_team_role}}" }`
+4. Set each user's role in **User → Metadata → Public**: `{ "red_team_role": "admin" }`
+5. Note the **Publishable Key** (`pk_live_...`) and **OIDC Issuer URL**
+6. Add your deployment domain to **Settings → Domains**
+
+**Okta:**
+1. Create an OIDC application (SPA type)
+2. Set redirect URI to your deployment URL
+3. Note the **Issuer URL** (`https://dev-xxxx.okta.com/oauth2/default`)
+4. Add a custom claim `red_team_role` in the authorization server
+
+**Azure AD:**
+1. Register an application in Azure portal
+2. Configure redirect URI
+3. Note the **Issuer URL** (`https://login.microsoftonline.com/{tenant-id}/v2.0`)
+4. Add `red_team_role` as an app role
+
+**Keycloak / Self-hosted:**
+1. Create a realm and client
+2. Add `red_team_role` as a user attribute mapped to the JWT
+3. Note the **Issuer URL** (`https://keycloak.internal/realms/redteam`)
+
+Roles: `admin` (full access), `viewer` (read reports), `auditor` (compliance + audit log only)
+
+### Step 3: Deploy the Container
+
+Deploy the Docker image on any container platform. Set these environment variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes (one LLM key) | LLM provider key for attack generation and judging |
+| `OPENROUTER_API_KEY` | No | Alternative LLM provider |
+| `DATABASE_URL` | Yes | Postgres connection string from Step 1 |
+| `MASTER_ENCRYPTION_KEY` | Yes | Run `openssl rand -hex 32` and paste result. Encrypts all report data at rest |
+| `CLERK_PUBLISHABLE_KEY` | If using Clerk | Clerk publishable key for browser-based SSO |
+| `PORT` | No | Server port (default: `4200`) |
+
+**Do NOT** set `AUTH_MODE` in production — omitting it enables OIDC authentication.
+
+**Platform-specific deploy commands:**
+
+```bash
+# Docker (any host)
+docker build -t red-team .
+docker run -d --name red-team -p 4200:4200 \
+  --env-file .env \
+  red-team
+
+# AWS ECS — push to ECR, create task definition with env vars above
+# GCP Cloud Run — push to Artifact Registry, set env vars in console
+# Azure Container Apps — push to ACR, configure env vars
+# Railway — connect GitHub repo, set env vars in dashboard
+# Kubernetes — create deployment + secret with env vars
+```
+
+Database tables are created automatically on first startup.
+
+### Step 4: Create Tenant and API Keys
+
+After first deploy, seed your organization. Run from any machine with network access to Postgres:
+
+```bash
+# Set env vars (or use .env)
+export DATABASE_URL="postgresql://user:pass@your-db-host:5432/redteam"
+export MASTER_ENCRYPTION_KEY="<same key from Step 3>"
+
+# Create tenant + admin API key
+npx tsx scripts/create-api-key.ts \
+  --tenant "your-company" \
+  --role admin \
+  --name "ops-team"
+
+# Output:
+#   Key: rtk_a1b2c3d4e5...
+#   Save this key — it cannot be retrieved later.
+
+# Create more keys for different teams/uses
+npx tsx scripts/create-api-key.ts --tenant "your-company" --role admin --name "github-ci"
+npx tsx scripts/create-api-key.ts --tenant "your-company" --role viewer --name "dev-team"
+npx tsx scripts/create-api-key.ts --tenant "your-company" --role auditor --name "compliance-team"
+```
+
+### Step 5: Register OIDC Tenant
+
+The `create-api-key.ts` script auto-creates a tenant with a placeholder OIDC issuer. Update it to your real provider:
+
+```sql
+-- Connect to your Postgres and run:
+UPDATE tenants
+SET oidc_issuer = 'https://your-issuer-url'
+WHERE name = 'your-company';
+```
+
+| Provider | Issuer URL |
+|----------|-----------|
+| Clerk | `https://your-app.clerk.accounts.dev` |
+| Okta | `https://dev-xxxx.okta.com/oauth2/default` |
+| Azure AD | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
+| Auth0 | `https://your-tenant.auth0.com/` |
+| Keycloak | `https://keycloak.internal/realms/your-realm` |
+
+Then configure your identity provider's redirect URLs to point to your deployment domain.
+
+### Step 6: Verify
+
+```bash
+DEPLOY_URL=https://your-deployment-domain.com
+
+# Test API with API key
+curl -s $DEPLOY_URL/api/runs \
+  -H "X-API-Key: rtk_a1b2c3d4e5..."
+
+# Trigger a red-team run
+curl -X POST $DEPLOY_URL/api/run \
+  -H "X-API-Key: rtk_a1b2c3d4e5..." \
+  -H "Content-Type: application/json" \
+  -d @config.json
+
+# Open dashboard (browser login via SSO)
+open $DEPLOY_URL
+```
+
+### CI/CD Integration
+
+Works with any CI system (GitHub Actions, GitLab CI, Jenkins, CircleCI, etc.). Add these secrets to your CI:
+
+- `RED_TEAM_URL`: your deployment URL
+- `RED_TEAM_API_KEY`: `rtk_...` from Step 4
+- `APP_API_KEY`: your target app's API key
+
+**GitHub Actions example:**
+
+```yaml
+# .github/workflows/red-team.yml
+name: Security Scan
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # nightly
+
+jobs:
+  red-team:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run red-team scan
+        run: |
+          RUN_ID=$(curl -sf -X POST ${{ secrets.RED_TEAM_URL }}/api/run \
+            -H "X-API-Key: ${{ secrets.RED_TEAM_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "target": {
+                "type": "http_agent",
+                "baseUrl": "https://staging-api.yourcompany.com",
+                "agentEndpoint": "/api/chat",
+                "applicationDetails": "Customer support chatbot"
+              },
+              "auth": {"methods":["api_key"],"apiKeys":{"default":"${{ secrets.APP_API_KEY }}"}},
+              "requestSchema": {"messageField":"message"},
+              "responseSchema": {"responsePath":"response"},
+              "sensitivePatterns": ["sk-","password","ssn"],
+              "attackConfig": {
+                "adaptiveRounds": 2,
+                "maxAttacksPerCategory": 3,
+                "enableLlmGeneration": true,
+                "enabledCategories": ["prompt_injection","data_exfiltration","auth_bypass","sensitive_data"]
+              }
+            }' | jq -r '.runId')
+
+          # Poll until done (max 60 min)
+          for i in $(seq 1 120); do
+            RESULT=$(curl -sf "${{ secrets.RED_TEAM_URL }}/api/run/$RUN_ID" \
+              -H "X-API-Key: ${{ secrets.RED_TEAM_API_KEY }}")
+            STATUS=$(echo "$RESULT" | jq -r '.status')
+            echo "Status: $STATUS"
+            [ "$STATUS" = "done" ] || [ "$STATUS" = "error" ] && break
+            sleep 30
+          done
+
+          # Fail CI if vulnerabilities found
+          VULNS=$(echo "$RESULT" | jq '.summary.passed')
+          SCORE=$(echo "$RESULT" | jq '.summary.score')
+          echo "Score: $SCORE/100 | Vulnerabilities: $VULNS"
+          if [ "$VULNS" -gt 0 ]; then
+            echo "::error::Red team found $VULNS vulnerabilities"
+            exit 1
+          fi
+```
+
+### Roles and Access
+
+| Role | Dashboard | Trigger Runs | View Reports | Compliance | Audit Log |
+|------|-----------|-------------|-------------|------------|-----------|
+| `admin` | Full access | Yes | Yes | Yes | Yes |
+| `viewer` | Read-only | No | Yes | No | No |
+| `auditor` | Compliance only | No | No | Yes | Yes |
+
+### Auth Methods
+
+| Method | Use Case | How |
+|--------|----------|-----|
+| **Clerk SSO** (browser) | Dashboard users — SecOps, compliance, developers | Sign in button → Clerk hosted login |
+| **API Key** (`X-API-Key` header) | CI/CD pipelines, scripts, programmatic access | `npx tsx scripts/create-api-key.ts` |
+| **Dev mode** (`AUTH_MODE=dev`) | Local development and testing | No login required, auto-admin |
 
 ## Verdicts
 

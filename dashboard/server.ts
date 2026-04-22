@@ -13,6 +13,14 @@ import {
   listComplianceFrameworks,
 } from "../lib/compliance-loader.js";
 import type { Config, Report } from "../lib/types.js";
+import { withMiddleware, type RequestContext } from "../lib/middleware.js";
+import { isDbConfigured, runMigrations, query } from "../lib/db.js";
+import { logAudit, queryAuditLog } from "../lib/audit.js";
+import {
+  storeReport,
+  listReports as listReportsFromDb,
+  getReportByFilename,
+} from "../lib/report-store.js";
 
 loadEnvFile();
 
@@ -108,6 +116,8 @@ interface Job {
   startedAt: string;
   finishedAt?: string;
   abortController?: AbortController;
+  tenantId?: string;
+  userId?: string;
 }
 
 const jobs = new Map<string, Job>();
@@ -134,6 +144,16 @@ async function startJob(job: Job): Promise<void> {
     job.reportFile = result.jsonPath;
     job.finishedAt = new Date().toISOString();
     metaCache.clear();
+    // Store report in DB if enterprise mode is active (skip file write — DB is primary)
+    if (isDbConfigured() && job.tenantId) {
+      try {
+        await storeReport(result.report, job.tenantId, job.id, {
+          skipFile: true,
+        });
+      } catch (dbErr) {
+        console.error("Failed to store report in DB:", dbErr);
+      }
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "Run cancelled") {
@@ -163,13 +183,18 @@ function drainQueue(): void {
   }
 }
 
-function enqueueJob(config: Config): Job {
+function enqueueJob(
+  config: Config,
+  ctx?: RequestContext | null,
+): Job {
   const job: Job = {
     id: randomUUID(),
     status: "queued",
     config,
     progress: [],
     startedAt: new Date().toISOString(),
+    tenantId: ctx?.tenantId,
+    userId: ctx?.userId,
   };
   jobs.set(job.id, job);
 
@@ -183,17 +208,17 @@ function enqueueJob(config: Config): Job {
 }
 
 // ── HTTP server ──
-const server = createServer(async (req, res) => {
+const server = createServer(withMiddleware(async (req, res, ctx) => {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
-  // CORS headers for local dev
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
+  // ── Auth config (public — no auth required) ──
+  if (url.pathname === "/api/auth-config" && req.method === "GET") {
+    const authMode = process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      mode: authMode,
+      clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || null,
+    }));
     return;
   }
 
@@ -218,7 +243,12 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const job = enqueueJob(config);
+      const job = enqueueJob(config, ctx);
+      if (ctx) {
+        await logAudit(ctx, "run.start", "run", job.id, {
+          targetUrl: config.target.baseUrl,
+        });
+      }
       res.writeHead(202, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -360,15 +390,45 @@ const server = createServer(async (req, res) => {
       );
       const search = (url.searchParams.get("search") || "").toLowerCase();
 
+      // Enterprise mode: read from Postgres
+      if (isDbConfigured() && ctx) {
+        if (ctx) await logAudit(ctx, "report.list");
+        const dbResult = await listReportsFromDb(ctx.tenantId, { page, limit, search });
+        const items = dbResult.items.map((m) => ({
+          filename: m.filename,
+          timestamp: m.timestamp,
+          targetUrl: m.targetUrl,
+          score: m.score,
+          totalAttacks: m.totalAttacks,
+          passed: m.passed,
+          partial: m.partial,
+          failed: m.failed,
+          errors: m.errors,
+          categoryCount: 0,
+        }));
+        const totalPages = Math.ceil(dbResult.total / limit);
+
+        // Trend from first page (all items sorted by time)
+        const trendResult = await listReportsFromDb(ctx.tenantId, { page: 1, limit: 100 });
+        const trend = trendResult.items.reverse().map((m) => ({
+          date: m.timestamp,
+          score: m.score,
+          vulns: m.passed,
+          total: m.totalAttacks,
+        }));
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ items, total: dbResult.total, page, totalPages, trend }));
+        return;
+      }
+
+      // File-based fallback
       let files = readdirSync(REPORT_DIR)
         .filter((f) => f.endsWith(".json"))
         .sort()
         .reverse();
 
-      // Extract metadata from each file (cached)
       const metas = files.map((f) => getReportMeta(f));
-
-      // Filter by search term (matches target URL or date)
       const filtered = search
         ? metas.filter(
             (m) =>
@@ -390,7 +450,6 @@ const server = createServer(async (req, res) => {
           total,
           page,
           totalPages,
-          // Include last 100 scores for trend chart
           trend: metas
             .slice(0, 100)
             .reverse()
@@ -426,8 +485,16 @@ const server = createServer(async (req, res) => {
       return;
     }
     try {
-      const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
-      const data = JSON.parse(raw);
+      // Load report from DB or file
+      let data: Record<string, unknown>;
+      if (isDbConfigured() && ctx) {
+        const result = await getReportByFilename(filename, ctx.tenantId);
+        if (!result) { res.writeHead(404); res.end("Not found"); return; }
+        data = result.report as unknown as Record<string, unknown>;
+        await logAudit(ctx, "report.export_csv", "report", result.id, { filename });
+      } else {
+        data = JSON.parse(readFileSync(join(REPORT_DIR, filename), "utf-8"));
+      }
       const csvName = filename.replace(/\.json$/, ".csv");
 
       const csvEscape = (val: unknown): string => {
@@ -496,12 +563,32 @@ const server = createServer(async (req, res) => {
   // API: get a specific report
   if (url.pathname.startsWith("/api/report/") && req.method === "GET") {
     const filename = url.pathname.slice("/api/report/".length);
-    // Prevent path traversal
     if (filename.includes("..") || filename.includes("/")) {
       res.writeHead(400);
       res.end("Bad request");
       return;
     }
+
+    // Enterprise mode: decrypt from Postgres
+    if (isDbConfigured() && ctx) {
+      try {
+        const result = await getReportByFilename(filename, ctx.tenantId);
+        if (!result) {
+          res.writeHead(404);
+          res.end("Not found");
+          return;
+        }
+        await logAudit(ctx, "report.view", "report", result.id, { filename });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result.report));
+      } catch {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+      return;
+    }
+
+    // File-based fallback
     try {
       const data = readFileSync(join(REPORT_DIR, filename), "utf-8");
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -630,6 +717,203 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // API: list reports with compliance analysis status
+  if (url.pathname === "/api/compliance-status" && req.method === "GET") {
+    if (isDbConfigured() && ctx) {
+      try {
+        const result = await query<{
+          report_id: string;
+          filename: string;
+          target_url: string;
+          report_ts: string;
+          score: number;
+          frameworks: string;
+        }>(
+          `SELECT r.id as report_id, r.filename, r.target_url, r.report_ts, r.score,
+                  COALESCE(string_agg(DISTINCT ca.framework, ', '), '') as frameworks
+           FROM reports r
+           LEFT JOIN compliance_analyses ca ON ca.report_id = r.id AND ca.tenant_id = r.tenant_id
+           WHERE r.tenant_id = $1
+           GROUP BY r.id, r.filename, r.target_url, r.report_ts, r.score
+           ORDER BY r.report_ts DESC
+           LIMIT 50`,
+          [ctx.tenantId],
+        );
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result.rows.map(r => ({
+          reportId: r.report_id,
+          filename: r.filename,
+          targetUrl: r.target_url,
+          timestamp: r.report_ts,
+          score: r.score,
+          analyzedFrameworks: r.frameworks ? r.frameworks.split(", ").filter(Boolean) : [],
+        }))));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: String(err) }));
+      }
+    } else {
+      // Non-enterprise: return reports from filesystem with no compliance status
+      try {
+        const files = readdirSync(REPORT_DIR).filter(f => f.endsWith(".json")).sort().reverse().slice(0, 50);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(files.map(f => ({
+          reportId: f,
+          filename: f,
+          targetUrl: "",
+          timestamp: "",
+          score: 0,
+          analyzedFrameworks: [],
+        }))));
+      } catch {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("[]");
+      }
+    }
+    return;
+  }
+
+  // API: risk analysis — LLM-powered per-vulnerability business impact
+  if (url.pathname === "/api/risk-analyze" && req.method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const { attacks, provider, model } = body;
+
+      if (!attacks || !Array.isArray(attacks) || attacks.length === 0) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "attacks array is required" }));
+        return;
+      }
+
+      const judgeProvider = provider || "anthropic";
+      const judgeModel = model || "claude-sonnet-4-20250514";
+
+      const llm = getJudgeProvider({
+        attackConfig: { judgeProvider, llmProvider: judgeProvider },
+      } as Config);
+
+      // Stream results as NDJSON
+      res.writeHead(200, {
+        "Content-Type": "application/x-ndjson",
+        "Transfer-Encoding": "chunked",
+      });
+
+      for (const atk of attacks) {
+        try {
+          const prompt = `You are a cybersecurity risk analyst. Analyze this specific AI security vulnerability and provide a business risk assessment.
+
+VULNERABILITY:
+- Attack: ${atk.name}
+- Category: ${atk.category}
+- Severity: ${atk.severity}
+- Findings: ${(atk.findings || []).join("; ")}
+
+Provide your analysis as JSON with these exact fields:
+{
+  "impactLevel": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+  "businessImpact": "2-3 sentences describing the specific business risk — data breach, financial loss, regulatory violations, reputation damage. Be specific to this attack category, not generic.",
+  "financialExposure": "Estimated financial range (e.g. '$500K - $5M') based on industry data for this type of vulnerability. Consider regulatory fines (GDPR: up to 4% of revenue, CCPA, HIPAA), breach notification costs, remediation, and business disruption.",
+  "relatedIncidents": "2-3 real-world incidents or breaches where this type of vulnerability was exploited. Include company name, year, and brief impact. Use well-known public incidents.",
+  "complianceRisk": "Which regulations/standards this violates (GDPR, HIPAA, SOC2, PCI-DSS, etc.) and potential penalties.",
+  "remediationEstimate": "Estimated effort to fix (hours/days) and recommended approach in 1-2 sentences."
+}
+
+Be specific and factual. Reference real incidents and realistic financial figures.`;
+
+          const text = await llm.chat({
+            model: judgeModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.3,
+            maxTokens: 1024,
+          });
+
+          let parsed;
+          try {
+            const cleaned = text.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "");
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            parsed = JSON.parse(jsonMatch?.[0] ?? "{}");
+          } catch {
+            parsed = {
+              impactLevel: atk.severity === "critical" ? "CRITICAL" : "HIGH",
+              businessImpact: text.slice(0, 300),
+              financialExposure: "Not estimated",
+              relatedIncidents: "Analysis pending",
+              complianceRisk: "Review required",
+              remediationEstimate: "Assessment needed",
+            };
+          }
+
+          res.write(JSON.stringify({
+            attack: atk.name,
+            category: atk.category,
+            severity: atk.severity,
+            ...parsed,
+          }) + "\n");
+        } catch (err) {
+          res.write(JSON.stringify({
+            attack: atk.name,
+            category: atk.category,
+            severity: atk.severity,
+            impactLevel: "UNKNOWN",
+            businessImpact: `Analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+            financialExposure: "Not estimated",
+            relatedIncidents: "Analysis failed",
+            complianceRisk: "Review required",
+            remediationEstimate: "Assessment needed",
+          }) + "\n");
+        }
+      }
+
+      res.end();
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+      }
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
+  // API: list attack categories and strategies (for config reference)
+  if (url.pathname === "/api/reference" && req.method === "GET") {
+    try {
+      const { ALL_ATTACK_CATEGORIES } = await import("../lib/types.js");
+      const { ALL_STRATEGIES } = await import("../lib/attack-strategies.js");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        categories: ALL_ATTACK_CATEGORIES,
+        strategies: ALL_STRATEGIES.map((s: { slug: string; name: string; levelName: string }) => ({
+          slug: s.slug,
+          name: s.name,
+          level: s.levelName,
+        })),
+      }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
+  // API: audit log
+  if (url.pathname === "/api/audit-log" && req.method === "GET") {
+    if (!ctx) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Audit log requires authentication" }));
+      return;
+    }
+    const result = await queryAuditLog(ctx.tenantId, {
+      limit: parseInt(url.searchParams.get("limit") || "100", 10),
+      offset: parseInt(url.searchParams.get("offset") || "0", 10),
+      action: url.searchParams.get("action") || undefined,
+      since: url.searchParams.get("since") || undefined,
+    });
+    await logAudit(ctx, "audit.view");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
   // Serve static files from dashboard dir
   let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
   // Prevent path traversal
@@ -648,7 +932,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(404);
     res.end("Not found");
   }
-});
+}));
 
 // ── LLM-powered OWASP item analysis ──
 
@@ -816,9 +1100,29 @@ Be specific and reference the actual attack results. Do not be generic.`;
   };
 }
 
-server.listen(PORT, () => {
-  console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
-  console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
-  console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
-  console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs\n`);
-});
+// Initialize DB and start server
+(async () => {
+  if (isDbConfigured()) {
+    try {
+      await runMigrations();
+      console.log("  Enterprise mode: Postgres connected, auth enabled");
+    } catch (err) {
+      console.error("Failed to initialize database:", err);
+      process.exit(1);
+    }
+  }
+
+  server.listen(PORT, () => {
+    console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
+    console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
+    console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
+    console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs`);
+    if (isDbConfigured()) {
+      console.log(`  Audit log          → GET  http://localhost:${PORT}/api/audit-log`);
+      console.log(`  Mode: Enterprise (Postgres + Auth + RBAC)`);
+    } else {
+      console.log(`  Mode: Local (no auth, file-based reports)`);
+    }
+    console.log();
+  });
+})();
