@@ -2391,7 +2391,10 @@
           var passResults = allResults.filter(function(r) { return r.verdict === "PASS"; });
           var partialResults = allResults.filter(function(r) { return r.verdict === "PARTIAL"; });
 
-          // 1. Score Breakdown
+          // 1. AI-powered Business Impact (most valuable — shown first)
+          html += buildLlmRiskSection(passResults);
+
+          // 2. Score Breakdown
           html += buildScoreBreakdown(rpt, allResults);
 
           // 3. Exploitability Assessment
@@ -2399,9 +2402,6 @@
 
           // 4. Remediation Priority Matrix
           html += buildRemediationMatrix(passResults, partialResults);
-
-          // 2 & 5. Business Impact + Real-World Incidents (LLM-powered)
-          html += buildLlmRiskSection(passResults);
         } else if (riskSelectedReport) {
           html += '<div style="text-align:center;padding:40px;color:var(--text2);">Loading report data...</div>';
         }
