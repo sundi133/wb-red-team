@@ -5556,19 +5556,21 @@
           </div>`;
         }).join("");
 
-        container.innerHTML = `<div class="sidebar-runs-section">
-          <div class="sidebar-runs-label">Active Runs (${activeRuns.length})</div>
-          ${html}
-        </div>`;
+        if (container) {
+          container.innerHTML = `<div class="sidebar-runs-section">
+            <div class="sidebar-runs-label">Active Runs (${activeRuns.length})</div>
+            ${html}
+          </div>`;
+        }
       }
 
       function renderRunMainPanel(runId, data) {
         // Update header
         const targetUrl = data.targetUrl || data.config?.target?.baseUrl || "unknown";
-        $("#metaTarget").textContent = targetUrl;
+        if ($("#metaTarget")) $("#metaTarget").textContent = targetUrl;
         const statusLabels = { queued: "Queued", running: "Running...", done: "Completed", error: "Error", cancelled: "Cancelled" };
         const statusColors = { queued: "var(--text2)", running: "var(--accent)", done: "var(--green)", error: "var(--red)", cancelled: "var(--orange)" };
-        $("#metaDate").innerHTML = `<span style="color:${statusColors[data.status] || "var(--text2)"}">${statusLabels[data.status] || data.status}</span>`;
+        if ($("#metaDate")) $("#metaDate").innerHTML = `<span style="color:${statusColors[data.status] || "var(--text2)"}">${statusLabels[data.status] || data.status}</span>`;
 
         // Extract live results from progress events
         const liveResults = (data.progress || [])
@@ -5583,7 +5585,7 @@
         const errors = liveResults.filter(r => r.verdict === "ERROR").length;
         const liveScore = totalAttacks > 0 ? Math.round(((failed + errors) / totalAttacks) * 100) : 0;
 
-        $("#metaScore").textContent = totalAttacks > 0 ? `Score: ~${liveScore}/100` : "";
+        if ($("#metaScore")) $("#metaScore").textContent = totalAttacks > 0 ? `Score: ~${liveScore}/100` : "";
 
         // Show download buttons if run completed and has a report file
         if (data.status === "done" && data.reportFile) {
