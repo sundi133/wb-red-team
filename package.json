@@ -43,7 +43,8 @@
     "hermes:run": "bash hermes-redteam/run-analyst.sh",
     "hermes:quick": "bash hermes-redteam/quick-config.sh",
     "hermes:tools": "tsx hermes-redteam/tool-server.ts",
-    "hermes:mcp": "tsx hermes-redteam/mcp-server.ts"
+    "hermes:mcp": "tsx hermes-redteam/mcp-server.ts",
+    "gen:config": "tsx hermes-redteam/gen-config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
