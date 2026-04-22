@@ -1742,8 +1742,20 @@
             </div>
 
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px;">Configuration JSON</label>
-              <textarea id="runConfigEditor" spellcheck="false" style="width:100%;height:400px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical;tab-size:2;"></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <label style="font-size:12px;color:var(--text2);">Configuration JSON</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <label style="font-size:11px;color:var(--text2);">Template:</label>
+                  <select id="configTemplate" onchange="loadConfigTemplate(this.value)" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;">
+                    <option value="openai-compatible">OpenAI-Compatible API</option>
+                    <option value="custom-agent">Custom HTTP Agent</option>
+                    <option value="full">Full Config (all options)</option>
+                    <option value="quick">Quick Test (minimal)</option>
+                    <option value="mcp">MCP Server</option>
+                  </select>
+                </div>
+              </div>
+              <textarea id="runConfigEditor" spellcheck="false" style="width:100%;height:450px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical;tab-size:2;"></textarea>
             </div>
 
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;">
@@ -5068,39 +5080,211 @@
       }
 
       // ── New Run UI ──
-      const defaultConfig = {
-        target: {
-          type: "http_agent",
-          baseUrl: "http://localhost:4000",
-          agentEndpoint: "/v1/chat/completions",
-          applicationDetails: "Describe your application here"
+      const configTemplates = {
+        "openai-compatible": {
+          target: {
+            type: "http_agent",
+            baseUrl: "http://host.docker.internal:4000",
+            agentEndpoint: "/v1/chat/completions",
+            applicationDetails: "OpenAI-compatible API (LiteLLM, vLLM, Ollama, etc.). Describe what your model does and any safety guidelines it should follow.",
+            customApiTemplate: {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              bodyTemplate: "{\"model\": \"your-model-name\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
+              responsePath: "choices[0].message.content"
+            }
+          },
+          codebasePath: null,
+          codebaseGlob: "**/*.ts",
+          auth: {
+            methods: ["none"],
+            jwtSecret: "not-needed",
+            credentials: [],
+            apiKeys: {}
+          },
+          requestSchema: {
+            messageField: "message",
+            roleField: "role",
+            apiKeyField: "api_key"
+          },
+          responseSchema: {
+            responsePath: "choices[0].message.content",
+            toolCallsPath: "choices[0].message.tool_calls"
+          },
+          sensitivePatterns: ["sk-proj-", "sk_live_", "AKIA", "xoxb-", "password", "secret", "token", "credentials"],
+          attackConfig: {
+            adaptiveRounds: 2,
+            maxAttacksPerCategory: 3,
+            concurrency: 2,
+            delayBetweenRequestsMs: 500,
+            llmProvider: "anthropic",
+            llmModel: "claude-sonnet-4-20250514",
+            judgeProvider: "anthropic",
+            judgeModel: "claude-sonnet-4-20250514",
+            enableLlmGeneration: true,
+            enableMultiTurnGeneration: true,
+            enableAdaptiveMultiTurn: true,
+            maxAdaptiveTurns: 10,
+            requireReviewConfirmation: false,
+            enabledCategories: [
+              "prompt_injection", "output_evasion", "sensitive_data",
+              "content_filter_bypass", "toxic_content", "misinformation",
+              "harmful_advice", "hallucination"
+            ]
+          }
         },
-        auth: {
-          methods: ["api_key"],
-          apiKeys: { default: "your-api-key" }
+        "custom-agent": {
+          target: {
+            type: "http_agent",
+            baseUrl: "https://your-app.com",
+            agentEndpoint: "/api/chat",
+            authEndpoint: "/api/auth/login",
+            applicationDetails: "Describe your AI agent: what it does, what tools it has access to, what data it can read, what actions it can take. The more detail you provide, the better the attacks will be."
+          },
+          codebasePath: null,
+          codebaseGlob: "**/*.ts",
+          auth: {
+            methods: ["jwt", "api_key", "body_role"],
+            jwtSecret: "your-jwt-secret",
+            credentials: [
+              { email: "admin@example.com", password: "admin123", role: "admin" },
+              { email: "user@example.com", password: "user123", role: "viewer" }
+            ],
+            apiKeys: {
+              admin: "ak_admin_001",
+              viewer: "ak_viewer_002"
+            }
+          },
+          requestSchema: {
+            messageField: "message",
+            roleField: "role",
+            apiKeyField: "api_key"
+          },
+          responseSchema: {
+            responsePath: "response",
+            toolCallsPath: "tool_calls",
+            userInfoPath: "user"
+          },
+          sensitivePatterns: ["sk-proj-", "password", "ssn", "credit_card", "api_key"],
+          attackConfig: {
+            adaptiveRounds: 2,
+            maxAttacksPerCategory: 5,
+            concurrency: 3,
+            delayBetweenRequestsMs: 300,
+            llmProvider: "anthropic",
+            llmModel: "claude-sonnet-4-20250514",
+            judgeProvider: "anthropic",
+            judgeModel: "claude-sonnet-4-20250514",
+            enableLlmGeneration: true,
+            enableMultiTurnGeneration: true,
+            enableAdaptiveMultiTurn: true,
+            maxAdaptiveTurns: 15,
+            requireReviewConfirmation: false,
+            enabledCategories: [
+              "prompt_injection", "auth_bypass", "rbac_bypass", "data_exfiltration",
+              "sensitive_data", "tool_misuse", "output_evasion", "content_filter_bypass",
+              "indirect_prompt_injection", "session_hijacking", "rate_limit"
+            ]
+          }
         },
-        requestSchema: { messageField: "message" },
-        responseSchema: { responsePath: "response" },
-        sensitivePatterns: [],
-        attackConfig: {
-          adaptiveRounds: 1,
-          maxAttacksPerCategory: 2,
-          concurrency: 2,
-          delayBetweenRequestsMs: 500,
-          llmProvider: "anthropic",
-          llmModel: "claude-sonnet-4-20250514",
-          judgeProvider: "anthropic",
-          judgeModel: "claude-sonnet-4-20250514",
-          enableLlmGeneration: true,
-          enableMultiTurnGeneration: false,
-          enableAdaptiveMultiTurn: false,
-          enabledCategories: ["prompt_injection", "sensitive_data"],
-          enabledStrategies: ["direct", "obfuscation"]
+        "full": {
+          target: {
+            type: "http_agent",
+            baseUrl: "https://your-app.com",
+            agentEndpoint: "/api/chat",
+            authEndpoint: "/api/auth/login",
+            applicationDetails: "Full description of your AI application — tools, roles, data access, safety guidelines."
+          },
+          codebasePath: null,
+          codebaseGlob: "**/*.ts",
+          policyFile: "policies/strict.json",
+          auth: {
+            methods: ["jwt", "api_key", "body_role"],
+            jwtSecret: "your-jwt-secret",
+            credentials: [
+              { email: "admin@example.com", password: "admin123", role: "admin" },
+              { email: "user@example.com", password: "user123", role: "viewer" },
+              { email: "intern@example.com", password: "intern123", role: "intern" }
+            ],
+            apiKeys: { admin: "ak_admin_001", viewer: "ak_viewer_002", intern: "ak_intern_003" }
+          },
+          requestSchema: { messageField: "message", roleField: "role", apiKeyField: "api_key", guardrailModeField: "guardrail_mode" },
+          responseSchema: { responsePath: "response", toolCallsPath: "tool_calls", userInfoPath: "user", guardrailsPath: "guardrails" },
+          sensitivePatterns: ["sk-proj-", "sk_live_", "AKIA", "xoxb-", "SG.", "password", "secret", "token", "credentials", "ssn"],
+          attackConfig: {
+            adaptiveRounds: 3,
+            maxAttacksPerCategory: 5,
+            concurrency: 3,
+            delayBetweenRequestsMs: 300,
+            llmProvider: "anthropic",
+            llmModel: "claude-sonnet-4-20250514",
+            judgeProvider: "anthropic",
+            judgeModel: "claude-sonnet-4-20250514",
+            enableLlmGeneration: true,
+            maxMultiTurnSteps: 8,
+            strategiesPerRound: 5,
+            enableMultiTurnGeneration: true,
+            multiTurnGenerationRate: 0.4,
+            enableAdaptiveMultiTurn: true,
+            maxAdaptiveTurns: 15,
+            requireReviewConfirmation: false,
+            enableDiscovery: true
+          }
+        },
+        "quick": {
+          target: {
+            type: "http_agent",
+            baseUrl: "http://host.docker.internal:3000",
+            agentEndpoint: "/api/chat",
+            applicationDetails: "Quick test"
+          },
+          auth: { methods: ["none"], apiKeys: {} },
+          requestSchema: { messageField: "message" },
+          responseSchema: { responsePath: "response" },
+          sensitivePatterns: ["sk-", "password"],
+          attackConfig: {
+            adaptiveRounds: 1,
+            maxAttacksPerCategory: 2,
+            enableLlmGeneration: true,
+            requireReviewConfirmation: false,
+            enabledCategories: ["prompt_injection", "sensitive_data"]
+          }
+        },
+        "mcp": {
+          target: {
+            type: "mcp",
+            mcp: {
+              transport: "streamable_http",
+              url: "https://your-mcp-server.com/api/mcp"
+            },
+            applicationDetails: "MCP server with tools for file access, database queries, etc."
+          },
+          auth: { methods: ["none"], apiKeys: {} },
+          requestSchema: { messageField: "message" },
+          responseSchema: { responsePath: "response" },
+          sensitivePatterns: ["password", "secret", "token"],
+          attackConfig: {
+            adaptiveRounds: 2,
+            maxAttacksPerCategory: 3,
+            llmProvider: "anthropic",
+            llmModel: "claude-sonnet-4-20250514",
+            judgeProvider: "anthropic",
+            judgeModel: "claude-sonnet-4-20250514",
+            enableLlmGeneration: true,
+            requireReviewConfirmation: false
+          }
         }
       };
 
+      function loadConfigTemplate(name) {
+        var tpl = configTemplates[name];
+        if (tpl) {
+          document.getElementById("runConfigEditor").value = JSON.stringify(tpl, null, 2);
+        }
+      }
+
       const runConfigEditor = document.getElementById("runConfigEditor");
-      runConfigEditor.value = JSON.stringify(defaultConfig, null, 2);
+      runConfigEditor.value = JSON.stringify(configTemplates["openai-compatible"], null, 2);
 
       document.getElementById("closeRunPanel").addEventListener("click", () => {
         document.getElementById("newRunPanel").style.display = "none";
