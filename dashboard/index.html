@@ -5350,10 +5350,17 @@
           var ref = await res.json();
 
           var refCatEl = document.getElementById("refCategories");
+          var compMap = ref.categoryCompliance || {};
           if (refCatEl && ref.categories) {
-            refCatEl.innerHTML = '<div style="margin-bottom:4px;font-size:10px;color:var(--text2);">' + ref.categories.length + ' categories — click to copy</div>' +
+            refCatEl.innerHTML = '<div style="margin-bottom:4px;font-size:10px;color:var(--text2);">' + ref.categories.length + ' categories — click to copy. Hover for compliance mapping.</div>' +
               ref.categories.map(function(c) {
-                return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'">' + c + '</span>';
+                var mappings = compMap[c] || [];
+                var tooltip = mappings.length > 0
+                  ? mappings.map(function(m) { return m.framework + ": " + m.code + " " + m.title; }).join("\n")
+                  : "No compliance mapping";
+                var hasMappings = mappings.length > 0;
+                var borderStyle = hasMappings ? "border-left:2px solid var(--green);" : "";
+                return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;' + borderStyle + '" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(tooltip) + '">' + c + (hasMappings ? ' <span style="font-size:8px;color:var(--green);">' + mappings.length + '</span>' : '') + '</span>';
               }).join("");
           }
 

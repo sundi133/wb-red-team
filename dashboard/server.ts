@@ -880,6 +880,23 @@ Be specific and factual. Reference real incidents and realistic financial figure
     try {
       const { ALL_ATTACK_CATEGORIES } = await import("../lib/types.js");
       const { ALL_STRATEGIES } = await import("../lib/attack-strategies.js");
+      const frameworks = loadComplianceFrameworks();
+
+      // Build reverse mapping: category → which compliance controls it covers
+      const categoryCompliance: Record<string, { framework: string; code: string; title: string }[]> = {};
+      for (const fw of frameworks) {
+        for (const item of fw.items) {
+          for (const cat of item.categories) {
+            if (!categoryCompliance[cat]) categoryCompliance[cat] = [];
+            categoryCompliance[cat].push({
+              framework: fw.name,
+              code: item.code,
+              title: item.title,
+            });
+          }
+        }
+      }
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         categories: ALL_ATTACK_CATEGORIES,
@@ -888,6 +905,8 @@ Be specific and factual. Reference real incidents and realistic financial figure
           name: s.name,
           level: s.levelName,
         })),
+        categoryCompliance,
+        frameworks: frameworks.map(fw => ({ id: fw.id, name: fw.name, controlCount: fw.items.length })),
       }));
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
