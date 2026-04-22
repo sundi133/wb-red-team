@@ -2387,23 +2387,7 @@
           '</div>';
 
         if (!selReport) {
-          html += '<div style="padding:12px 20px;border-bottom:1px solid var(--border);">' +
-            '<input type="text" placeholder="Search by target URL or date..." oninput="filterRiskReports(this.value)" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:12px;font-family:inherit;" />' +
-            '</div>';
-          html += '<div style="padding:0;max-height:300px;overflow-y:auto;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:12px;" id="riskReportTable"><tbody>';
-          reports.forEach(function(r) {
-            var d = new Date(r.timestamp);
-            var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-            var sc = scoreColor(r.score);
-            var searchStr = (dateStr + " " + (r.targetUrl || r.filename)).toLowerCase();
-            html += '<tr data-search="' + esc(searchStr) + '" onclick="selectRiskReport(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
-              '<td style="padding:10px 20px;">' + esc(dateStr) + '</td>' +
-              '<td style="padding:10px;color:var(--text2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || "") + '</td>' +
-              '<td style="padding:10px;text-align:center;font-weight:700;color:' + sc + ';">' + r.score + '</td>' +
-              '<td style="padding:10px;text-align:center;color:var(--red);">' + r.passed + ' vulns</td></tr>';
-          });
-          html += '</tbody></table></div>';
+          html += buildReportSelectorTable(reports, "riskReportTable", "filterRiskReports", "selectRiskReport");
         }
         html += '</div>';
 
@@ -2597,6 +2581,44 @@
         });
 
         html += '</div>';
+        return html;
+      }
+
+      function buildReportSelectorTable(reports, tableId, filterFn, selectFn) {
+        var thStyle = 'padding:8px 16px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;';
+        var thStyleCenter = thStyle + 'text-align:center;';
+
+        var html = '<div style="padding:12px 20px;border-bottom:1px solid var(--border);">' +
+          '<input type="text" placeholder="Search by target URL or date..." oninput="' + filterFn + '(this.value)" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;font-family:inherit;" />' +
+          '</div>' +
+          '<div style="max-height:380px;overflow-y:auto;">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:12px;" id="' + tableId + '">' +
+          '<thead><tr style="border-bottom:1px solid var(--border);background:var(--bg);">' +
+          '<th style="' + thStyle + '">Date</th>' +
+          '<th style="' + thStyle + '">Target</th>' +
+          '<th style="' + thStyleCenter + '">Score</th>' +
+          '<th style="' + thStyleCenter + '">Attacks</th>' +
+          '<th style="' + thStyleCenter + '">Vulns</th>' +
+          '<th style="' + thStyleCenter + '">Blocked</th>' +
+          '</tr></thead><tbody>';
+
+        reports.forEach(function(r) {
+          var d = new Date(r.timestamp);
+          var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+          var sc = typeof r.score === "number" ? scoreColor(r.score) : "var(--text2)";
+          var searchStr = (dateStr + " " + (r.targetUrl || r.filename)).toLowerCase();
+
+          html += '<tr data-search="' + esc(searchStr) + '" onclick="' + selectFn + '(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
+            '<td style="padding:10px 16px;white-space:nowrap;">' + esc(dateStr) + '</td>' +
+            '<td style="padding:10px 16px;color:var(--text2);max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || r.filename) + '</td>' +
+            '<td style="padding:10px 16px;text-align:center;"><span style="font-weight:700;color:' + sc + ';background:' + sc.replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--green', '63,185,80').replace('--orange', '210,153,34').replace(')', ',0.1)') + ';padding:2px 10px;border-radius:10px;font-size:11px;">' + r.score + '</span></td>' +
+            '<td style="padding:10px 16px;text-align:center;color:var(--text2);">' + r.totalAttacks + '</td>' +
+            '<td style="padding:10px 16px;text-align:center;color:var(--red);font-weight:600;">' + r.passed + '</td>' +
+            '<td style="padding:10px 16px;text-align:center;color:var(--green);font-weight:500;">' + r.failed + '</td>' +
+            '</tr>';
+        });
+
+        html += '</tbody></table></div>';
         return html;
       }
 
@@ -2835,33 +2857,7 @@
             html += '<div style="padding:8px 20px;border-top:1px solid var(--border);">' +
               '<a href="#" onclick="event.preventDefault();complianceSelectedReport=null;complianceResults=[];renderComplianceTab();" style="font-size:11px;color:var(--accent);">Change report</a></div>';
           } else {
-            // Search + report table
-            html += '<div style="padding:12px 20px;border-bottom:1px solid var(--border);">' +
-              '<input id="compReportSearch" type="text" placeholder="Search by target URL or date..." oninput="filterCompReports(this.value)" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:12px;font-family:inherit;" />' +
-              '</div>';
-            html += '<div style="padding:0;max-height:400px;overflow-y:auto;" id="compReportTableWrap">' +
-              '<table style="width:100%;border-collapse:collapse;font-size:12px;" id="compReportTable">' +
-              '<thead><tr style="border-bottom:1px solid var(--border);">' +
-              '<th style="padding:8px 20px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Date</th>' +
-              '<th style="padding:8px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Target</th>' +
-              '<th style="padding:8px 10px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Score</th>' +
-              '<th style="padding:8px 10px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Attacks</th>' +
-              '<th style="padding:8px 20px;text-align:center;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Vulns</th>' +
-              '</tr></thead><tbody>';
-            reports.forEach(function(r) {
-              var d = new Date(r.timestamp);
-              var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-              var sc = typeof r.score === "number" ? scoreColor(r.score) : "var(--text2)";
-              var searchStr = (dateStr + " " + (r.targetUrl || r.filename)).toLowerCase();
-              html += '<tr data-search="' + esc(searchStr) + '" onclick="selectComplianceReport(\'' + esc(r.filename) + '\')" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'none\'">' +
-                '<td style="padding:10px 20px;white-space:nowrap;">' + esc(dateStr) + '</td>' +
-                '<td style="padding:10px 10px;color:var(--text2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.targetUrl || r.filename) + '</td>' +
-                '<td style="padding:10px 10px;text-align:center;"><span style="font-weight:700;color:' + sc + ';">' + r.score + '</span></td>' +
-                '<td style="padding:10px 10px;text-align:center;color:var(--text2);">' + r.totalAttacks + '</td>' +
-                '<td style="padding:10px 20px;text-align:center;color:var(--red);font-weight:500;">' + r.passed + '</td>' +
-                '</tr>';
-            });
-            html += '</tbody></table></div>';
+            html += buildReportSelectorTable(reports, "compReportTable", "filterCompReports", "selectComplianceReport");
           }
           html += '</div>';
 
