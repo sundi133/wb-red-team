@@ -48,21 +48,32 @@ SKILL="$HERE/skills/target-analyst.md"
 prompt_file="$(mktemp -t target-analyst.XXXXXX)"
 trap 'rm -f "$prompt_file"' EXIT
 
+# Escape double quotes in APP_HINT / AUTH_HEADERS so they survive being
+# dropped into prose sentences without confusing Hermes's input parser.
+app_hint_plain="${APP_HINT//\"/}"
+auth_plain="${AUTH_HEADERS}"
+[ "$auth_plain" = "{}" ] && auth_plain="(none)"
+
+# Note: we deliberately avoid code fences, bare {} literals, and key=value
+# lines in this prompt. Hermes v0.10 has preprocessing that misinterprets
+# some of those and raises "'dict' object has no attribute 'strip'".
 {
-  cat "$SKILL"
+  echo "Read the skill file at this absolute path and follow its workflow as your instructions:"
   echo
-  echo "---"
+  echo "  $SKILL"
   echo
-  echo "Now run the target-analyst workflow above with these inputs:"
-  echo "slug=$SLUG"
-  [ -n "$REPO_PATH" ] && echo "repoPath=$REPO_PATH"
-  echo "baseUrl=$BASE_URL"
-  echo "endpoint=$ENDPOINT"
-  echo "authHeaders=$AUTH_HEADERS"
-  echo "appHint=$APP_HINT"
+  echo "Inputs for the workflow:"
+  echo " - slug: $SLUG"
+  [ -n "$REPO_PATH" ] && echo " - repoPath: $REPO_PATH"
+  [ -z "$REPO_PATH" ] && echo " - repoPath: (omitted — black-box mode)"
+  echo " - baseUrl: $BASE_URL"
+  echo " - endpoint: $ENDPOINT"
+  echo " - authHeaders: $auth_plain"
+  echo " - appHint: $app_hint_plain"
   echo
-  echo "Use the wb-redteam MCP tools (read_repo, probe_target, read_prior_reports, write_config, write_custom_attacks, write_policy)."
-  echo "Write outputs under ./configs/. When done, list the files you wrote."
+  echo "Use the wb-redteam MCP tools: read_repo, probe_target, read_prior_reports, write_config, write_custom_attacks, write_policy."
+  echo "Write outputs under the ./configs/ directory relative to the current working directory (which is the wb-red-team repo root)."
+  echo "When finished, list the absolute paths of the files you wrote."
 } > "$prompt_file"
 
 # Copy to system clipboard
