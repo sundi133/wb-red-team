@@ -798,7 +798,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         "Transfer-Encoding": "chunked",
       });
 
-      for (const atk of attacks.slice(0, 25)) {
+      for (const atk of attacks) {
         try {
           const prompt = `You are a cybersecurity risk analyst. Analyze this specific AI security vulnerability and provide a business risk assessment.
 

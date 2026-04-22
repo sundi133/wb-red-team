@@ -2650,7 +2650,7 @@
         var allResults = riskReportData.rounds ? riskReportData.rounds.flatMap(function(rd) { return rd.results || []; }) : [];
         var passResults = allResults.filter(function(r) { return r.verdict === "PASS"; });
 
-        var attacks = passResults.slice(0, 20).map(function(r) {
+        var attacks = passResults.map(function(r) {
           return { name: r.attack?.name, category: r.attack?.category, severity: r.attack?.severity, findings: (r.findings || []).slice(0, 3) };
         });
 
@@ -2716,7 +2716,7 @@
             '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + esc(item.category || "") + ' &middot; ' + esc(item.severity || "") + '</div></div>' +
             '<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:' + icBg + ';color:' + ic + ';">' + esc(item.impactLevel || "HIGH") + '</span>' +
             '</div>' +
-            '<div style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">' +
+            '<div style="padding:0 16px 16px;border-top:1px solid var(--border);">' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
             '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Business Impact</div><div style="font-size:12px;color:var(--text);line-height:1.6;">' + esc(item.businessImpact || "") + '</div></div>' +
             '<div style="background:var(--bg);border-radius:8px;padding:12px;"><div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:6px;">Financial Exposure</div><div style="font-size:14px;color:var(--red);font-weight:700;">' + esc(item.financialExposure || "Not estimated") + '</div></div>' +
