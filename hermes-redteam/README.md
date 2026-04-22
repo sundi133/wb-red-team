@@ -35,15 +35,15 @@ Idempotent. Does:
 5. registers `mcp-server.ts` via `hermes mcp add wb-redteam -- npx tsx .../mcp-server.ts`
 6. verifies via `hermes skills list` and `hermes mcp list`
 
-Non-interactive:
+Non-interactive (default provider is **anthropic** / `claude-sonnet-4-5`):
 
 ```bash
 PROVIDER=anthropic  MODEL=claude-sonnet-4-5           npm run hermes:setup
 PROVIDER=openrouter MODEL=nousresearch/hermes-4-70b   npm run hermes:setup
-HERMES_HOME=~/.hermes-redteam-acme PROVIDER=openrouter npm run hermes:setup
+HERMES_HOME=~/.hermes-redteam-acme npm run hermes:setup   # inherits anthropic default
 ```
 
-Export the provider's API key before the next step (e.g. `export OPENROUTER_API_KEY=...`).
+Export the provider's API key before the next step (e.g. `export ANTHROPIC_API_KEY=sk-ant-...`).
 
 <details>
 <summary>Manual equivalent, if your Hermes version's flags differ</summary>
@@ -52,9 +52,9 @@ Export the provider's API key before the next step (e.g. `export OPENROUTER_API_
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | sh
 export HERMES_HOME="$HOME/.hermes-redteam-analyst"
 
-hermes config set provider.type openrouter
-hermes config set provider.model nousresearch/hermes-4-70b
-export OPENROUTER_API_KEY=sk-or-...
+hermes config set provider.type anthropic
+hermes config set provider.model claude-sonnet-4-5
+export ANTHROPIC_API_KEY=sk-ant-...
 
 cp hermes-redteam/skills/target-analyst.md "$HERMES_HOME/skills/"
 

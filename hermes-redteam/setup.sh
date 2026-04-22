@@ -66,14 +66,14 @@ mkdir -p "$HERMES_HOME/skills"
 # ── 3. Provider config ──
 if [ -z "$PROVIDER" ]; then
   echo
-  echo "Choose a provider:"
-  echo "  1) anthropic   (needs ANTHROPIC_API_KEY)"
+  echo "Choose a provider [default: 1]:"
+  echo "  1) anthropic   (needs ANTHROPIC_API_KEY)  [default]"
   echo "  2) openai      (needs OPENAI_API_KEY)"
   echo "  3) openrouter  (needs OPENROUTER_API_KEY)"
   echo "  4) ollama      (local, needs Ollama running on 127.0.0.1:11434)"
   echo "  5) skip        (I'll configure Hermes manually)"
-  read -rp "Selection [1-5]: " sel
-  case "$sel" in
+  read -rp "Selection [1-5] (enter = 1): " sel
+  case "${sel:-1}" in
     1) PROVIDER=anthropic  ;;
     2) PROVIDER=openai     ;;
     3) PROVIDER=openrouter ;;
