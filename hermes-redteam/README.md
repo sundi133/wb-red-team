@@ -75,7 +75,10 @@ For an enterprise deployment, make sure the tool server can reach the target URL
 
 ### 6. Run the analyst
 
-In terminal B:
+In terminal B. `repoPath` is **optional** — omit it for black-box /
+enterprise targets where you only have the running endpoint.
+
+**White-box (with source access):**
 
 ```bash
 export HERMES_HOME="$HOME/.hermes-redteam-analyst"
@@ -89,13 +92,29 @@ hermes run --skill target-analyst --input '{
 }'
 ```
 
+**Black-box (deployed enterprise app, no source):**
+
+```bash
+hermes run --skill target-analyst --input '{
+  "slug": "acme-prod",
+  "baseUrl": "https://agent.prod.acme.internal",
+  "endpoint": "/v1/assistant/chat",
+  "authHeaders": { "Authorization": "Bearer '"$ENTERPRISE_BEARER"'" },
+  "appHint": "Customer-support copilot for ACME retail. Handles orders, refunds, returns, shipping status. Multi-tenant. Backed by an LLM with tool calls to an internal CRM and order-management system."
+}'
+```
+
 Hermes will:
 
-1. `read_repo` on `../demo-agentic-app/src`
+1. `read_repo` on `repoPath` **(skipped if omitted)**
 2. `probe_target` 5–8 times with benign messages
 3. `read_prior_reports` from `report/`
 4. Synthesize the three files
 5. `write_config`, `write_custom_attacks`, `write_policy`
+
+In black-box mode the generated `config.json` omits `codebasePath` and
+marks `applicationDetails` as observation-only. Subsequent runs re-probe
+rather than trust stale inferences.
 
 Output paths (relative to the wb-red-team repo root):
 
