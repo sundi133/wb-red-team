@@ -3337,6 +3337,7 @@
 
       function renderTrend() {
         const canvas = $("#trendCanvas");
+        if (!canvas) return;
         const ctx = canvas.getContext("2d");
         const dpr = window.devicePixelRatio || 1;
         const w = canvas.offsetWidth;
