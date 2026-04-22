@@ -56,6 +56,45 @@ export async function forgeJwt(
     .sign(secret);
 }
 
+/** Aggregate OpenAI-style SSE (data: {...}) into a single assistant text. */
+async function readSseResponseAsAssistantText(res: Response): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let out = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, nl);
+      buffer = buffer.slice(nl + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (!line || line.startsWith(":")) continue;
+      if (!line.startsWith("data: ")) continue;
+      const json = line.slice(6).trim();
+      if (json === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(json) as {
+          choices?: Array<{
+            delta?: { content?: string };
+            message?: { content?: string };
+          }>;
+        };
+        const piece =
+          parsed.choices?.[0]?.delta?.content ??
+          parsed.choices?.[0]?.message?.content;
+        if (typeof piece === "string" && piece.length > 0) out += piece;
+      } catch {
+        // skip malformed SSE lines
+      }
+    }
+  }
+  return out;
+}
+
 export async function executeAttack(
   config: Config,
   attack: Attack,
@@ -240,11 +279,16 @@ export async function executeAttack(
     const timeMs = Date.now() - start;
 
     console.log(`  Response: ${res.status} ${res.statusText} (${timeMs}ms)`);
+    const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
     let responseBody: unknown;
-    try {
-      responseBody = await res.json();
-    } catch {
-      responseBody = await res.text();
+    if (contentType.includes("text/event-stream")) {
+      responseBody = await readSseResponseAsAssistantText(res);
+    } else {
+      try {
+        responseBody = await res.json();
+      } catch {
+        responseBody = await res.text();
+      }
     }
 
     // Extract response using custom path if provided
