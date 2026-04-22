@@ -47,3 +47,4 @@ Use any of the attack category IDs from the framework. Run `npx tsx red-team.ts 
 - `owasp-llm-top10-2025.json` — OWASP LLM Top 10 (2025)
 - `owasp-agentic-top10.json` — OWASP Agentic Security Top 10
 - `nist-ai-rmf.json` — NIST AI Risk Management Framework (AI 600-1)
+- `mitre-atlas.json` — MITRE ATLAS (Adversarial Threat Landscape for AI Systems)
