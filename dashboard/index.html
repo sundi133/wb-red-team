@@ -1830,22 +1830,8 @@
                   <!-- Strategies -->
                   <div>
                     <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">ATTACK STRATEGIES <span style="font-weight:400;color:var(--text2);">(use in enabledStrategies array — empty = all)</span></div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow-y:auto;padding:4px 0;">
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">base64_context_hint</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">rot13_cipher_trick</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">reverse_instruction</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">json_format_bypass</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">multi_language_obfuscation</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">poetic_metaphor_request</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">educational_series_framing</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">fiction_writing_escape</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">academic_computation_disguise</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">benign_wrapper_hidden_core</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">incremental_escalation_setup</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">building_on_previous_context</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">simulated_multi_turn_conversation</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">translation_request_disguise</span>
-                      <span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);" onclick="insertStrategy(this.textContent)">role_consistency_override</span>
+                    <div id="refStrategies" style="display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto;padding:4px 0;">
+                      <span style="color:var(--text2);font-size:11px;">Loading strategies...</span>
                     </div>
                   </div>
 
@@ -5387,62 +5373,33 @@
       const runConfigEditor = document.getElementById("runConfigEditor");
       runConfigEditor.value = JSON.stringify(configTemplates["openai-compatible"], null, 2);
 
-      // Populate category reference chips
-      var allCategories = [
-        "prompt_injection","indirect_prompt_injection","content_filter_bypass","auth_bypass","rbac_bypass",
-        "data_exfiltration","sensitive_data","pii_disclosure","output_evasion","tool_misuse","tool_chain_hijack",
-        "tool_output_manipulation","session_hijacking","cross_tenant_access","rate_limit","ssrf","path_traversal",
-        "shell_injection","sql_injection","debug_access","api_abuse","supply_chain","memory_poisoning",
-        "rag_poisoning","rag_corpus_poisoning","rag_attribution","cross_session_injection","goal_hijack",
-        "rogue_agent","agentic_workflow_bypass","multi_agent_delegation","agent_reflection_exploit",
-        "unauthorized_commitments","agentic_legal_commitment","agentic_scope_creep","identity_privilege",
-        "unexpected_code_exec","generated_code_rce","cascading_failure","guardrail_timing","multi_turn_escalation",
-        "conversation_manipulation","context_window_attack","slow_burn_exfiltration","steganographic_exfiltration",
-        "out_of_band_exfiltration","training_data_extraction","side_channel_inference","toxic_content",
-        "harmful_advice","drug_synthesis","weapons_violence","financial_crime","cyber_crime","csam_minor_safety",
-        "misinformation","hallucination","hallucination_inducement","fake_quotes_misinfo","deceptive_misinfo",
-        "sycophancy_exploitation","overreliance","over_refusal","bias_exploitation","hate_speech_dogwhistle",
-        "radicalization_content","targeted_harassment","defamation_harassment","brand_impersonation",
-        "brand_reputation","competitor_endorsement","competitor_sabotage","influence_operations",
-        "psychological_manipulation","emotional_manipulation","social_engineering","copyright_infringement",
-        "regulatory_violation","consent_bypass","gdpr_erasure_bypass","contextual_integrity_violation",
-        "financial_fraud_facilitation","model_extraction","model_inversion","membership_inference",
-        "model_fingerprinting","backdoor_trigger","data_poisoning","gradient_leakage","fine_tuning_data_injection",
-        "retrieval_ranking_attack","vector_store_manipulation","chunk_boundary_injection","embedding_inversion",
-        "structured_output_injection","markdown_link_injection","format_confusion_attack","special_token_injection",
-        "cross_lingual_attack","insecure_output_handling","model_dos","token_flooding_dos","infinite_loop_agent",
-        "quota_exhaustion_attack","divergent_repetition","inference_attack","re_identification","linkage_attack",
-        "differential_privacy_violation","logic_bomb_conditional","off_topic","prompt_template_injection",
-        "mcp_server_compromise","plugin_manifest_spoofing","sdk_dependency_attack","mcp_tool_namespace_collision",
-        "inter_agent_protocol_abuse","multimodal_ghost_injection","computer_use_injection",
-        "streaming_voice_injection","cross_modal_conflict","graph_consensus_poisoning","llm_judge_manipulation",
-        "retrieval_tenant_bleed","sandbox_escape","tool_permission_escalation","alignment_faking",
-        "capability_elicitation","instruction_hierarchy_violation","state_persistence_attack",
-        "encoding_serialization_attack","multi_hop_reasoning_exploit",
-        "medical_safety","financial_compliance","pharmacy_safety","insurance_compliance",
-        "ecommerce_security","telecom_compliance","housing_discrimination"
-      ];
-      var refCatEl = document.getElementById("refCategories");
-      if (refCatEl) {
-        refCatEl.innerHTML = allCategories.map(function(c) {
-          return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="insertCategory(this.textContent)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'">' + c + '</span>';
-        }).join("");
-      }
+      // Load categories and strategies from API
+      (async function loadReference() {
+        try {
+          var res = await fetch("/api/reference");
+          var ref = await res.json();
 
-      function insertCategory(cat) {
-        // Copy to clipboard for easy pasting
-        navigator.clipboard.writeText('"' + cat + '"').then(function() {
-          // Brief flash feedback
-          var el = event.target;
-          el.style.background = 'var(--accent)';
-          el.style.color = '#fff';
-          setTimeout(function() { el.style.background = 'var(--bg)'; el.style.color = 'var(--text2)'; }, 300);
-        });
-      }
+          var refCatEl = document.getElementById("refCategories");
+          if (refCatEl && ref.categories) {
+            refCatEl.innerHTML = '<div style="margin-bottom:4px;font-size:10px;color:var(--text2);">' + ref.categories.length + ' categories — click to copy</div>' +
+              ref.categories.map(function(c) {
+                return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'">' + c + '</span>';
+              }).join("");
+          }
 
-      function insertStrategy(strat) {
-        navigator.clipboard.writeText('"' + strat + '"').then(function() {
-          var el = event.target;
+          var refStratEl = document.getElementById("refStrategies");
+          if (refStratEl && ref.strategies) {
+            refStratEl.innerHTML = '<div style="margin-bottom:4px;font-size:10px;color:var(--text2);">' + ref.strategies.length + ' strategies — click to copy</div>' +
+              ref.strategies.map(function(s) {
+                var levelColor = s.level === "Advanced" ? "var(--red)" : s.level === "Intermediate" ? "var(--orange)" : "var(--green)";
+                return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(s.name) + ' (' + s.level + ')">' + s.slug + '</span>';
+              }).join("");
+          }
+        } catch(e) { /* reference endpoint may not be available */ }
+      })();
+
+      function copyChip(el) {
+        navigator.clipboard.writeText('"' + el.textContent + '"').then(function() {
           el.style.background = 'var(--accent)';
           el.style.color = '#fff';
           setTimeout(function() { el.style.background = 'var(--bg)'; el.style.color = 'var(--text2)'; }, 300);

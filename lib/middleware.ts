@@ -60,7 +60,7 @@ async function handleRequest(
     const url = new URL(req.url ?? "/", `http://localhost`);
 
     // Static files and public API endpoints — no auth needed
-    if (!url.pathname.startsWith("/api/") || url.pathname === "/api/auth-config") {
+    if (!url.pathname.startsWith("/api/") || url.pathname === "/api/auth-config" || url.pathname === "/api/reference") {
       return handler(req, res, null);
     }
 

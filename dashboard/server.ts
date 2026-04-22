@@ -874,6 +874,27 @@ Be specific and factual. Reference real incidents and realistic financial figure
     return;
   }
 
+  // API: list attack categories and strategies (for config reference)
+  if (url.pathname === "/api/reference" && req.method === "GET") {
+    try {
+      const { ALL_ATTACK_CATEGORIES } = await import("../lib/types.js");
+      const { ALL_STRATEGIES } = await import("../lib/attack-strategies.js");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        categories: ALL_ATTACK_CATEGORIES,
+        strategies: ALL_STRATEGIES.map((s: { slug: string; name: string; levelName: string }) => ({
+          slug: s.slug,
+          name: s.name,
+          level: s.levelName,
+        })),
+      }));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
   // API: audit log
   if (url.pathname === "/api/audit-log" && req.method === "GET") {
     if (!ctx) {
