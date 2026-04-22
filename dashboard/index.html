@@ -1974,7 +1974,7 @@
         const mediumScans = reportsMeta.filter(r => r.score >= 60 && r.score < 80).length;
         const secureScans = reportsMeta.filter(r => r.score >= 80).length;
 
-        panel.innerHTML = '<div style="max-width:1200px;margin:0 auto;">' +
+        panel.innerHTML = '<div style="max-width:100%;">' +
 
           // Row 1: Security Posture + Key Metrics
           '<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:16px;">' +
@@ -2177,7 +2177,7 @@
           new Date(b[1].startedAt).getTime() - new Date(a[1].startedAt).getTime()
         );
 
-        let html = '<div style="max-width:1200px;margin:0 auto;">' +
+        let html = '<div style="max-width:100%;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
           '<h2 style="font-size:20px;font-weight:700;">Runs</h2>' +
           '<button onclick="switchTab(\'reports\');document.getElementById(\'newRunPanel\').style.display=\'block\';" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">+ New Run</button>' +
@@ -2350,7 +2350,7 @@
         const reports = reportsMeta.length > 0 ? reportsMeta : [];
         const selReport = riskSelectedReport ? reports.find(function(r) { return r.filename === riskSelectedReport; }) : null;
 
-        var html = '<div style="max-width:1200px;margin:0 auto;">' +
+        var html = '<div style="max-width:100%;">' +
           '<div style="margin-bottom:24px;">' +
           '<h2 style="font-size:20px;font-weight:700;margin-bottom:4px;">Risk Quantification</h2>' +
           '<div style="font-size:13px;color:var(--text2);">Analyze business impact, exploitability, and remediation priorities for security findings.</div>' +
@@ -2789,7 +2789,7 @@
           // Find selected report info
           const selReport = complianceSelectedReport ? reports.find(function(r) { return r.filename === complianceSelectedReport; }) : null;
 
-          var html = '<div style="max-width:1200px;margin:0 auto;">';
+          var html = '<div style="max-width:100%;">';
 
           // Header with context
           html += '<div style="margin-bottom:24px;">' +
