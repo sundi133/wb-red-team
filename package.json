@@ -40,9 +40,11 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "dashboard": "tsx dashboard/server.ts 4200",
     "hermes:setup": "bash hermes-redteam/setup.sh",
-    "hermes:tools": "tsx hermes-redteam/tool-server.ts"
+    "hermes:tools": "tsx hermes-redteam/tool-server.ts",
+    "hermes:mcp": "tsx hermes-redteam/mcp-server.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "csv-parse": "^6.2.1",
     "glob": "^11.1.0",
     "jose": "^5.0.0",
