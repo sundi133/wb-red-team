@@ -3158,12 +3158,12 @@
 
       // ── Bootstrap ──
       (async () => {
-        await initAuth();
-        if (authMode === "none" || authMode === "dev") {
+        try { await initAuth(); } catch(e) { console.warn("initAuth failed:", e); }
+        try {
           await loadReportsMeta();
-          renderDashboardTab();
-        }
-        // If OIDC mode, loadReportsMeta + renderDashboardTab called from onClerkSignedIn
+        } catch(e) { console.warn("loadReportsMeta failed:", e); }
+        renderDashboardTab();
+        try { refreshActiveRuns(); } catch(e) {}
       })();
 
       // Search with debounce
