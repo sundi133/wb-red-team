@@ -5379,16 +5379,45 @@
 
           var refStratEl = document.getElementById("refStrategies");
           if (refStratEl && ref.strategies) {
-            refStratEl.innerHTML = '<div style="margin-bottom:4px;font-size:10px;color:var(--text2);">' + ref.strategies.length + ' strategies — click to copy</div>' +
-              ref.strategies.map(function(s) {
-                var levelColor = s.level === "Advanced" ? "var(--red)" : s.level === "Intermediate" ? "var(--orange)" : "var(--green)";
-                return '<span style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(s.name) + ' (' + s.level + ')">' + s.slug + '</span>';
-              }).join("");
+            // Group by level
+            var byLevel = {};
+            ref.strategies.forEach(function(s) {
+              var lv = s.level || "Other";
+              if (!byLevel[lv]) byLevel[lv] = [];
+              byLevel[lv].push(s);
+            });
+            var stratHtml = '';
+            Object.keys(byLevel).forEach(function(lv) {
+              var strats = byLevel[lv];
+              stratHtml += '<div style="margin-bottom:10px;">' +
+                '<div style="font-size:9px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">' + esc(lv) + ' <span style="font-weight:400;">(' + strats.length + ')</span></div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:3px;">' +
+                strats.map(function(s) {
+                  return '<span style="font-size:10px;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(s.name) + '">' + s.slug + '</span>';
+                }).join("") +
+                '</div></div>';
+            });
+            refStratEl.innerHTML = stratHtml;
           }
         } catch(e) { /* reference endpoint may not be available */ }
       })();
 
       var _activeFrameworkFilter = null;
+
+      // Category domain grouping
+      var categoryDomains = {
+        "Prompt & Input": ["prompt_injection","indirect_prompt_injection","content_filter_bypass","special_token_injection","cross_lingual_attack","instruction_hierarchy_violation","context_window_attack","multi_turn_escalation","conversation_manipulation","prompt_template_injection","universal_adversarial_trigger"],
+        "Auth & Access": ["auth_bypass","rbac_bypass","session_hijacking","cross_tenant_access","identity_privilege","debug_access","api_abuse","tool_permission_escalation","cross_session_injection","consent_bypass"],
+        "Data & Privacy": ["data_exfiltration","sensitive_data","pii_disclosure","steganographic_exfiltration","out_of_band_exfiltration","slow_burn_exfiltration","training_data_extraction","side_channel_inference","gdpr_erasure_bypass","contextual_integrity_violation","differential_privacy_violation","inference_attack","re_identification","linkage_attack"],
+        "Agent & Tool": ["tool_misuse","tool_chain_hijack","tool_output_manipulation","agentic_workflow_bypass","multi_agent_delegation","agent_reflection_exploit","rogue_agent","goal_hijack","unauthorized_commitments","agentic_legal_commitment","agentic_scope_creep","tool_permission_escalation","inter_agent_protocol_abuse"],
+        "Output & Response": ["output_evasion","insecure_output_handling","structured_output_injection","markdown_link_injection","format_confusion_attack","generated_code_rce"],
+        "Safety & Content": ["toxic_content","harmful_advice","drug_synthesis","weapons_violence","financial_crime","cyber_crime","csam_minor_safety","misinformation","hallucination","hallucination_inducement","fake_quotes_misinfo","deceptive_misinfo","bias_exploitation","hate_speech_dogwhistle","emotional_manipulation"],
+        "RAG & Retrieval": ["rag_poisoning","rag_corpus_poisoning","rag_attribution","retrieval_ranking_attack","vector_store_manipulation","chunk_boundary_injection","embedding_inversion","retrieval_tenant_bleed","graph_consensus_poisoning"],
+        "Model Security": ["model_extraction","model_inversion","membership_inference","model_fingerprinting","backdoor_trigger","data_poisoning","gradient_leakage","fine_tuning_data_injection","capability_elicitation","alignment_faking","reward_hacking"],
+        "Infrastructure": ["ssrf","path_traversal","shell_injection","sql_injection","rate_limit","model_dos","token_flooding_dos","infinite_loop_agent","quota_exhaustion_attack","cascading_failure","sandbox_escape","encoding_serialization_attack"],
+        "Supply Chain": ["supply_chain","mcp_server_compromise","plugin_manifest_spoofing","sdk_dependency_attack","mcp_tool_namespace_collision"],
+        "Compliance": ["regulatory_violation","medical_safety","financial_compliance","pharmacy_safety","insurance_compliance","ecommerce_security","telecom_compliance","housing_discrimination","financial_fraud_facilitation","copyright_infringement"],
+      };
 
       function renderCategoryChips(categories, compMap, frameworkFilter) {
         var refCatEl = document.getElementById("refCategories");
@@ -5401,16 +5430,40 @@
             return mappings.some(function(m) { return m.framework === frameworkFilter; });
           });
         }
+        var filteredSet = new Set(filtered);
 
-        refCatEl.innerHTML = filtered.map(function(c) {
+        function chipHtml(c) {
           var mappings = compMap[c] || [];
           var tooltip = mappings.length > 0
             ? mappings.map(function(m) { return m.framework + ": " + m.code + " " + m.title; }).join("\n")
             : "No compliance mapping";
           var hasMappings = mappings.length > 0;
           var borderStyle = hasMappings ? "border-left:2px solid var(--green);" : "";
-          return '<span class="ref-cat-chip" data-cat="' + c + '" style="font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;' + borderStyle + '" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(tooltip) + '">' + c + (hasMappings ? ' <span style="font-size:8px;color:var(--green);">' + mappings.length + '</span>' : '') + '</span>';
-        }).join("");
+          return '<span class="ref-cat-chip" data-cat="' + c + '" style="font-size:10px;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2);transition:all 0.15s;' + borderStyle + '" onclick="copyChip(this)" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'" title="' + esc(tooltip) + '">' + c + (hasMappings ? ' <span style="font-size:8px;color:var(--green);">' + mappings.length + '</span>' : '') + '</span>';
+        }
+
+        var html = '';
+        var shown = new Set();
+        Object.keys(categoryDomains).forEach(function(domain) {
+          var cats = categoryDomains[domain].filter(function(c) { return filteredSet.has(c); });
+          if (cats.length === 0) return;
+          html += '<div style="margin-bottom:10px;">' +
+            '<div style="font-size:9px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">' + domain + ' <span style="font-weight:400;">(' + cats.length + ')</span></div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:3px;">' +
+            cats.map(function(c) { shown.add(c); return chipHtml(c); }).join("") +
+            '</div></div>';
+        });
+        // Any remaining uncategorized
+        var remaining = filtered.filter(function(c) { return !shown.has(c); });
+        if (remaining.length > 0) {
+          html += '<div style="margin-bottom:10px;">' +
+            '<div style="font-size:9px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Other (' + remaining.length + ')</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:3px;">' +
+            remaining.map(function(c) { return chipHtml(c); }).join("") +
+            '</div></div>';
+        }
+
+        refCatEl.innerHTML = html;
 
         var countEl = document.getElementById("refCatCount");
         if (countEl) countEl.textContent = filtered.length + " of " + categories.length + " categories" + (frameworkFilter && frameworkFilter !== "all" ? " for " + frameworkFilter : "");
