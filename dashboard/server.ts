@@ -356,8 +356,11 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
     if (job.status === "running" && job.abortController) {
       job.abortController.abort();
+      job.status = "cancelled";
+      job.error = "Cancelled by user";
+      job.finishedAt = new Date().toISOString();
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ runId: id, status: "cancelling" }));
+      res.end(JSON.stringify({ runId: id, status: "cancelled" }));
     } else if (job.status === "queued") {
       // Remove from queue
       const idx = jobQueue.indexOf(id);
