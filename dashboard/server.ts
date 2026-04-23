@@ -659,9 +659,21 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         return;
       }
 
-      const reportData = JSON.parse(
-        readFileSync(join(REPORT_DIR, reportFile), "utf-8"),
-      );
+      // Load report from DB or file
+      let reportData: Record<string, unknown>;
+      if (isDbConfigured() && ctx) {
+        const dbReport = await getReportByFilename(reportFile, ctx.tenantId);
+        if (!dbReport) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Report not found" }));
+          return;
+        }
+        reportData = dbReport.report as unknown as Record<string, unknown>;
+      } else {
+        reportData = JSON.parse(
+          readFileSync(join(REPORT_DIR, reportFile), "utf-8"),
+        );
+      }
 
       // Stream results as newline-delimited JSON
       res.writeHead(200, {
