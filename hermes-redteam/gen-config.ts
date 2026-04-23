@@ -20,6 +20,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import { ALL_STRATEGIES } from "../lib/attack-strategies.js";
 
 const ANTHROPIC_MODEL = process.env.MODEL || "claude-sonnet-4-5";
 const PROVIDER = (process.env.PROVIDER || "anthropic").toLowerCase();
@@ -39,20 +40,40 @@ const AUTH_HINT = process.env.AUTH_HINT || "(none)";
 const OUT_PATH = resolve(REPO_ROOT, `configs/config.${SLUG}.json`);
 const README_PATH = resolve(REPO_ROOT, "README.md");
 
+// Group the strategy slugs by their level name for compact prompt inclusion.
+function buildStrategyCatalog(): string {
+  const byLevel = new Map<string, string[]>();
+  for (const s of ALL_STRATEGIES) {
+    if (!byLevel.has(s.levelName)) byLevel.set(s.levelName, []);
+    byLevel.get(s.levelName)!.push(s.slug);
+  }
+  const lines: string[] = [];
+  for (const [level, slugs] of byLevel) {
+    lines.push(`- ${level}: ${slugs.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+const STRATEGY_CATALOG = buildStrategyCatalog();
+
 const SYSTEM_PROMPT = `You are a security-engineering assistant that produces wb-red-team config JSON.
 
 Return ONLY valid JSON for a single wb-red-team config object. No prose, no markdown fences, no comments. The object must be directly parseable with JSON.parse.
 
 Follow the config shape documented in the wb-red-team README the user will paste.
-Follow these rules strictly:
-- Pick 8 to 20 attack category IDs for attackConfig.enabledCategories, matching the user's whatToTest priorities against the README's category table.
-- Do NOT invent category IDs that are not in the README.
+
+Rules (strict):
+- attackConfig.enabledCategories: pick 8 to 20 category IDs that match whatToTest against the README's category table. Do NOT invent IDs that are not in the README.
+- attackConfig.enabledStrategies: pick 12 to 25 strategy slugs from the STRATEGY CATALOG below that match whatToTest and the app's risk surface. Choose a mix across levels — urgency, social engineering, role-play, encoding tricks, multi-turn framing, etc. Do NOT invent slugs; only use ones present in the catalog.
 - Do NOT include real credentials, tokens, or PII anywhere.
-- For auth, if authHint is "(none)" or empty, set {"methods":[]}; if it mentions an env var, use {"methods":["bearer"],"bearerToken":"\${ENV_NAME}"} verbatim.
-- Use sensible defaults for attackConfig: llmProvider=anthropic, llmModel=claude-sonnet-4-5, judgeModel=claude-sonnet-4-5, adaptiveRounds=2, concurrency=3, delayBetweenRequestsMs=200, appTailoredCustomPromptCount=15.
-- Use requestSchema.messageField="message" and responseSchema.responsePath="response" unless appDetails indicates otherwise.
-- target.applicationDetails should be a concise paragraph synthesized from appDetails, preserving any tool names / role names / data types verbatim.
-- sensitivePatterns should reflect the data types named in appDetails (e.g. SSN, card, email, postgres://, sk-, AKIA, etc.).`;
+- Auth: if authHint is "(none)" or empty, set {"methods":[]}; if it mentions an env var, use {"methods":["bearer"],"bearerToken":"\${ENV_NAME}"} verbatim.
+- Defaults for attackConfig: llmProvider=anthropic, llmModel=claude-sonnet-4-5, judgeModel=claude-sonnet-4-5, adaptiveRounds=2, concurrency=3, delayBetweenRequestsMs=200, appTailoredCustomPromptCount=15.
+- requestSchema.messageField="message" and responseSchema.responsePath="response" unless appDetails indicates otherwise.
+- target.applicationDetails: concise paragraph synthesized from appDetails, preserving tool names / role names / data types verbatim.
+- sensitivePatterns: reflect the data types named in appDetails (e.g. SSN, card, email, postgres://, sk-, AKIA, etc.).
+
+STRATEGY CATALOG (slug list, grouped by level):
+${STRATEGY_CATALOG}
+`;
 
 async function callAnthropic(messages: { role: "user" | "assistant"; content: string }[], system: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -150,7 +171,10 @@ Produce a single wb-red-team config JSON object for this target. JSON only.`;
   console.log();
   const cfg = config as any;
   const cats = cfg?.attackConfig?.enabledCategories ?? [];
+  const strats = cfg?.attackConfig?.enabledStrategies ?? [];
   console.log(`enabledCategories (${cats.length}): ${cats.join(", ")}`);
+  console.log();
+  console.log(`enabledStrategies (${strats.length}): ${strats.join(", ")}`);
   console.log();
   console.log(`next: npx tsx red-team.ts ${OUT_PATH.replace(REPO_ROOT + "/", "")}`);
 }

@@ -44,6 +44,7 @@
     "hermes:quick": "bash hermes-redteam/quick-config.sh",
     "hermes:tools": "tsx hermes-redteam/tool-server.ts",
     "hermes:mcp": "tsx hermes-redteam/mcp-server.ts",
+    "gen": "bash hermes-redteam/gen.sh",
     "gen:config": "tsx hermes-redteam/gen-config.ts"
   },
   "dependencies": {
