@@ -122,7 +122,7 @@ interface Job {
 
 const jobs = new Map<string, Job>();
 let activeRuns = 0;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_RUNS || "100", 10);
 
 async function startJob(job: Job): Promise<void> {
   activeRuns++;
