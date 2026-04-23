@@ -196,8 +196,11 @@ async function startJob(job: Job): Promise<void> {
     }
   } finally {
     job.abortController = undefined;
-    activeRuns--;
-    drainQueue();
+    // Only decrement if not already decremented by cancel handler
+    if (job.status !== "cancelled") {
+      activeRuns = Math.max(0, activeRuns - 1);
+      drainQueue();
+    }
   }
 }
 
@@ -363,6 +366,9 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       job.status = "cancelled";
       job.error = "Cancelled by user";
       job.finishedAt = new Date().toISOString();
+      // Free up the concurrency slot so queued jobs can start
+      activeRuns = Math.max(0, activeRuns - 1);
+      drainQueue();
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ runId: id, status: "cancelled" }));
     } else if (job.status === "queued") {
