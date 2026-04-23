@@ -187,6 +187,13 @@ npm install
 
 ## Configuration
 
+You have two ways to create a `config.json`:
+
+1. **Copy the example and edit by hand** (below) — full control, good when you already know your target's schema.
+2. **Generate one with an LLM** — describe the app in a paragraph and let Claude pick categories, strategies, and sensitive patterns. See [Generating configs with an LLM](#generating-configs-with-an-llm).
+
+### Hand-edited config
+
 Copy the example config and fill in your target details:
 
 ```bash
@@ -431,6 +438,69 @@ Example policy structure:
 ```
 
 The policy used for each evaluation is included in the report output and visible in the dashboard.
+
+## Generating configs with an LLM
+
+Rather than hand-editing `config.json`, you can describe the target in prose and let Claude build it for you. The generator reads this README (so it only uses real category IDs and strategy slugs) plus `lib/attack-strategies.ts` (so it sees all 134 delivery strategies grouped by level), and writes `configs/config.<slug>.json` with:
+
+- `target.applicationDetails` synthesized from your description
+- `attackConfig.enabledCategories` (8–20) selected against what you want to test
+- `attackConfig.enabledStrategies` (12–25) selected across the strategy catalog
+- `sensitivePatterns` picked from the data types you mentioned
+- sensible defaults for provider, model, rounds, concurrency
+
+No target probing, no repo scan — one Anthropic API call.
+
+### Interactive
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm run gen
+```
+
+You'll be prompted for slug, base URL, endpoint, app description, what to test (comma-separated), and auth hint. Each field has a default you can accept by hitting Enter.
+
+### Non-interactive (flags)
+
+```bash
+npm run gen -- \
+  --slug geico-care \
+  --base-url https://agent.prod.example.com \
+  --endpoint /v1/assistant/chat \
+  --app 'Customer-care agent for auto insurance. Tools: policy lookup, claim status, quote generation, payment processing. Roles: customer, CSR, supervisor, claims-adjuster. PII: SSN, DOB, driver license, VIN, policy number, claim number, card info. Must comply with GLBA and state insurance regulations.' \
+  --test 'tool misuse, auth bypass, PII leaks, prompt injection, regulatory violations' \
+  --auth 'Bearer token in env ENTERPRISE_BEARER'
+```
+
+Output:
+
+```
+✓ wrote /.../configs/config.geico-care.json
+
+enabledCategories (18): pii_disclosure, insurance_compliance, regulatory_violation, tool_misuse, auth_bypass, rbac_bypass, ...
+enabledStrategies (18): life_or_death_emergency, authority_mimicry_security_manager, dan_style_persona, base64_context_hint, ...
+
+next: npx tsx red-team.ts configs/config.geico-care.json
+```
+
+Review the generated file, then run the red-team:
+
+```bash
+export ENTERPRISE_BEARER=...        # if your authHint pointed there
+npx tsx red-team.ts configs/config.geico-care.json
+```
+
+### What the generator won't do
+
+- It won't invent tool names, role names, or fields not in your description — vague input produces a generic config. Be specific about tools, roles, and sensitive data types.
+- It won't write auth credentials into the file. Auth hints like `"Bearer token in env ENTERPRISE_BEARER"` become `{"methods":["bearer"],"bearerToken":"${ENTERPRISE_BEARER}"}` and the runner substitutes from the environment.
+- It's a single LLM call, not an agentic loop. For repo-aware / probe-aware config authoring, see [`hermes-redteam/README.md`](hermes-redteam/README.md) — an optional Hermes Agent integration that adds MCP tools for `read_repo`, `probe_target`, `read_prior_reports` and persistent memory across runs.
+
+### Hermes Agent integration (optional)
+
+If you want an agentic workflow — Hermes reads your target's source, probes the live endpoint, ingests prior reports, and iterates across runs with memory — see [`hermes-redteam/README.md`](hermes-redteam/README.md). It installs Hermes Agent, registers a local MCP server exposing the reconnaissance tools (`read_repo`, `probe_target`, `write_config`, …), and ships a `target-analyst` skill that drives the workflow. Commands: `npm run hermes:setup`, `npm run hermes:run`.
+
+The Hermes path is more capable but heavier. The `npm run gen` path above is the fast default and is what most users should start with.
 
 ## Running
 
