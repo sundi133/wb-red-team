@@ -38,9 +38,17 @@
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "dashboard": "tsx dashboard/server.ts 4200"
+    "dashboard": "tsx dashboard/server.ts 4200",
+    "hermes:setup": "bash hermes-redteam/setup.sh",
+    "hermes:run": "bash hermes-redteam/run-analyst.sh",
+    "hermes:quick": "bash hermes-redteam/quick-config.sh",
+    "hermes:tools": "tsx hermes-redteam/tool-server.ts",
+    "hermes:mcp": "tsx hermes-redteam/mcp-server.ts",
+    "gen": "bash hermes-redteam/gen.sh",
+    "gen:config": "tsx hermes-redteam/gen-config.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "csv-parse": "^6.2.1",
     "glob": "^11.1.0",
     "jose": "^5.0.0",
