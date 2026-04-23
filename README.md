@@ -1,6 +1,6 @@
 # Red-Team AI
 
-White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 139 categories and adapts over multiple rounds to find vulnerabilities.
+White-box red-teaming framework for agentic AI apps. It analyzes your app's source code to discover tools, roles, and guardrails, then generates LLM-powered attacks across 141 categories and adapts over multiple rounds to find vulnerabilities.
 
 ## Attack Categories
 

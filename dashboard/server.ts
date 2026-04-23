@@ -139,20 +139,41 @@ async function startJob(job: Job): Promise<void> {
       undefined,
       ac.signal,
     );
-    job.status = "done";
     job.report = result.report;
     job.reportFile = result.jsonPath;
     job.finishedAt = new Date().toISOString();
     metaCache.clear();
-    // Store report in DB if enterprise mode is active (skip file write — DB is primary)
+    // Store report in DB BEFORE setting status to done
+    // (client polls for "done" and immediately fetches report list)
     if (isDbConfigured() && job.tenantId) {
       try {
-        await storeReport(result.report, job.tenantId, job.id, {
+        const storeResult = await storeReport(result.report, job.tenantId, job.id, {
           skipFile: true,
         });
+        console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
       } catch (dbErr) {
         console.error("Failed to store report in DB:", dbErr);
+        // Fallback: write to file so report isn't lost
+        try {
+          const { writeReport } = await import("../lib/report-generator.js");
+          const paths = writeReport(result.report);
+          job.reportFile = paths.jsonPath;
+          console.log(`  Fallback: report written to file ${paths.jsonPath}`);
+        } catch {}
       }
+    } else {
+      // No DB — write to file
+      try {
+        const { writeReport } = await import("../lib/report-generator.js");
+        const paths = writeReport(result.report);
+        job.reportFile = paths.jsonPath;
+      } catch {}
+    }
+    job.status = "done";
+    // Update run status in DB
+    if (isDbConfigured() && job.tenantId) {
+      query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
+        ["done", job.finishedAt, job.id]).catch(() => {});
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -164,6 +185,11 @@ async function startJob(job: Job): Promise<void> {
       job.error = msg;
     }
     job.finishedAt = new Date().toISOString();
+    // Update run status in DB on error/cancel
+    if (isDbConfigured() && job.tenantId) {
+      query("UPDATE runs SET status=$1, finished_at=$2, error=$3 WHERE id=$4",
+        [job.status, job.finishedAt, job.error || null, job.id]).catch(() => {});
+    }
   } finally {
     job.abortController = undefined;
     activeRuns--;
@@ -197,6 +223,16 @@ function enqueueJob(
     userId: ctx?.userId,
   };
   jobs.set(job.id, job);
+
+  // Persist run to DB (for FK constraint on reports table)
+  if (isDbConfigured() && job.tenantId) {
+    query(
+      `INSERT INTO runs (id, tenant_id, started_by, status, config, target_url, started_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [job.id, job.tenantId, job.userId || null, "queued",
+       JSON.stringify(config), config.target.baseUrl, job.startedAt],
+    ).catch((err: unknown) => console.error("Failed to persist run:", err));
+  }
 
   if (activeRuns < MAX_CONCURRENT) {
     startJob(job);
@@ -623,9 +659,21 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         return;
       }
 
-      const reportData = JSON.parse(
-        readFileSync(join(REPORT_DIR, reportFile), "utf-8"),
-      );
+      // Load report from DB or file
+      let reportData: Record<string, unknown>;
+      if (isDbConfigured() && ctx) {
+        const dbReport = await getReportByFilename(reportFile, ctx.tenantId);
+        if (!dbReport) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Report not found" }));
+          return;
+        }
+        reportData = dbReport.report as unknown as Record<string, unknown>;
+      } else {
+        reportData = JSON.parse(
+          readFileSync(join(REPORT_DIR, reportFile), "utf-8"),
+        );
+      }
 
       // Stream results as newline-delimited JSON
       res.writeHead(200, {
@@ -879,6 +927,23 @@ Be specific and factual. Reference real incidents and realistic financial figure
     try {
       const { ALL_ATTACK_CATEGORIES } = await import("../lib/types.js");
       const { ALL_STRATEGIES } = await import("../lib/attack-strategies.js");
+      const frameworks = loadComplianceFrameworks();
+
+      // Build reverse mapping: category → which compliance controls it covers
+      const categoryCompliance: Record<string, { framework: string; code: string; title: string }[]> = {};
+      for (const fw of frameworks) {
+        for (const item of fw.items) {
+          for (const cat of item.categories) {
+            if (!categoryCompliance[cat]) categoryCompliance[cat] = [];
+            categoryCompliance[cat].push({
+              framework: fw.name,
+              code: item.code,
+              title: item.title,
+            });
+          }
+        }
+      }
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         categories: ALL_ATTACK_CATEGORIES,
@@ -887,6 +952,8 @@ Be specific and factual. Reference real incidents and realistic financial figure
           name: s.name,
           level: s.levelName,
         })),
+        categoryCompliance,
+        frameworks: frameworks.map(fw => ({ id: fw.id, name: fw.name, controlCount: fw.items.length })),
       }));
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });

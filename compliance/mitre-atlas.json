@@ -1,0 +1,155 @@
+{
+  "id": "mitre-atlas",
+  "name": "MITRE ATLAS (Adversarial Threat Landscape for AI Systems)",
+  "items": [
+    {
+      "code": "AML.T0051",
+      "title": "LLM Prompt Injection",
+      "description": "Direct and indirect prompt injection to override system instructions, extract data, or hijack agent behavior. Maps to OWASP LLM01.",
+      "categories": [
+        "prompt_injection", "indirect_prompt_injection", "content_filter_bypass",
+        "instruction_hierarchy_violation", "special_token_injection", "cross_lingual_attack",
+        "context_window_attack", "agent_reflection_exploit", "multimodal_ghost_injection",
+        "computer_use_injection", "streaming_voice_injection", "cross_modal_conflict"
+      ]
+    },
+    {
+      "code": "AML.T0054",
+      "title": "LLM Jailbreak",
+      "description": "Bypassing safety guardrails, content filters, and alignment controls through adversarial prompting techniques.",
+      "categories": [
+        "content_filter_bypass", "output_evasion", "guardrail_timing",
+        "alignment_faking", "over_refusal", "conversation_manipulation",
+        "multi_turn_escalation", "format_confusion_attack", "encoding_serialization_attack",
+        "universal_adversarial_trigger"
+      ]
+    },
+    {
+      "code": "AML.T0043",
+      "title": "Craft Adversarial Data",
+      "description": "Adversarial prompt crafting, payload obfuscation, and staging attacks for later execution.",
+      "categories": [
+        "prompt_injection", "structured_output_injection", "markdown_link_injection",
+        "special_token_injection", "encoding_serialization_attack", "format_confusion_attack",
+        "multi_hop_reasoning_exploit", "slow_burn_exfiltration"
+      ]
+    },
+    {
+      "code": "AML.T0020",
+      "title": "Poison Training Data",
+      "description": "Poisoning training data, fine-tuning datasets, or RAG corpus to alter model behavior or insert backdoors.",
+      "categories": [
+        "data_poisoning", "rag_poisoning", "rag_corpus_poisoning", "memory_poisoning",
+        "fine_tuning_data_injection", "backdoor_trigger", "vector_store_manipulation",
+        "chunk_boundary_injection", "graph_consensus_poisoning", "state_persistence_attack"
+      ]
+    },
+    {
+      "code": "AML.T0018",
+      "title": "Backdoor ML Model",
+      "description": "Trojaned model weights, hidden trigger behaviors, and conditional logic bombs in AI systems.",
+      "categories": [
+        "backdoor_trigger", "logic_bomb_conditional", "alignment_faking",
+        "data_poisoning", "fine_tuning_data_injection"
+      ]
+    },
+    {
+      "code": "AML.T0024",
+      "title": "Exfiltration via AI Inference API",
+      "description": "Extracting training data, PII, credentials, or system prompts through inference API queries.",
+      "categories": [
+        "data_exfiltration", "training_data_extraction", "sensitive_data", "pii_disclosure",
+        "model_extraction", "model_inversion", "membership_inference", "embedding_inversion",
+        "side_channel_inference", "inference_attack", "re_identification", "linkage_attack"
+      ]
+    },
+    {
+      "code": "AML.T0040",
+      "title": "ML Model Inference API Access",
+      "description": "Query access to AI systems for reconnaissance, capability probing, and staging further attacks.",
+      "categories": [
+        "capability_elicitation", "model_fingerprinting", "debug_access",
+        "api_abuse", "rate_limit", "model_extraction"
+      ]
+    },
+    {
+      "code": "AML.T0057",
+      "title": "LLM Data Leakage",
+      "description": "System prompt disclosure, context window leakage, and unintended information exposure through AI responses.",
+      "categories": [
+        "sensitive_data", "training_data_extraction", "prompt_template_injection",
+        "steganographic_exfiltration", "out_of_band_exfiltration", "slow_burn_exfiltration",
+        "differential_privacy_violation", "contextual_integrity_violation", "retrieval_tenant_bleed"
+      ]
+    },
+    {
+      "code": "AML.T0086",
+      "title": "Exfiltration via AI Agent Tool Invocation",
+      "description": "Using agent tool calls to exfiltrate data, access unauthorized resources, or perform side-channel attacks.",
+      "categories": [
+        "tool_misuse", "tool_chain_hijack", "tool_output_manipulation",
+        "tool_permission_escalation", "agentic_scope_creep", "out_of_band_exfiltration",
+        "ssrf", "path_traversal", "shell_injection", "sql_injection"
+      ]
+    },
+    {
+      "code": "AML.T0110",
+      "title": "AI Agent Tool Poisoning",
+      "description": "Malicious or poisoned MCP tools, plugins, and extensions that compromise agent behavior.",
+      "categories": [
+        "supply_chain", "mcp_server_compromise", "plugin_manifest_spoofing",
+        "sdk_dependency_attack", "mcp_tool_namespace_collision",
+        "inter_agent_protocol_abuse", "tool_output_manipulation"
+      ]
+    },
+    {
+      "code": "AML.T0053",
+      "title": "LLM Plugin Compromise",
+      "description": "Exploiting plugin/tool trust boundaries, parameter injection, and unauthorized tool chaining.",
+      "categories": [
+        "tool_misuse", "tool_chain_hijack", "agentic_workflow_bypass",
+        "plugin_manifest_spoofing", "mcp_tool_namespace_collision",
+        "generated_code_rce", "unexpected_code_exec"
+      ]
+    },
+    {
+      "code": "AML.T0048",
+      "title": "Supply Chain Compromise",
+      "description": "Compromised third-party models, plugins, dependencies, or MCP servers in the AI supply chain. Maps to OWASP LLM05.",
+      "categories": [
+        "supply_chain", "mcp_server_compromise", "plugin_manifest_spoofing",
+        "sdk_dependency_attack", "fine_tuning_data_injection", "prompt_template_injection"
+      ]
+    },
+    {
+      "code": "AML.T0055",
+      "title": "Unsecured Credentials",
+      "description": "Exposed API keys, tokens, secrets, and credentials accessible through AI agent responses or tool outputs. Maps to ATT&CK T1552.",
+      "categories": [
+        "sensitive_data", "data_exfiltration", "debug_access",
+        "auth_bypass", "session_hijacking", "cross_tenant_access",
+        "sandbox_escape"
+      ]
+    },
+    {
+      "code": "AML.T0059",
+      "title": "Erode ML Model Integrity",
+      "description": "Slow-drift adversarial inputs that gradually degrade model safety, accuracy, or alignment over time.",
+      "categories": [
+        "hallucination_inducement", "sycophancy_exploitation", "overreliance",
+        "conversation_manipulation", "multi_turn_escalation", "emotional_manipulation",
+        "psychological_manipulation", "llm_judge_manipulation", "reward_hacking"
+      ]
+    },
+    {
+      "code": "AML.T0029",
+      "title": "Denial of ML Service",
+      "description": "Denial of wallet, compute exhaustion, and resource abuse attacks against AI inference infrastructure.",
+      "categories": [
+        "model_dos", "token_flooding_dos", "infinite_loop_agent",
+        "quota_exhaustion_attack", "rate_limit", "cascading_failure",
+        "divergent_repetition", "context_window_attack"
+      ]
+    }
+  ]
+}
