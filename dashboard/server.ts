@@ -134,58 +134,62 @@ async function startJob(job: Job): Promise<void> {
     const result = await runRedTeam(
       job.config,
       (p) => {
-        job.progress.push(p);
+        // Don't push progress if already cancelled
+        if (job.status !== "cancelled") job.progress.push(p);
       },
       undefined,
       ac.signal,
     );
-    job.report = result.report;
-    job.reportFile = result.jsonPath;
-    job.finishedAt = new Date().toISOString();
-    metaCache.clear();
-    // Store report in DB BEFORE setting status to done
-    // (client polls for "done" and immediately fetches report list)
-    if (isDbConfigured() && job.tenantId) {
-      try {
-        const storeResult = await storeReport(result.report, job.tenantId, job.id, {
-          skipFile: true,
-        });
-        console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
-      } catch (dbErr) {
-        console.error("Failed to store report in DB:", dbErr);
-        // Fallback: write to file so report isn't lost
+    // Don't overwrite if already cancelled by user
+    if (job.status === "cancelled") {
+      // Run completed despite cancel — still save partial results
+      console.log("  Run completed after cancel was requested");
+    } else {
+      job.report = result.report;
+      job.reportFile = result.jsonPath;
+      job.finishedAt = new Date().toISOString();
+      metaCache.clear();
+      if (isDbConfigured() && job.tenantId) {
+        try {
+          const storeResult = await storeReport(result.report, job.tenantId, job.id, {
+            skipFile: true,
+          });
+          console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
+        } catch (dbErr) {
+          console.error("Failed to store report in DB:", dbErr);
+          try {
+            const { writeReport } = await import("../lib/report-generator.js");
+            const paths = writeReport(result.report);
+            job.reportFile = paths.jsonPath;
+            console.log(`  Fallback: report written to file ${paths.jsonPath}`);
+          } catch {}
+        }
+      } else {
         try {
           const { writeReport } = await import("../lib/report-generator.js");
           const paths = writeReport(result.report);
           job.reportFile = paths.jsonPath;
-          console.log(`  Fallback: report written to file ${paths.jsonPath}`);
         } catch {}
       }
-    } else {
-      // No DB — write to file
-      try {
-        const { writeReport } = await import("../lib/report-generator.js");
-        const paths = writeReport(result.report);
-        job.reportFile = paths.jsonPath;
-      } catch {}
-    }
-    job.status = "done";
-    // Update run status in DB
-    if (isDbConfigured() && job.tenantId) {
-      query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
-        ["done", job.finishedAt, job.id]).catch(() => {});
+      job.status = "done";
+      if (isDbConfigured() && job.tenantId) {
+        query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
+          ["done", job.finishedAt, job.id]).catch(() => {});
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg === "Run cancelled") {
-      job.status = "cancelled";
-      job.error = "Cancelled by user";
-    } else {
-      job.status = "error";
-      job.error = msg;
+    // Don't overwrite if already cancelled by user
+    if (job.status !== "cancelled") {
+      if (msg === "Run cancelled") {
+        job.status = "cancelled";
+        job.error = "Cancelled by user";
+      } else {
+        job.status = "error";
+        job.error = msg;
+      }
     }
-    job.finishedAt = new Date().toISOString();
-    // Update run status in DB on error/cancel
+    if (!job.finishedAt) job.finishedAt = new Date().toISOString();
     if (isDbConfigured() && job.tenantId) {
       query("UPDATE runs SET status=$1, finished_at=$2, error=$3 WHERE id=$4",
         [job.status, job.finishedAt, job.error || null, job.id]).catch(() => {});
