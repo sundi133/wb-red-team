@@ -2936,6 +2936,10 @@
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
           '<div style="font-size:14px;font-weight:700;">Business Impact & Real-World Incidents</div>' +
           '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze Risk' : 'Analyze Risk') + '</button>' +
+          (riskLlmResults && riskLlmResults.length > 0 ?
+            '<button onclick="downloadRiskCsv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:8px;">Export CSV</button>' +
+            '<button onclick="downloadRiskJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:4px;">Export JSON</button>'
+          : '') +
           '</div>' +
           '<div style="font-size:11px;color:var(--text2);margin-bottom:16px;">AI-powered analysis of each vulnerability — business risk, financial exposure, compliance violations, and related real-world breaches.</div>' +
 
