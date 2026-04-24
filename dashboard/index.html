@@ -2429,7 +2429,7 @@
 
         // Results table
         if (liveResults.length > 0) {
-          html += buildLiveResultsHtml(liveResults);
+          html += '<div id="liveResultsContainer">' + buildLiveResultsHtml(liveResults) + '</div>';
         }
 
         // Progress log
@@ -3996,9 +3996,16 @@
         const s = document.getElementById("liveFilterSeverity");
         if (v) liveFilterVerdict = v.value;
         if (s) liveFilterSeverity = s.value;
-        // Re-render — the cached data triggers a fresh build
+        // Re-render the results area only (not the whole panel) to preserve filter state
         const cached = selectedRunId ? runDataCache.get(selectedRunId) : null;
-        if (cached) renderRunMainPanel(selectedRunId, cached);
+        if (cached) {
+          const liveResults = (cached.progress || []).filter(p => p.result).map(p => p.result);
+          // Find the results container in either Runs tab or Reports tab
+          const resultsContainer = document.getElementById("liveResultsContainer");
+          if (resultsContainer) {
+            resultsContainer.innerHTML = buildLiveResultsHtml(liveResults);
+          }
+        }
       }
 
       function buildLiveResultsHtml(liveResults) {
@@ -5816,7 +5823,7 @@
             ${errorHtml}
             ${summaryHtml}
             ${categoryHtml}
-            ${resultsHtml}
+            <div id="liveResultsContainer">${resultsHtml}</div>
             <details ${liveResults.length === 0 ? 'open' : ''} style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;">
               <summary style="font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
                 <span>Live Progress Log</span>
