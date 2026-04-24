@@ -179,17 +179,64 @@ async function startJob(job: Job): Promise<void> {
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (!job.finishedAt) job.finishedAt = new Date().toISOString();
+
     // Don't overwrite if already cancelled by user
     if (job.status !== "cancelled") {
       if (msg === "Run cancelled") {
         job.status = "cancelled";
         job.error = "Cancelled by user";
       } else {
-        job.status = "error";
-        job.error = msg;
+        // Check if we have partial results — save them as a report
+        const resultEvents = (job.progress || []).filter(p => p.result);
+        if (resultEvents.length > 0) {
+          job.status = "done";
+          job.error = "Completed with error: " + msg.slice(0, 200);
+          console.log(`  Run had error but saving ${resultEvents.length} partial results as report`);
+          try {
+            const { generateReport, writeReport } = await import("../lib/report-generator.js");
+            // Build rounds from progress results
+            const attackResults = resultEvents.map(p => ({
+              attack: { id: "partial", category: p.result!.category, name: p.result!.name, description: p.result!.description || "", severity: p.result!.severity, authMethod: p.result!.authMethod || "none", role: p.result!.role || "viewer", payload: { message: p.result!.payload || "" } },
+              verdict: p.result!.verdict as "PASS" | "FAIL" | "PARTIAL" | "ERROR",
+              statusCode: p.result!.statusCode,
+              responseBody: p.result!.responsePreview || "",
+              responseTimeMs: p.result!.responseTimeMs,
+              findings: p.result!.findings || [],
+              llmReasoning: p.result!.llmReasoning,
+            }));
+            const report = generateReport(
+              job.config.target.baseUrl + job.config.target.agentEndpoint,
+              [{ round: 1, results: attackResults }],
+            );
+            job.report = report;
+            if (isDbConfigured() && job.tenantId) {
+              try {
+                const sr = await storeReport(report, job.tenantId, job.id, { skipFile: true });
+                console.log(`  Partial report stored: ${sr.reportId}`);
+              } catch (dbErr) {
+                try {
+                  const paths = writeReport(report);
+                  job.reportFile = paths.jsonPath;
+                } catch {}
+              }
+            } else {
+              try {
+                const paths = writeReport(report);
+                job.reportFile = paths.jsonPath;
+              } catch {}
+            }
+          } catch (reportErr) {
+            console.error("  Failed to save partial report:", reportErr);
+            job.status = "error";
+            job.error = msg;
+          }
+        } else {
+          job.status = "error";
+          job.error = msg;
+        }
       }
     }
-    if (!job.finishedAt) job.finishedAt = new Date().toISOString();
     if (isDbConfigured() && job.tenantId) {
       query("UPDATE runs SET status=$1, finished_at=$2, error=$3 WHERE id=$4",
         [job.status, job.finishedAt, job.error || null, job.id]).catch(() => {});
