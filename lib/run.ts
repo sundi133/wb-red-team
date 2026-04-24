@@ -366,6 +366,11 @@ export interface RunProgress {
     responseTimeMs: number;
     strategyName?: string;
     llmReasoning?: string;
+    llmVerdict?: string;
+    judgeConfidence?: number;
+    llmEvidenceFor?: string;
+    llmEvidenceAgainst?: string;
+    idealResponse?: { response: string; remediationHints: string[] };
     payload?: string;
     responsePreview?: string;
     authMethod?: string;
