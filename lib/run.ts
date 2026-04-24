@@ -871,6 +871,25 @@ export async function runRedTeam(
     staticResult,
     analysis.affectedFiles,
     discoveryIntel,
+    {
+      type: config.target.type,
+      baseUrl: config.target.baseUrl,
+      agentEndpoint: config.target.agentEndpoint,
+      applicationDetails: config.target.applicationDetails,
+      mcp: config.target.mcp
+        ? {
+            transport: config.target.mcp.transport,
+            url: config.target.mcp.url,
+          }
+        : undefined,
+      websocket: config.target.websocket
+        ? { path: config.target.websocket.path }
+        : undefined,
+      infra: config.target.infra,
+      llmModel: config.target.infra?.aiModel?.name ?? config.attackConfig.llmModel,
+      llmProvider:
+        config.target.infra?.aiModel?.provider ?? config.attackConfig.llmProvider,
+    },
   );
   // Skip file write when DB is configured (server stores to DB instead)
   let jsonPath = "";
