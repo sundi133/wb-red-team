@@ -592,7 +592,7 @@ export interface Attack {
   steps?: AttackStep[];
   /** If this attack was refined from a partial result, reference the original. */
   refinedFrom?: string;
-  /** Delivery strategy used to craft the payload (0–99). */
+  /** Delivery strategy used to craft the payload (id from `ALL_STRATEGIES` in attack-strategies). */
   strategyId?: number;
   /** Human-readable strategy name. */
   strategyName?: string;

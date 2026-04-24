@@ -194,7 +194,19 @@
       "self_evaluation_trap",
       "markdown_table_extraction",
       "xml_structured_data_request",
-      "bullet_point_decomposition"
+      "bullet_point_decomposition",
+      "deceptive_delight_attack",
+      "session_codeword_protocol",
+      "session_command_token",
+      "sandwich_context_attack",
+      "informal_colloquial_register",
+      "nato_phonetic_obfuscation",
+      "scrambled_word_order_evasion",
+      "mitm_relay_scenario",
+      "unwitting_relay_paste_scenario",
+      "prior_model_output_injection",
+      "ingestion_pipeline_compromise_framing",
+      "adversarial_prefix_token_injection"
     ],
     "enabledCategories": [
       "auth_bypass",
