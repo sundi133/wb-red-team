@@ -248,6 +248,36 @@ describe("loadConfig", () => {
     expect(() => loadConfig(path)).toThrow("at least one auth method");
   });
 
+  it("throws when credentials is empty and apiKeys is an empty object (#33)", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        auth: {
+          methods: ["jwt"],
+          jwtSecret: "s",
+          credentials: [],
+          apiKeys: {},
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).toThrow("at least one auth method");
+  });
+
+  it("accepts empty credentials when apiKeys has at least one entry", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        auth: {
+          methods: ["api_key"],
+          jwtSecret: "s",
+          credentials: [],
+          apiKeys: { admin: "ak_admin_001" },
+        },
+      }),
+    );
+    expect(() => loadConfig(path)).not.toThrow();
+  });
+
   it("throws on non-existent config file", () => {
     expect(() => loadConfig("/nonexistent/path/config.json")).toThrow();
   });
