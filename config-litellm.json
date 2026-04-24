@@ -52,7 +52,7 @@
     "concurrency": 2,
     "delayBetweenRequestsMs": 500,
     "llmProvider": "together",
-    "llmModel": "moonshotai/Kimi-K2.5",
+    "llmModel": "deepseek-ai/DeepSeek-V3",
     "judgeProvider": "anthropic",
     "judgeModel": "claude-sonnet-4-20250514",
     "enableLlmGeneration": true,
