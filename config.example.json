@@ -94,6 +94,8 @@
     "maxAnalysisBatches": 3,
     "customAttacksOnly": false,
     "appTailoredCustomPromptCount": 0,
+    "targetTimeoutMs": 30000,
+    "llmTimeoutMs": 60000,
     "enabledStrategies": [
       "life_or_death_emergency",
       "critical_deadline_pressure",

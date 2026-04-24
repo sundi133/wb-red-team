@@ -523,6 +523,10 @@ export interface Config {
     appTailoredCustomPromptCount?: number;
     /** Run an automated discovery round before attack rounds to probe the target and enrich sensitivePatterns. Default: false. */
     enableDiscovery?: boolean;
+    /** Per-request timeout for target agent and auth endpoint fetches, in ms. Default: 30000. */
+    targetTimeoutMs?: number;
+    /** Per-request timeout for LLM provider calls, in ms. Default: 60000. */
+    llmTimeoutMs?: number;
   };
 }
 
