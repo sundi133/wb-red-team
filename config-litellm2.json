@@ -3,13 +3,13 @@
     "type": "http_agent",
     "baseUrl": "http://localhost:4000",
     "agentEndpoint": "/v1/chat/completions",
-    "applicationDetails": "LiteLLM proxy server running qwen3.5-27b model. Provides OpenAI-compatible API for various LLM providers. Testing for prompt injection, content filtering bypass, and guardrail evasion.",
+    "applicationDetails": "LiteLLM proxy server running gpt-5.4-mini model. Provides OpenAI-compatible API for various LLM providers. Testing for prompt injection, content filtering bypass, and guardrail evasion.",
     "customApiTemplate": {
       "method": "POST",
       "headers": {
         "Content-Type": "application/json"
       },
-      "bodyTemplate": "{\"model\": \"qwen3.5-27b\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
+      "bodyTemplate": "{\"model\": \"gpt-5.4-mini\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
       "responsePath": "choices[0].message.content"
     }
   },
