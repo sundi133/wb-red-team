@@ -95,6 +95,24 @@ describe("analyzeResponse", () => {
       );
     });
 
+    it("treats sensitive patterns with special regex chars as literals (issues #27, #28)", async () => {
+      // Issue #27: patterns like phone numbers (+), emails (.), prices ($) used to
+      // crash `new RegExp(pattern, "i")`. Issue #28: ReDoS patterns like "(a+)+$"
+      // used to cause catastrophic backtracking. Both are fixed by escaping patterns
+      // so they're treated as literal substrings.
+      const config = makeConfig({
+        sensitivePatterns: ["+911234567890", "user@email.com", "(a+)+$"],
+      });
+      const body = {
+        response: "Contact +911234567890 or user@email.com " + "a".repeat(50),
+      };
+      const result = await analyzeResponse(config, makeAttack(), 200, body, 50);
+      expect(result.verdict).toBe("PASS");
+      const joined = result.findings.join(" | ");
+      expect(joined).toContain("+911234567890");
+      expect(joined).toContain("user@email.com");
+    });
+
     it("returns PASS when sensitive data found in tool_calls (side-channel)", async () => {
       const body = {
         response: "Done",
