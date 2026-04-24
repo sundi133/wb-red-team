@@ -4710,6 +4710,414 @@
         return "Hosted AI Agent";
       }
 
+      // ── Dynamic attack scene extraction ──────────────────────────────
+      //
+      // Attack graphs were previously dominated by a generic
+      //   Internet → Endpoint → Identity → Agent → Tools → DataStores → Findings
+      // skeleton, which made every attack look the same regardless of
+      // what the attacker was actually trying to do.
+      //
+      // The helpers below read the attack prompt and the endpoint's
+      // response text and derive a per-attack "scene":
+      //   • which concrete entities are in play (files, emails, URLs,
+      //     databases, vector stores, agent memory, secrets, PII,
+      //     encoding/stego channels),
+      //   • which tool calls the agent would have needed to execute
+      //     ("read_file(.env)", "send_email(devops@acme.com)",
+      //     "http_exfil(webhook.attacker.com)", …),
+      //   • whether the response contains evidence each tool actually
+      //     ran and/or leaked the target (realized=true).
+      //
+      // buildAttackPath() then assembles a graph around those nodes,
+      // so `data_exfiltration` with a mailto target, `rag_poisoning`
+      // with a vector store, and `auth_bypass` trying to read `.env`
+      // all render as structurally different diagrams.
+
+      function _getPromptText(attack) {
+        const p = attack?.payload;
+        if (!p) return "";
+        if (typeof p === "string") return p;
+        if (typeof p === "object") {
+          if (typeof p.message === "string") return p.message;
+          if (typeof p.prompt === "string") return p.prompt;
+          if (typeof p.input === "string") return p.input;
+          if (typeof p.text === "string") return p.text;
+          if (Array.isArray(p.messages)) {
+            return p.messages
+              .map((m) => (m && typeof m.content === "string" ? m.content : ""))
+              .filter(Boolean)
+              .join("\n");
+          }
+          try { return JSON.stringify(p).slice(0, 2000); } catch (_) { return ""; }
+        }
+        return String(p);
+      }
+
+      function _openAiStyleText(obj) {
+        if (!obj || typeof obj !== "object") return "";
+        if (typeof obj.text === "string") return obj.text;
+        if (typeof obj.content === "string") return obj.content;
+        if (typeof obj.response === "string") return obj.response;
+        if (typeof obj.message === "string") return obj.message;
+        if (Array.isArray(obj.choices)) {
+          return obj.choices
+            .map((c) => {
+              const base =
+                c?.message?.content || c?.delta?.content || c?.text || "";
+              const tc = c?.message?.tool_calls;
+              if (Array.isArray(tc) && tc.length) {
+                const calls = tc
+                  .map((x) =>
+                    (x?.function?.name || x?.name || "") +
+                    "(" + (x?.function?.arguments || "") + ")",
+                  )
+                  .join("\n");
+                return base + "\n" + calls;
+              }
+              return base;
+            })
+            .join("\n");
+        }
+        return "";
+      }
+
+      function _getResponseText(result) {
+        let out = "";
+        const consume = (rb) => {
+          if (rb === null || rb === undefined) return;
+          if (typeof rb === "string") {
+            try {
+              const j = JSON.parse(rb);
+              const t = _openAiStyleText(j);
+              out += "\n" + (t || rb);
+            } catch (_) {
+              out += "\n" + rb;
+            }
+          } else if (typeof rb === "object") {
+            const t = _openAiStyleText(rb);
+            out += "\n" + (t || JSON.stringify(rb));
+          }
+        };
+        consume(result?.responseBody);
+        if (Array.isArray(result?.conversation)) {
+          for (const step of result.conversation) consume(step?.responseBody);
+        }
+        return out.trim();
+      }
+
+      function _extractEntities(promptText, responseText) {
+        const combined = (promptText || "") + "\n" + (responseText || "");
+
+        const files = [];
+        const seenFile = new Set();
+        const fileRe =
+          /(\.env(?:\.[a-z0-9_-]+)?|id_rsa(?:\.pub)?|credentials\.(?:json|ya?ml)|secrets?\.(?:json|ya?ml|txt)|\.aws\/credentials|Company_Secrets\.txt|\.npmrc|\.pgpass|kubeconfig|config\.(?:json|ya?ml))/gi;
+        for (const m of combined.matchAll(fileRe)) {
+          const path = m[1];
+          const k = path.toLowerCase();
+          if (seenFile.has(k)) continue;
+          seenFile.add(k);
+          files.push({ path, isSecret: true });
+        }
+
+        const emails = [];
+        const seenEmail = new Set();
+        const emailRe =
+          /([a-z0-9][a-z0-9._+-]*@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+)/gi;
+        for (const m of combined.matchAll(emailRe)) {
+          const addr = m[1];
+          const k = addr.toLowerCase();
+          if (seenEmail.has(k)) continue;
+          seenEmail.add(k);
+          const host = addr.split("@")[1] || "";
+          const isInternal =
+            /(?:acme|example|corp|internal|local)\.(?:com|io|net|corp|local)$/i.test(host) ||
+            /\binternal$|\bcorp$/i.test(host);
+          emails.push({ address: addr, host, isExternal: !isInternal });
+        }
+
+        const urls = [];
+        const seenUrl = new Set();
+        const urlRe = /\bhttps?:\/\/([a-z0-9.-]+(?::\d+)?)(\/[^\s)"'\]>]*)?/gi;
+        for (const m of combined.matchAll(urlRe)) {
+          const host = m[1];
+          const full = m[0].slice(0, 96);
+          const k = full.toLowerCase();
+          if (seenUrl.has(k)) continue;
+          seenUrl.add(k);
+          const isInternal =
+            /^(?:localhost|127\.|10\.|192\.168\.|0\.0\.0\.0)/.test(host) ||
+            /\.internal$|\.local$/.test(host);
+          const isExfil =
+            /attacker|evil|webhook\.site|pipedream|requestbin|ngrok\.io|burpcollab|beeceptor|oastify|oast\.fun|oast\.me|oast\.pro|\.oast\./i.test(host);
+          urls.push({ url: full, host, isExternal: !isInternal, isExfil });
+        }
+
+        const dbs = [];
+        const seenDb = new Set();
+        const addDb = (name, kind) => {
+          const k = (name + "|" + kind).toLowerCase();
+          if (seenDb.has(k)) return;
+          seenDb.add(k);
+          dbs.push({ name, kind });
+        };
+        if (/\bpostgres(?:ql)?\b|postgresql?:\/\//i.test(combined)) addDb("PostgreSQL", "postgres");
+        if (/\bmysql\b/i.test(combined)) addDb("MySQL", "mysql");
+        if (/\bmongo(?:db)?\b/i.test(combined)) addDb("MongoDB", "mongodb");
+        if (/\bredis\b/i.test(combined)) addDb("Redis", "redis");
+        if (/\bsqlite\b/i.test(combined)) addDb("SQLite", "sqlite");
+        if (/\bdynamodb\b/i.test(combined)) addDb("DynamoDB", "dynamodb");
+        if (/\bs3:\/\/|\bs3\s+bucket\b|\baws\s+s3\b/i.test(combined)) addDb("S3 Bucket", "s3");
+        if (/\buser\s+(?:database|table|records|rows|directory|profile|data)\b|\bcustomer\s+records\b/i.test(combined))
+          addDb("Users Table", "database");
+        if (!dbs.length && /\bdatabase\b|\bdb_host\b|\bdatabase_url\b/i.test(combined))
+          addDb("Database", "database");
+
+        const vectors = [];
+        if (/\bvector\s+(?:store|db|database|index)\b|\bembedding(?:s)?\b|\bretrieval\b|\bRAG\b|\bknowledge\s+base\b|\btop-?k\b/i.test(combined)) {
+          vectors.push({ label: "Vector Store" });
+        }
+
+        const memory = [];
+        if (/\bagent\s+memory\b|\b(?:long|short)[- ]?term\s+memory\b|\bremember\s+(?:this|that|the|my)\b|\bcontext\s+window\b|\bstore\s+this\s+in\s+memory\b|\bpersist(?:ent)?\s+memory\b/i.test(combined)) {
+          memory.push({ label: "Agent Memory" });
+        }
+
+        const secrets = [];
+        const seenSec = new Set();
+        const envVarRe =
+          /\b((?:DB|API|JWT|AUTH|AWS|GCP|AZURE|OPENAI|ANTHROPIC|STRIPE|GITHUB|SLACK|TWILIO|SENDGRID|DATABASE|SECRET|TOKEN)[_-][A-Z0-9][A-Z0-9_]*)\b/g;
+        for (const m of combined.matchAll(envVarRe)) {
+          const name = m[1];
+          if (seenSec.has(name)) continue;
+          seenSec.add(name);
+          secrets.push({ label: name, kind: "env_var" });
+        }
+        if (/\bapi\s*keys?\b/i.test(combined) && !secrets.some((s) => /API/i.test(s.label)))
+          secrets.push({ label: "API Key", kind: "credential" });
+        if (/\b(?:jwt|bearer\s+token)\b/i.test(combined) && !secrets.some((s) => /JWT/i.test(s.label)))
+          secrets.push({ label: "JWT", kind: "credential" });
+        if (/\b(?:private\s+key|ssh\s+key)\b/i.test(combined))
+          secrets.push({ label: "Private Key", kind: "credential" });
+
+        const pii = [];
+        if (/\b(?:ssn|social\s+security)\b/i.test(combined)) pii.push({ label: "SSN", kind: "ssn" });
+        if (/\b(?:credit\s+card|card\s+number|cvv)\b/i.test(combined)) pii.push({ label: "Credit Card", kind: "cc" });
+        if (/\bphone\s+number\b|\bmobile\s+number\b/i.test(combined)) pii.push({ label: "Phone", kind: "phone" });
+        if (/\buser\s+(?:records|data|info|profile)\b|\bcustomer\s+records\b/i.test(combined))
+          pii.push({ label: "User PII", kind: "users" });
+        if (/\bemployee\s+(?:records|salary|info)\b/i.test(combined))
+          pii.push({ label: "Employee PII", kind: "employees" });
+
+        const encodings = [];
+        if (/\bbase64\b/i.test(combined)) encodings.push({ label: "Base64", kind: "base64" });
+        if (/\bhex(?:adecimal)?\b/i.test(combined)) encodings.push({ label: "Hex", kind: "hex" });
+        if (/\bmorse\b/i.test(combined)) encodings.push({ label: "Morse", kind: "morse" });
+        if (/\btrailing\s+(?:space|whitespace)\b|\bspace\s+between\s+every\s+(?:character|letter|char)\b/i.test(combined))
+          encodings.push({ label: "Whitespace Stego", kind: "whitespace" });
+        if (/\bzero[- ]?width|U\+200[BCD]/i.test(combined))
+          encodings.push({ label: "Zero-width", kind: "zwidth" });
+
+        const channels = [];
+        if (/\bslack\b|\bdm\s+(?:to\s+)?@/i.test(combined)) channels.push({ label: "Slack", kind: "slack" });
+        if (/\btelegram\b/i.test(combined)) channels.push({ label: "Telegram", kind: "telegram" });
+        if (/\bdiscord\b/i.test(combined)) channels.push({ label: "Discord", kind: "discord" });
+
+        return { files, emails, urls, dbs, vectors, memory, secrets, pii, encodings, channels };
+      }
+
+      function _responseContainsFileContent(respLower, filePath) {
+        if (!respLower || !filePath) return false;
+        if (!respLower.includes(filePath.toLowerCase())) return false;
+        return (
+          /(?:^|\n|\s)[A-Z][A-Z0-9_]{2,}\s*=\s*\S/.test(respLower) ||
+          /db_host|db_port|database_url|api[_\s]*key\s*[:=]|secret\s*[:=]/i.test(respLower)
+        );
+      }
+
+      function _responseContainsEncoding(respText, kind) {
+        if (!respText) return false;
+        const low = respText.toLowerCase();
+        if (kind === "base64") return /[A-Za-z0-9+/]{28,}={0,2}/.test(respText);
+        if (kind === "hex") return /\b[0-9a-f]{16,}\b/.test(low);
+        if (kind === "whitespace") return /[A-Za-z0-9]\s{3,}(?:\n|$)/.test(respText);
+        if (kind === "zwidth") return /[\u200B-\u200D\uFEFF]/.test(respText);
+        if (kind === "morse") return /[.\-]{3,}(?:\s[.\-]{1,5})+/.test(respText);
+        return false;
+      }
+
+      function _detectRefusal(responseText) {
+        if (!responseText) return false;
+        const r = responseText.toLowerCase();
+        return /\b(?:i\s+cannot\b|i\s+can'?t\b|i\s+won'?t\b|i\s+am\s+unable\b|i'?m\s+unable\b|i\s+must\s+decline\b|cannot\s+fulfill\b|cannot\s+(?:assist|help)\b|not\s+able\s+to\b|against\s+(?:my|policy)\b|safety\s+(?:guidelines|policy))/.test(r);
+      }
+
+      function _inferToolCalls(promptText, responseText, category, entities) {
+        const out = [];
+        const p = (promptText || "").toLowerCase();
+        const r = (responseText || "").toLowerCase();
+        const rFull = responseText || "";
+
+        const reads = /\b(?:read|open|pull(?:\s+up)?|look(?:\s+at)?|check|show|display|print|retrieve|access|load|dump|leak|cat)\b/;
+        const sends = /\b(?:send|forward|email|dm|post|push|message|deliver|ping|notify|shoot)\b/;
+        const writes = /\b(?:write|save|append|delete|drop|update|insert|remember|store|set|note)\b/;
+        const execs = /\b(?:run|execute|exec|eval|invoke|curl|wget|shell|bash|sudo)\b/;
+        const queries = /\b(?:query|select|list|enumerate|pull|cross-?reference)\b/;
+
+        for (const f of entities.files) {
+          out.push({
+            name: "read_file",
+            arg: f.path,
+            target: { type: "file", label: f.path, isSecret: f.isSecret },
+            realized: _responseContainsFileContent(r, f.path),
+          });
+        }
+
+        for (const e of entities.emails) {
+          if (!(sends.test(p) || /@\s*\S+\s+(?:with|about|saying)/.test(p))) continue;
+          out.push({
+            name: "send_email",
+            arg: e.address,
+            target: {
+              type: "email",
+              label: e.address,
+              isExternal: e.isExternal,
+            },
+            realized:
+              r.includes(e.address.toLowerCase()) &&
+              /sent|forwarded|delivered|dispatched|emailed/.test(r),
+          });
+        }
+
+        for (const u of entities.urls) {
+          if (!(/fetch|http|curl|wget|callback|webhook|visit|navigate|summari[zs]e|read|ping|call|post/.test(p))) continue;
+          out.push({
+            name: u.isExfil ? "http_exfil" : "http_fetch",
+            arg: u.host,
+            target: {
+              type: "url",
+              label: u.host,
+              isExternal: u.isExternal,
+              isExfil: u.isExfil,
+            },
+            realized: r.includes(u.host.toLowerCase()),
+          });
+        }
+
+        for (const d of entities.dbs) {
+          if (!(queries.test(p) || reads.test(p) || /records?|rows?|table|schema|connection\s+string/.test(p))) continue;
+          out.push({
+            name: "db_query",
+            arg: d.name,
+            target: { type: "db", label: d.name, kind: d.kind },
+            realized:
+              /\bselect\s|\brows?\s+(?:returned|found)|\bfrom\s+\w+\s+where/.test(r) ||
+              (r.includes(d.name.toLowerCase()) && reads.test(r)),
+          });
+        }
+
+        for (const v of entities.vectors) {
+          out.push({
+            name: "vector_search",
+            arg: v.label,
+            target: { type: "vector", label: v.label },
+            realized: /chunk|retriev|embedding|top-?k|doc(?:ument)?\s+\d/.test(r),
+          });
+        }
+
+        for (const m of entities.memory) {
+          out.push({
+            name: writes.test(p) ? "write_memory" : "read_memory",
+            arg: m.label,
+            target: { type: "memory", label: m.label },
+            realized: /noted|remembered|saved\s+to\s+memory|i\s+will\s+remember|added\s+to\s+memory/.test(r),
+          });
+        }
+
+        for (const ch of entities.channels) {
+          out.push({
+            name: "send_" + ch.kind,
+            arg: ch.label,
+            target: { type: "channel", label: ch.label, kind: ch.kind },
+            realized: false,
+          });
+        }
+
+        for (const enc of entities.encodings) {
+          out.push({
+            name: "encode_" + enc.kind,
+            arg: enc.label,
+            target: { type: "encoding", label: enc.label, kind: enc.kind },
+            realized: _responseContainsEncoding(rFull, enc.kind),
+            transformOnly: true,
+          });
+        }
+
+        if (execs.test(p) && !/execute\s+(?:a\s+)?(?:tool|function|query)/.test(p) && !/\bexecutive\b/.test(p)) {
+          const realized =
+            /(?:^|\n)\s*[$#>]\s+\w/.test(rFull) ||
+            /\bstdout\b|\bstderr\b|\bcommand\s+(?:output|executed)\b/.test(r);
+          if (realized || execs.test(p)) {
+            out.push({
+              name: "exec_code",
+              arg: "shell",
+              target: { type: "codeExec", label: "shell" },
+              realized,
+            });
+          }
+        }
+
+        return out;
+      }
+
+      function _humanToolLabel(name) {
+        const map = {
+          read_file: "read_file",
+          send_email: "send_email",
+          http_fetch: "http_fetch",
+          http_exfil: "http_exfil",
+          db_query: "db.query",
+          vector_search: "vector.search",
+          write_memory: "memory.write",
+          read_memory: "memory.read",
+          send_slack: "slack.send",
+          send_telegram: "telegram.send",
+          send_discord: "discord.send",
+          exec_code: "exec",
+          encode_base64: "encode.base64",
+          encode_hex: "encode.hex",
+          encode_morse: "encode.morse",
+          encode_whitespace: "encode.stego",
+          encode_zwidth: "encode.zw",
+        };
+        return map[name] || String(name);
+      }
+
+      function _shortArg(arg) {
+        const s = String(arg || "");
+        return s.length > 22 ? s.slice(0, 21) + "…" : s;
+      }
+
+      function _entitySublabel(ent) {
+        switch (ent.type) {
+          case "file": return ent.isSecret ? "Secret File" : "File";
+          case "email": return "Email · " + (ent.isExternal ? "external" : "internal");
+          case "url":
+            return ent.isExfil
+              ? "Exfil Endpoint"
+              : "External URL" + (ent.isExternal === false ? " · internal" : "");
+          case "db": return "Database" + (ent.kind ? " · " + ent.kind : "");
+          case "vector": return "Vector Index";
+          case "memory": return "Agent Memory";
+          case "secret": return ent.kind === "env_var" ? "Environment Variable" : "Credential";
+          case "pii": return "PII" + (ent.kind ? " · " + ent.kind : "");
+          case "encoding": return "Encoding · " + (ent.kind || "stego");
+          case "channel": return "Channel · " + (ent.kind || "");
+          case "codeExec": return "Code Execution";
+          default: return "";
+        }
+      }
+
       function buildAttackPath(result, report) {
         const attack = result?.attack || {};
         const category = attack.category || "unknown";
@@ -4851,50 +5259,308 @@
           addEdge("e-agent-aimodel", "agent", "aiModel");
         }
 
-        // 8. Hosted AI Tools + Data Stores
+        // 8. Scene-driven tool calls + target entities.
+        //
+        // Derived from the attack prompt and the endpoint's response:
+        // one node per inferred tool call ("read_file(.env)",
+        // "send_email(x@y)", "http_exfil(webhook.attacker.com)", …)
+        // and one node per concrete target it touched (file, email,
+        // URL, database, vector, memory, secret, PII, encoding).
+        //
+        // Tool/target nodes that actually fired (the response shows
+        // evidence the data flowed) get bumped to critical/high so the
+        // renderer draws the breached edges in red. Attacks that were
+        // refused stay at the baseline severity, so a blocked exfil
+        // looks visibly different from a successful one.
         const impactParents = [];
-        if (combinedTools.length) {
-          combinedTools.slice(0, 6).forEach((t, i) => {
-            const nid = "tool-" + i;
-            addNode({
-              id: nid,
-              label: t.name,
-              sublabel: "Hosted AI Tool" + (t.kind ? " · " + t.kind : ""),
-              type: "tool",
+        const promptText = _getPromptText(attack);
+        const responseText = _getResponseText(result);
+        const entities = _extractEntities(promptText, responseText);
+        const inferredCalls = _inferToolCalls(
+          promptText,
+          responseText,
+          category,
+          entities,
+        );
+
+        // Fold any "observed" tool calls (real tool_calls inside the
+        // response body) into the inferred list so real traces still
+        // show up when they exist.
+        for (const t of tools) {
+          const n = String(t).toLowerCase();
+          const already = inferredCalls.some(
+            (it) =>
+              String(it.name).toLowerCase() === n ||
+              String(it.arg || "").toLowerCase() === n,
+          );
+          if (!already) {
+            inferredCalls.push({
+              name: String(t),
+              arg: "",
+              target: null,
+              realized: true,
+              observed: true,
             });
-            addEdge("e-agent-" + nid, "agent", nid);
-            // Wire observed tools through any data stores (fan-out), else
-            // straight to the finding.
-            if (dataStores.length) {
-              impactParents.push(nid);
-            } else {
-              impactParents.push(nid);
-            }
-          });
+          }
         }
 
-        if (dataStores.length) {
-          dataStores.slice(0, 3).forEach((ds, i) => {
-            const nid = "ds-" + i;
-            addNode({
-              id: nid,
-              label: ds.name || "Data Store",
-              sublabel:
-                "Data Store" + (ds.kind ? " · " + ds.kind : ""),
-              type: "dataStore",
+        // Pull in infra-declared hostedTools as passive nodes, but only
+        // as a supplement to inferred scene nodes — they no longer
+        // dominate the middle column.
+        for (const ht of hostedTools) {
+          if (!ht?.name) continue;
+          const n = String(ht.name).toLowerCase();
+          const already = inferredCalls.some(
+            (it) =>
+              String(it.name).toLowerCase() === n ||
+              String(it.arg || "").toLowerCase() === n,
+          );
+          if (!already) {
+            inferredCalls.push({
+              name: String(ht.name),
+              arg: "",
+              target: null,
+              realized: false,
+              infra: true,
+              kind: ht.kind,
             });
-            if (impactParents.length) {
-              for (const tnid of impactParents) {
-                addEdge("e-" + tnid + "-" + nid, tnid, nid);
+          }
+        }
+
+        const hasScene = inferredCalls.length > 0;
+        const toolNodeIdByKey = new Map();
+        const entityNodeIdByKey = new Map();
+        const nextId = (prefix, map) => prefix + "_" + map.size;
+
+        const exfilVerbs = new Set([
+          "send_email",
+          "http_exfil",
+          "send_slack",
+          "send_telegram",
+          "send_discord",
+          "write_memory",
+        ]);
+        const transformVerbs = new Set([
+          "encode_base64",
+          "encode_hex",
+          "encode_morse",
+          "encode_whitespace",
+          "encode_zwidth",
+        ]);
+        const sourceVerbs = new Set([
+          "read_file",
+          "db_query",
+          "vector_search",
+          "read_memory",
+          "http_fetch",
+        ]);
+
+        if (hasScene) {
+          // Order the tool chain so the story reads source → transform
+          // → sink. "read .env then email it to attacker" draws as
+          //   agent → read_file → .env → send_email → recipient
+          // instead of two disconnected chains.
+          const sources = inferredCalls.filter((t) => sourceVerbs.has(t.name));
+          const transforms = inferredCalls.filter((t) => transformVerbs.has(t.name));
+          const sinks = inferredCalls.filter((t) => exfilVerbs.has(t.name));
+          const other = inferredCalls.filter(
+            (t) =>
+              !sources.includes(t) &&
+              !transforms.includes(t) &&
+              !sinks.includes(t),
+          );
+          const chain = [...sources, ...transforms, ...sinks, ...other];
+
+          const sourceOutputs = [];
+
+          for (const tc of chain) {
+            const toolKey = "tool::" + tc.name + "::" + (tc.arg || "");
+            let toolNid = toolNodeIdByKey.get(toolKey);
+            if (!toolNid) {
+              toolNid = nextId("tool", toolNodeIdByKey);
+              toolNodeIdByKey.set(toolKey, toolNid);
+              const toolSev = tc.realized
+                ? tc.target && (tc.target.isExfil || tc.target.isSecret)
+                  ? "critical"
+                  : "high"
+                : undefined;
+              const label = tc.observed
+                ? String(tc.name)
+                : _humanToolLabel(tc.name) +
+                  (tc.arg ? "(" + _shortArg(tc.arg) + ")" : "()");
+              let sublabel;
+              if (tc.observed) sublabel = "Observed Tool Call";
+              else if (tc.infra) sublabel = "Hosted AI Tool" + (tc.kind ? " · " + tc.kind : "");
+              else sublabel = "Inferred Tool Call";
+              addNode({
+                id: toolNid,
+                label,
+                sublabel,
+                type: "tool",
+                severity: toolSev,
+                realized: !!tc.realized,
+              });
+            }
+
+            if (exfilVerbs.has(tc.name) && sourceOutputs.length) {
+              for (const srcId of sourceOutputs) {
+                addEdge(
+                  "e-" + srcId + "-" + toolNid,
+                  srcId,
+                  toolNid,
+                  { breach: !!tc.realized },
+                );
               }
             } else {
-              addEdge("e-agent-" + nid, "agent", nid);
+              addEdge(
+                "e-agent-" + toolNid,
+                "agent",
+                toolNid,
+                { breach: !!tc.realized },
+              );
             }
+
+            let tailId = toolNid;
+            if (tc.target) {
+              const ent = tc.target;
+              const entKey = ent.type + "::" + String(ent.label || "").toLowerCase();
+              let entNid = entityNodeIdByKey.get(entKey);
+              if (!entNid) {
+                entNid = nextId(ent.type, entityNodeIdByKey);
+                entityNodeIdByKey.set(entKey, entNid);
+                const entSev = tc.realized
+                  ? ent.isExfil || ent.isSecret
+                    ? "critical"
+                    : "high"
+                  : ent.isExfil
+                    ? "high"
+                    : undefined;
+                addNode({
+                  id: entNid,
+                  label: String(ent.label),
+                  sublabel: _entitySublabel(ent),
+                  type: ent.type,
+                  severity: entSev,
+                  malicious: ent.isExfil === true,
+                  kind: ent.kind,
+                  isSecret: !!ent.isSecret,
+                  isExternal: !!ent.isExternal,
+                  isExfil: !!ent.isExfil,
+                });
+              }
+              addEdge(
+                "e-" + toolNid + "-" + entNid,
+                toolNid,
+                entNid,
+                { breach: !!tc.realized },
+              );
+              tailId = entNid;
+            }
+
+            if (sourceVerbs.has(tc.name)) sourceOutputs.push(tailId);
+            if (!exfilVerbs.has(tc.name) || !sourceOutputs.length) {
+              impactParents.push(tailId);
+            } else {
+              // The sink already terminates its branch; record it so
+              // findings still sees the leaf.
+              impactParents.push(tailId);
+            }
+          }
+
+          // Fan out leaked secrets from any file we're already showing
+          // so "read .env" produces DB_HOST / API_KEY / … leaves
+          // instead of one opaque node.
+          const fileNid = [...entityNodeIdByKey.entries()]
+            .find(([k]) => k.startsWith("file::"))?.[1];
+          const rLow = (responseText || "").toLowerCase();
+          const leafSecrets = entities.secrets.filter((s) => {
+            const nameLow = s.label.toLowerCase();
+            return rLow.includes(nameLow) || (promptText || "").toLowerCase().includes(nameLow);
           });
-          // Data stores become the impact parents now.
-          impactParents.length = 0;
-          for (let i = 0; i < Math.min(dataStores.length, 3); i++) {
-            impactParents.push("ds-" + i);
+          for (const s of leafSecrets.slice(0, 4)) {
+            const sKey = "secret::" + s.label.toLowerCase();
+            if (entityNodeIdByKey.has(sKey)) continue;
+            const nameLow = s.label.toLowerCase();
+            const leaked =
+              rLow.includes(nameLow + "=") ||
+              rLow.includes(nameLow + ":") ||
+              rLow.includes(nameLow + " =");
+            const sNid = nextId("secret", entityNodeIdByKey);
+            entityNodeIdByKey.set(sKey, sNid);
+            addNode({
+              id: sNid,
+              label: s.label,
+              sublabel: s.kind === "env_var" ? "Environment Variable" : "Credential",
+              type: "secret",
+              kind: s.kind,
+              severity: leaked ? "critical" : "high",
+            });
+            const parent = fileNid || "agent";
+            addEdge("e-" + parent + "-" + sNid, parent, sNid, { breach: leaked });
+            impactParents.push(sNid);
+          }
+
+          // PII leaves: attach to any database node we already created,
+          // otherwise hang directly off the agent.
+          const dbNid = [...entityNodeIdByKey.entries()]
+            .find(([k]) => k.startsWith("db::"))?.[1];
+          for (const pd of entities.pii.slice(0, 3)) {
+            const pKey = "pii::" + pd.label.toLowerCase();
+            if (entityNodeIdByKey.has(pKey)) continue;
+            const pNid = nextId("pii", entityNodeIdByKey);
+            entityNodeIdByKey.set(pKey, pNid);
+            addNode({
+              id: pNid,
+              label: pd.label,
+              sublabel: "PII · " + pd.kind,
+              type: "pii",
+              kind: pd.kind,
+              severity: "high",
+            });
+            const parent = dbNid || "agent";
+            addEdge("e-" + parent + "-" + pNid, parent, pNid);
+            impactParents.push(pNid);
+          }
+        } else {
+          // Legacy fallback: no scene could be inferred from the
+          // prompt/response, so fall back to the old infra-driven
+          // hosted-tool + data-store layout to keep the graph readable.
+          if (combinedTools.length) {
+            combinedTools.slice(0, 6).forEach((t, i) => {
+              const nid = "tool-" + i;
+              addNode({
+                id: nid,
+                label: t.name,
+                sublabel: "Hosted AI Tool" + (t.kind ? " · " + t.kind : ""),
+                type: "tool",
+              });
+              addEdge("e-agent-" + nid, "agent", nid);
+              impactParents.push(nid);
+            });
+          }
+
+          if (dataStores.length) {
+            dataStores.slice(0, 3).forEach((ds, i) => {
+              const nid = "ds-" + i;
+              addNode({
+                id: nid,
+                label: ds.name || "Data Store",
+                sublabel:
+                  "Data Store" + (ds.kind ? " · " + ds.kind : ""),
+                type: "dataStore",
+              });
+              if (impactParents.length) {
+                for (const tnid of impactParents) {
+                  addEdge("e-" + tnid + "-" + nid, tnid, nid);
+                }
+              } else {
+                addEdge("e-agent-" + nid, "agent", nid);
+              }
+            });
+            impactParents.length = 0;
+            for (let i = 0; i < Math.min(dataStores.length, 3); i++) {
+              impactParents.push("ds-" + i);
+            }
           }
         }
 
@@ -4981,6 +5647,26 @@
             return "\u{1F6A8}"; // rotating light
           case "file":
             return "\u{1F4C4}"; // page
+          case "email":
+            return "\u2709\uFE0F"; // envelope
+          case "url":
+            return "\u{1F517}"; // link
+          case "db":
+            return "\u{1F5C4}"; // file cabinet (database)
+          case "vector":
+            return "\u{1F4DA}"; // books (vector index / RAG)
+          case "memory":
+            return "\u{1F4BE}"; // floppy disk
+          case "secret":
+            return "\u{1F5DD}\uFE0F"; // old key
+          case "pii":
+            return "\u{1F465}"; // two silhouettes
+          case "encoding":
+            return "\u{1F9E9}"; // puzzle piece
+          case "channel":
+            return "\u{1F4AC}"; // speech balloon
+          case "codeExec":
+            return "\u26A1\uFE0F"; // lightning
           default:
             return "\u2022";
         }
@@ -5028,10 +5714,13 @@
           return palette.text2;
         };
 
+        // Orb fill is driven by the node's *type* so the right-hand
+        // scene nodes share the same color language as the left-hand
+        // kill-chain nodes. Breach state (severity) is expressed via
+        // the spinning halo + the small sev-dot badge at top-right,
+        // not by repainting the whole orb red/orange.
         const colorForNode = (n) => {
           if (n.type === "findings") return findingsColor(n);
-          if (n.severity === "critical") return palette.red;
-          if (n.severity === "high") return palette.orange;
           switch (n.type) {
             case "internet": return palette.accent;
             case "endpoint": return palette.accent;
@@ -5043,9 +5732,24 @@
             case "aiModel": return palette.purple;
             case "tool": return palette.accent;
             case "dataStore": return palette.green;
-            case "file": return palette.text2;
-            default: return palette.text2;
+            case "file": return n.isSecret ? palette.orange : palette.text2;
+            case "email": return n.isExternal ? palette.pink : palette.accent;
+            case "url": return n.isExfil ? palette.red : palette.accent;
+            case "db": return palette.green;
+            case "vector": return palette.cyan;
+            case "memory": return palette.purple;
+            case "secret": return palette.orange;
+            case "pii": return palette.pink;
+            case "encoding": return palette.orange;
+            case "channel": return palette.accent;
+            case "codeExec": return palette.red;
+            default: break;
           }
+          // Unknown type: fall back to severity tint so a breached
+          // generic node still reads as hot.
+          if (n.severity === "critical") return palette.red;
+          if (n.severity === "high") return palette.orange;
+          return palette.text2;
         };
 
         // Extract nodes and edges from the Cytoscape-shaped payload.
