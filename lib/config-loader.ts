@@ -105,6 +105,8 @@ function validateAndNormalizeConfig(config: Config): Config {
     enableAdaptiveMultiTurn: true,
     maxAdaptiveTurns: 15,
     appTailoredCustomPromptCount: 0,
+    targetTimeoutMs: 30000,
+    llmTimeoutMs: 60000,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
 

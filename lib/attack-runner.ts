@@ -37,6 +37,7 @@ async function loginForToken(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: cred.email, password: cred.password }),
+    signal: AbortSignal.timeout(config.attackConfig.targetTimeoutMs!),
   });
   if (!res.ok) throw new Error(`Login failed: ${res.status}`);
   const data = (await res.json()) as { token?: string };
@@ -275,6 +276,7 @@ export async function executeAttack(
       method,
       headers: finalHeaders,
       body: requestBody,
+      signal: AbortSignal.timeout(config.attackConfig.targetTimeoutMs!),
     });
     const timeMs = Date.now() - start;
 

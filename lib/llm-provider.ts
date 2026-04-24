@@ -125,8 +125,8 @@ async function createOpenAICompatibleChatCompletion(
 class OpenAIProvider implements LlmProvider {
   private client: OpenAI;
 
-  constructor() {
-    this.client = new OpenAI();
+  constructor(timeoutMs: number) {
+    this.client = new OpenAI({ timeout: timeoutMs });
   }
 
   async chat(options: ChatOptions): Promise<string> {
@@ -138,14 +138,16 @@ class OpenAIProvider implements LlmProvider {
 
 class AnthropicProvider implements LlmProvider {
   private apiKey: string;
+  private timeoutMs: number;
 
-  constructor() {
+  constructor(timeoutMs: number) {
     const key = process.env.ANTHROPIC_API_KEY;
     if (!key)
       throw new Error(
         "ANTHROPIC_API_KEY environment variable is required for anthropic provider",
       );
     this.apiKey = key;
+    this.timeoutMs = timeoutMs;
   }
 
   async chat(options: ChatOptions): Promise<string> {
@@ -180,6 +182,7 @@ class AnthropicProvider implements LlmProvider {
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(this.timeoutMs),
         });
       } catch (fetchErr) {
         if (attempt < MAX_RETRIES) {
@@ -233,7 +236,7 @@ class AnthropicProvider implements LlmProvider {
 class OpenRouterProvider implements LlmProvider {
   private client: OpenAI;
 
-  constructor() {
+  constructor(timeoutMs: number) {
     const key = process.env.OPENROUTER_API_KEY;
     if (!key)
       throw new Error(
@@ -242,6 +245,7 @@ class OpenRouterProvider implements LlmProvider {
     this.client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: key,
+      timeout: timeoutMs,
       defaultHeaders: {
         "HTTP-Referer":
           process.env.OPENROUTER_SITE_URL || "https://github.com/red-team-ai",
@@ -260,7 +264,7 @@ class OpenRouterProvider implements LlmProvider {
 class TogetherAIProvider implements LlmProvider {
   private client: OpenAI;
 
-  constructor() {
+  constructor(timeoutMs: number) {
     const key = process.env.TOGETHER_API_KEY;
     if (!key)
       throw new Error(
@@ -269,6 +273,7 @@ class TogetherAIProvider implements LlmProvider {
     this.client = new OpenAI({
       baseURL: "https://api.together.xyz/v1",
       apiKey: key,
+      timeout: timeoutMs,
     });
   }
 
@@ -281,24 +286,25 @@ class TogetherAIProvider implements LlmProvider {
 
 const providerCache = new Map<string, LlmProvider>();
 
-function createProvider(name: string): LlmProvider {
-  if (providerCache.has(name)) {
-    return providerCache.get(name)!;
+function createProvider(name: string, timeoutMs: number): LlmProvider {
+  const cacheKey = `${name}:${timeoutMs}`;
+  if (providerCache.has(cacheKey)) {
+    return providerCache.get(cacheKey)!;
   }
 
   let provider: LlmProvider;
   switch (name) {
     case "openai":
-      provider = new OpenAIProvider();
+      provider = new OpenAIProvider(timeoutMs);
       break;
     case "anthropic":
-      provider = new AnthropicProvider();
+      provider = new AnthropicProvider(timeoutMs);
       break;
     case "openrouter":
-      provider = new OpenRouterProvider();
+      provider = new OpenRouterProvider(timeoutMs);
       break;
     case "together":
-      provider = new TogetherAIProvider();
+      provider = new TogetherAIProvider(timeoutMs);
       break;
     default:
       throw new Error(
@@ -306,18 +312,21 @@ function createProvider(name: string): LlmProvider {
       );
   }
 
-  providerCache.set(name, provider);
+  providerCache.set(cacheKey, provider);
   return provider;
 }
 
 /** Get the LLM provider for attack generation. */
 export function getLlmProvider(config: Config): LlmProvider {
-  return createProvider(config.attackConfig.llmProvider);
+  return createProvider(
+    config.attackConfig.llmProvider,
+    config.attackConfig.llmTimeoutMs!,
+  );
 }
 
 /** Get the LLM provider for the judge. Falls back to the attack provider if judgeProvider is not set. */
 export function getJudgeProvider(config: Config): LlmProvider {
   const judgeName =
     config.attackConfig.judgeProvider ?? config.attackConfig.llmProvider;
-  return createProvider(judgeName);
+  return createProvider(judgeName, config.attackConfig.llmTimeoutMs!);
 }

@@ -76,6 +76,8 @@ describe("loadConfig", () => {
     expect(config.attackConfig.llmModel).toBe("gpt-4o");
     expect(config.attackConfig.enableLlmGeneration).toBe(true);
     expect(config.attackConfig.maxMultiTurnSteps).toBe(8);
+    expect(config.attackConfig.targetTimeoutMs).toBe(30000);
+    expect(config.attackConfig.llmTimeoutMs).toBe(60000);
   });
 
   it("allows overriding attackConfig defaults", () => {
