@@ -241,7 +241,238 @@ export const TOOL_DEFS = [
       properties: { path: { type: "string" }, policy: { type: "object" } },
     },
   },
+  // ── New tools: run, status, results, guardrails, reference ──
+  {
+    name: "run_scan",
+    description:
+      "Start a red-team security scan. Pass the config JSON or a path to a config file. Returns a runId. The scan runs in the background — use check_run_status to poll.",
+    inputSchema: {
+      type: "object",
+      required: ["config"],
+      properties: {
+        config: { type: "object", description: "The full wb-red-team config JSON object" },
+        dashboardUrl: { type: "string", description: "Dashboard URL (default: http://localhost:4200)" },
+      },
+    },
+  },
+  {
+    name: "check_run_status",
+    description:
+      "Check the status of a running red-team scan. Returns status (queued/running/done/error), attack count, and latest progress.",
+    inputSchema: {
+      type: "object",
+      required: ["runId"],
+      properties: {
+        runId: { type: "string" },
+        dashboardUrl: { type: "string", description: "Default: http://localhost:4200" },
+      },
+    },
+  },
+  {
+    name: "get_run_results",
+    description:
+      "Get the full results of a completed red-team scan. Returns all attack verdicts, findings, and threat assessments.",
+    inputSchema: {
+      type: "object",
+      required: ["runId"],
+      properties: {
+        runId: { type: "string" },
+        dashboardUrl: { type: "string", description: "Default: http://localhost:4200" },
+      },
+    },
+  },
+  {
+    name: "cancel_run",
+    description: "Cancel a running red-team scan.",
+    inputSchema: {
+      type: "object",
+      required: ["runId"],
+      properties: {
+        runId: { type: "string" },
+        dashboardUrl: { type: "string", description: "Default: http://localhost:4200" },
+      },
+    },
+  },
+  {
+    name: "list_categories_and_strategies",
+    description:
+      "List all available attack categories (141) and delivery strategies (143) with their compliance framework mappings. Use to help users choose which categories to include in their config.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dashboardUrl: { type: "string", description: "Default: http://localhost:4200" },
+      },
+    },
+  },
+  {
+    name: "suggest_guardrails",
+    description:
+      "Given red-team scan results (PASS verdicts), suggest specific guardrails using Votal Shield (llm-shield). Returns guardrail configs for /guardrails/input and /guardrails/output endpoints.",
+    inputSchema: {
+      type: "object",
+      required: ["vulnerabilities"],
+      properties: {
+        vulnerabilities: {
+          type: "array",
+          description: "Array of {category, name, severity, reasoning} for PASS results",
+          items: {
+            type: "object",
+            properties: {
+              category: { type: "string" },
+              name: { type: "string" },
+              severity: { type: "string" },
+              reasoning: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
 ] as const;
+
+// ── New tool implementations ──
+
+const DEFAULT_DASHBOARD = "http://localhost:4200";
+
+async function runScan({ config, dashboardUrl }: { config: unknown; dashboardUrl?: string }) {
+  const url = (dashboardUrl || DEFAULT_DASHBOARD) + "/api/run";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to start scan: ${res.status} ${err}`);
+  }
+  return res.json();
+}
+
+async function checkRunStatus({ runId, dashboardUrl }: { runId: string; dashboardUrl?: string }) {
+  const url = (dashboardUrl || DEFAULT_DASHBOARD) + "/api/run/" + runId;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Run not found: ${res.status}`);
+  const data = await res.json() as Record<string, unknown>;
+  const progress = data.progress as Record<string, unknown>[] || [];
+  const results = progress.filter(p => (p as Record<string, unknown>).result);
+  const lastMsg = progress.length > 0 ? progress[progress.length - 1] : null;
+
+  return {
+    runId,
+    status: data.status,
+    attacksCompleted: results.length,
+    latestPhase: (lastMsg as Record<string, unknown>)?.phase,
+    latestMessage: ((lastMsg as Record<string, unknown>)?.message as string)?.slice(0, 100),
+    summary: data.summary,
+    error: data.error,
+  };
+}
+
+async function getRunResults({ runId, dashboardUrl }: { runId: string; dashboardUrl?: string }) {
+  const url = (dashboardUrl || DEFAULT_DASHBOARD) + "/api/run/" + runId;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Run not found: ${res.status}`);
+  const data = await res.json() as Record<string, unknown>;
+  const progress = data.progress as Record<string, unknown>[] || [];
+  const results = progress
+    .filter(p => (p as Record<string, unknown>).result)
+    .map(p => (p as Record<string, unknown>).result);
+
+  const passes = results.filter(r => (r as Record<string, unknown>).verdict === "PASS");
+  const partials = results.filter(r => (r as Record<string, unknown>).verdict === "PARTIAL");
+  const fails = results.filter(r => (r as Record<string, unknown>).verdict === "FAIL");
+
+  return {
+    runId,
+    status: data.status,
+    total: results.length,
+    passed: passes.length,
+    partial: partials.length,
+    failed: fails.length,
+    summary: data.summary,
+    vulnerabilities: passes.map((r: unknown) => {
+      const res = r as Record<string, unknown>;
+      return {
+        category: res.category,
+        name: res.name,
+        severity: res.severity,
+        verdict: res.verdict,
+        reasoning: (res.llmReasoning as string)?.slice(0, 200),
+        findings: res.findings,
+      };
+    }),
+    partialLeaks: partials.slice(0, 10).map((r: unknown) => {
+      const res = r as Record<string, unknown>;
+      return { category: res.category, name: res.name, severity: res.severity };
+    }),
+  };
+}
+
+async function cancelRun({ runId, dashboardUrl }: { runId: string; dashboardUrl?: string }) {
+  const url = (dashboardUrl || DEFAULT_DASHBOARD) + "/api/run/" + runId;
+  const res = await fetch(url, { method: "DELETE" });
+  return res.json();
+}
+
+async function listCategoriesAndStrategies({ dashboardUrl }: { dashboardUrl?: string }) {
+  const url = (dashboardUrl || DEFAULT_DASHBOARD) + "/api/reference";
+  try {
+    const res = await fetch(url);
+    if (res.ok) return res.json();
+  } catch {
+    // Dashboard not available — return from local imports
+  }
+  // Fallback: load directly
+  const { ALL_ATTACK_CATEGORIES } = await import("../lib/types.js");
+  const { ALL_STRATEGIES } = await import("../lib/attack-strategies.js");
+  return {
+    categories: ALL_ATTACK_CATEGORIES,
+    strategies: ALL_STRATEGIES.map((s: { slug: string; name: string; levelName: string }) => ({
+      slug: s.slug, name: s.name, level: s.levelName,
+    })),
+  };
+}
+
+// Votal Shield guardrail mapping
+const SHIELD_GUARDRAIL_MAP: Record<string, { guardrail: string; endpoint: string; config: string }> = {
+  prompt_injection: { guardrail: "adversarial-prompt-detection", endpoint: "/guardrails/input", config: '{"adversarial-prompt-detection": {"enabled": true, "action": "block", "threshold": 0.8}}' },
+  indirect_prompt_injection: { guardrail: "adversarial-prompt-detection + topic-restriction", endpoint: "/guardrails/input", config: '{"adversarial-prompt-detection": {"enabled": true, "threshold": 0.7}, "topic-restriction": {"enabled": true, "customRules": {"mode": "whitelist", "topics": ["allowed-topics"]}}}' },
+  content_filter_bypass: { guardrail: "keyword-blocklist + adversarial-prompt-detection", endpoint: "/guardrails/input", config: '{"keyword-blocklist": {"enabled": true, "action": "block"}, "adversarial-prompt-detection": {"enabled": true}}' },
+  toxic_content: { guardrail: "toxicity-detection", endpoint: "/guardrails/output", config: '{"toxicity-detection": {"enabled": true, "action": "block", "threshold": 0.7}}' },
+  hallucination: { guardrail: "hallucination-detection", endpoint: "/guardrails/output", config: '{"hallucination-detection": {"enabled": true, "action": "flag", "threshold": 0.6}}' },
+  pii_disclosure: { guardrail: "pii-detection + output-redaction", endpoint: "/guardrails/output", config: '{"pii-detection": {"enabled": true, "action": "redact"}}' },
+  sensitive_data: { guardrail: "pii-detection + keyword-blocklist", endpoint: "/guardrails/output", config: '{"pii-detection": {"enabled": true, "action": "block"}, "keyword-blocklist": {"enabled": true, "blocklist": ["sk-proj-", "AKIA", "password"]}}' },
+  data_exfiltration: { guardrail: "pii-detection + output-redaction", endpoint: "/guardrails/output", config: '{"pii-detection": {"enabled": true, "action": "block"}, "output-redaction": {"enabled": true, "clearanceLevel": "restricted"}}' },
+  harmful_advice: { guardrail: "topic-restriction + toxicity-detection", endpoint: "/guardrails/input + /guardrails/output", config: '{"topic-restriction": {"enabled": true, "customRules": {"mode": "blacklist", "topics": ["weapons", "drugs", "self-harm"]}}}' },
+  misinformation: { guardrail: "hallucination-detection", endpoint: "/guardrails/output", config: '{"hallucination-detection": {"enabled": true, "action": "flag"}}' },
+  output_evasion: { guardrail: "output-format-validation + pii-detection", endpoint: "/guardrails/output", config: '{"pii-detection": {"enabled": true, "action": "block"}}' },
+  tool_misuse: { guardrail: "agentic tool authorization", endpoint: "/guardrails/output (agentic)", config: '{"agentic": {"enabled": true, "toolPolicies": {"dangerous_tool": {"allowed": false}}}}' },
+};
+
+function suggestGuardrails({ vulnerabilities }: { vulnerabilities: { category: string; name: string; severity: string; reasoning?: string }[] }) {
+  const suggestions = vulnerabilities.map(v => {
+    const shield = SHIELD_GUARDRAIL_MAP[v.category];
+    return {
+      vulnerability: v.name,
+      category: v.category,
+      severity: v.severity,
+      shieldGuardrail: shield ? {
+        guardrail: shield.guardrail,
+        endpoint: shield.endpoint,
+        config: shield.config,
+        deployUrl: "https://github.com/sundi133/llm-shield",
+      } : null,
+      generalFix: shield ? null : `Add input/output validation for ${v.category} attacks. Consider implementing a content filter or policy engine.`,
+    };
+  });
+
+  return {
+    totalVulnerabilities: vulnerabilities.length,
+    withShieldGuardrail: suggestions.filter(s => s.shieldGuardrail).length,
+    suggestions,
+    deploymentNote: "Deploy Votal Shield as a proxy: replace your LLM endpoint with /v1/shield/chat/completions. No code changes needed.",
+  };
+}
 
 export async function dispatch(name: string, args: any): Promise<unknown> {
   switch (name) {
@@ -257,6 +488,18 @@ export async function dispatch(name: string, args: any): Promise<unknown> {
       return writeCustomAttacks(args);
     case "write_policy":
       return writePolicy(args);
+    case "run_scan":
+      return runScan(args);
+    case "check_run_status":
+      return checkRunStatus(args);
+    case "get_run_results":
+      return getRunResults(args);
+    case "cancel_run":
+      return cancelRun(args);
+    case "list_categories_and_strategies":
+      return listCategoriesAndStrategies(args);
+    case "suggest_guardrails":
+      return suggestGuardrails(args);
     default:
       throw new Error(`unknown tool: ${name}`);
   }
