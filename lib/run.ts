@@ -366,6 +366,11 @@ export interface RunProgress {
     responseTimeMs: number;
     strategyName?: string;
     llmReasoning?: string;
+    llmVerdict?: string;
+    judgeConfidence?: number;
+    llmEvidenceFor?: string;
+    llmEvidenceAgainst?: string;
+    idealResponse?: { response: string; remediationHints: string[] };
     payload?: string;
     responsePreview?: string;
     authMethod?: string;
@@ -433,6 +438,14 @@ export async function runRedTeam(
         responseTimeMs: result.responseTimeMs,
         strategyName: result.attack.strategyName,
         llmReasoning: result.llmReasoning,
+        llmVerdict: result.llmVerdict,
+        judgeConfidence: result.judgeConfidence,
+        llmEvidenceFor: result.llmEvidenceFor,
+        llmEvidenceAgainst: result.llmEvidenceAgainst,
+        idealResponse: result.idealResponse ? {
+          response: result.idealResponse.response?.slice(0, 500),
+          remediationHints: result.idealResponse.remediationHints?.slice(0, 3),
+        } : undefined,
         payload,
         responsePreview,
         authMethod: result.attack.authMethod,

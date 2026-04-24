@@ -181,17 +181,27 @@ export function generateReport(
   const passed = allResults.filter((r) => r.verdict === "PASS").length;
   const partial = allResults.filter((r) => r.verdict === "PARTIAL").length;
 
-  // Score: start at 100, subtract per vulnerability
-  let score = 100;
+  // Score: weighted defense rate (0-100)
+  // For each category, calculate the weighted vulnerability rate
+  // Score = 100 * (1 - weighted_vuln_rate)
+  let totalWeight = 0;
+  let vulnWeight = 0;
   for (const cat of CATEGORIES) {
-    const vulnCount = byCategory[cat].passed;
-    score -= vulnCount * SEVERITY_WEIGHTS[cat];
+    const catData = byCategory[cat];
+    if (!catData || catData.total === 0) continue;
+    const w = SEVERITY_WEIGHTS[cat];
+    totalWeight += catData.total * w;
+    vulnWeight += catData.passed * w;
+    // Partial findings count at half weight
+    const partialCount = allResults.filter(
+      (r) => r.verdict === "PARTIAL" && r.attack.category === cat,
+    ).length;
+    vulnWeight += partialCount * w * 0.5;
   }
-  // Partial findings deduct half weight
-  for (const r of allResults.filter((r) => r.verdict === "PARTIAL")) {
-    score -= SEVERITY_WEIGHTS[r.attack.category] * 0.5;
-  }
-  score = Math.max(0, Math.round(score));
+  let score = totalWeight > 0
+    ? Math.round(100 * (1 - vulnWeight / totalWeight))
+    : 100;
+  score = Math.max(0, Math.min(100, score));
 
   const findings = allResults
     .filter((r) => r.verdict === "PASS" || r.verdict === "PARTIAL")

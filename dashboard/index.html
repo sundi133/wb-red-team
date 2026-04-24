@@ -2250,13 +2250,22 @@
         const panel = document.getElementById("dashboardPanel");
         const n = reportsMeta.length;
         const latest = n > 0 ? reportsMeta[0] : null;
-        const latestScore = latest ? latest.score : "-";
-        const prevScore = n > 1 ? reportsMeta[1].score : null;
+        // Calculate live score from metadata (handles old reports with broken score=0)
+        function calcLiveScore(r) {
+          if (!r || r.totalAttacks === 0) return 0;
+          // If stored score looks valid (>0 or genuinely 100% vuln), use it
+          if (r.score > 0) return r.score;
+          // Recalculate: 100 * (1 - vulnRate)
+          var vulnWeight = r.passed + (r.partial || 0) * 0.5;
+          return Math.round(100 * (1 - vulnWeight / r.totalAttacks));
+        }
+        const latestScore = latest ? calcLiveScore(latest) : "-";
+        const prevScore = n > 1 ? calcLiveScore(reportsMeta[1]) : null;
         const latestScoreColor = typeof latestScore === "number" ? scoreColor(latestScore) : "var(--text2)";
         const totalVulns = reportsMeta.reduce((s, r) => s + r.passed, 0);
         const totalBlocked = reportsMeta.reduce((s, r) => s + r.failed, 0);
         const totalAttacks = reportsMeta.reduce((s, r) => s + r.totalAttacks, 0);
-        const avgScore = n > 0 ? Math.round(reportsMeta.reduce((s, r) => s + r.score, 0) / n) : 0;
+        const avgScore = n > 0 ? Math.round(reportsMeta.reduce((s, r) => s + calcLiveScore(r), 0) / n) : 0;
         const activeRunCount = [...runDataCache.values()].filter(r => r.status === "running" || r.status === "queued").length;
 
         // Trend delta
@@ -3727,11 +3736,6 @@
       <div id="catChart"></div>
     </div>
 
-    <!-- Strategy Effectiveness -->
-    <div class="section">
-      <h2>Top Attack Strategies</h2>
-      <div id="strategySection"></div>
-    </div>
 
     <!-- Results -->
     <div class="section">
@@ -3905,6 +3909,7 @@
           .slice(0, 12);
 
         const el = $("#strategySection");
+        if (!el) return;
         if (!strategies.length) {
           el.innerHTML = `
             <div class="strategy-empty">
@@ -4293,20 +4298,63 @@
             '</div>' +
             '</div>';
 
-          if (r.llmReasoning) {
-            html += '<div style="margin-top:10px;">' +
-              '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">THREAT ASSESSMENT</div>' +
-              '<div style="font-size:12px;color:var(--text);line-height:1.5;background:var(--bg);border-radius:6px;padding:10px;">' + esc(r.llmReasoning) + '</div>' +
-              '</div>';
+          // Threat Assessment (full detail like Reports tab)
+          if (r.llmReasoning || r.llmEvidenceFor || r.llmEvidenceAgainst) {
+            var verdictColor = verdictColors[r.verdict] || "var(--text2)";
+            var confidence = r.judgeConfidence != null ? r.judgeConfidence + "%" : "";
+
+            html += '<div style="margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+              '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--text2);">THREAT ASSESSMENT</div>' +
+              '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;color:' + verdictColor + ';background:' + verdictColor.replace('var(', 'rgba(').replace('--red', '248,81,73').replace('--green', '63,185,80').replace('--orange', '210,153,34').replace('--text2', '139,148,158').replace(')', ',0.1)') + ';">LLM Verdict: ' + (r.llmVerdict || r.verdict) + '</span>' +
+              (confidence ? '<span style="font-size:10px;color:var(--text2);">Confidence: ' + confidence + '</span>' : '') +
+              '</div>' +
+              '<div style="padding:12px 14px;">';
+
+            if (r.llmReasoning) {
+              html += '<div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px;">' + esc(r.llmReasoning) + '</div>';
+            }
+
+            if (r.llmEvidenceFor) {
+              html += '<div style="margin-bottom:8px;">' +
+                '<div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:3px;">WHY IT\'S RISKY</div>' +
+                '<div style="font-size:11px;color:var(--text);line-height:1.5;padding:8px;background:rgba(248,81,73,0.05);border-radius:6px;border-left:2px solid var(--red);">' + esc(r.llmEvidenceFor) + '</div>' +
+                '</div>';
+            }
+
+            if (r.llmEvidenceAgainst) {
+              html += '<div style="margin-bottom:8px;">' +
+                '<div style="font-size:10px;font-weight:600;color:var(--green);margin-bottom:3px;">WHY IT MAY BE DEFENDED</div>' +
+                '<div style="font-size:11px;color:var(--text);line-height:1.5;padding:8px;background:rgba(63,185,80,0.05);border-radius:6px;border-left:2px solid var(--green);">' + esc(r.llmEvidenceAgainst) + '</div>' +
+                '</div>';
+            }
+
+            html += '</div></div>';
           }
 
+          // Findings
           if (r.findings && r.findings.length > 0) {
-            html += '<div style="margin-top:8px;">' +
+            html += '<div style="margin-top:10px;">' +
               '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">FINDINGS</div>' +
-              '<div style="font-size:11px;color:var(--text);">' + r.findings.map(f => '<div style="padding:2px 0;">' + esc(f) + '</div>').join("") + '</div>' +
+              '<div style="font-size:11px;color:var(--text);">' + r.findings.map(function(f) { return '<div style="padding:2px 0;">• ' + esc(f) + '</div>'; }).join("") + '</div>' +
               '</div>';
           }
 
+          // Ideal Response
+          if (r.idealResponse) {
+            html += '<div style="margin-top:10px;background:rgba(63,185,80,0.05);border:1px solid var(--green);border-radius:8px;padding:12px;">' +
+              '<div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:6px;">IDEAL RESPONSE (What the endpoint should have returned)</div>' +
+              '<div style="font-size:11px;color:var(--text);line-height:1.5;">' + esc(r.idealResponse.response || "") + '</div>';
+            if (r.idealResponse.remediationHints && r.idealResponse.remediationHints.length > 0) {
+              html += '<div style="margin-top:6px;font-size:10px;font-weight:600;color:var(--accent);">Remediation:</div>' +
+                '<ul style="margin:4px 0;padding-left:16px;font-size:11px;color:var(--text);">' +
+                r.idealResponse.remediationHints.map(function(h) { return '<li>' + esc(h) + '</li>'; }).join("") +
+                '</ul>';
+            }
+            html += '</div>';
+          }
+
+          // Conversation steps
           if (convHtml) {
             html += '<div style="margin-top:10px;">' +
               '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">CONVERSATION (' + r.conversation.length + ' steps)</div>' +
