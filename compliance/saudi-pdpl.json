@@ -1,0 +1,66 @@
+{
+  "id": "saudi-pdpl",
+  "name": "Saudi Arabia Personal Data Protection Law (PDPL)",
+  "items": [
+    {
+      "code": "ART-5",
+      "title": "Lawfulness of Processing",
+      "description": "Personal data shall not be processed unless such processing is for a lawful, specified, and clear purpose. Processing shall be limited to the minimum necessary to achieve the purpose.",
+      "categories": ["consent_bypass", "regulatory_violation", "contextual_integrity_violation"]
+    },
+    {
+      "code": "ART-6",
+      "title": "Consent for Processing",
+      "description": "Processing of personal data requires the data subject's consent, which must be freely given, specific, informed, and unambiguous.",
+      "categories": ["consent_bypass", "emotional_manipulation", "social_engineering", "regulatory_violation"]
+    },
+    {
+      "code": "ART-7",
+      "title": "Legitimate Interests",
+      "description": "Personal data may be processed without consent in specific cases such as when processing serves a legitimate interest of the controller that does not override the data subject's rights.",
+      "categories": ["consent_bypass", "regulatory_violation", "contextual_integrity_violation"]
+    },
+    {
+      "code": "ART-10",
+      "title": "Sensitive Data Processing",
+      "description": "Sensitive personal data including health data, genetic data, biometric data, and data revealing racial or ethnic origin shall not be processed except with explicit consent or as permitted by law.",
+      "categories": ["sensitive_data", "pii_disclosure", "bias_exploitation", "re_identification", "inference_attack"]
+    },
+    {
+      "code": "ART-14",
+      "title": "Data Subject Rights",
+      "description": "The data subject has the right to access, rectify, and request destruction of personal data, and to obtain information about the purposes of processing.",
+      "categories": ["gdpr_erasure_bypass", "pii_disclosure", "regulatory_violation", "training_data_extraction"]
+    },
+    {
+      "code": "ART-17",
+      "title": "Data Security Measures",
+      "description": "The controller shall take all necessary organizational, administrative, and technical measures to protect personal data, including during transfer, from data breaches.",
+      "categories": ["data_exfiltration", "sensitive_data", "session_hijacking", "cross_tenant_access", "sql_injection"]
+    },
+    {
+      "code": "ART-19",
+      "title": "Cross-Border Data Transfer",
+      "description": "Personal data shall not be transferred outside the Kingdom except in accordance with conditions ensuring an adequate level of protection.",
+      "categories": ["data_exfiltration", "cross_tenant_access", "regulatory_violation", "contextual_integrity_violation"]
+    },
+    {
+      "code": "ART-20",
+      "title": "Data Breach Notification",
+      "description": "The controller shall notify the competent authority of any breach of personal data that may cause harm to the data or the data subject.",
+      "categories": ["data_exfiltration", "pii_disclosure", "sensitive_data", "regulatory_violation"]
+    },
+    {
+      "code": "ART-22",
+      "title": "Automated Decision-Making",
+      "description": "The data subject has the right not to be subject to a decision based solely on automated processing, including profiling, that produces legal effects or similarly significant effects.",
+      "categories": ["bias_exploitation", "hallucination", "overreliance", "alignment_faking", "differential_privacy_violation"]
+    },
+    {
+      "code": "ART-24",
+      "title": "Data Protection Officer",
+      "description": "The controller shall appoint a Data Protection Officer responsible for ensuring compliance with the provisions of this law and regulations.",
+      "categories": ["regulatory_violation", "consent_bypass", "pii_disclosure", "contextual_integrity_violation"]
+    }
+  ]
+}
