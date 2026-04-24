@@ -106,7 +106,7 @@ For detailed security reports, risk quantification of attacks, and compliance ma
 
 ## Quick Start (5 minutes)
 
-### Option A: CLI (simplest — no Docker needed)
+### Option A: Interactive Config Generator (recommended for first-time users)
 
 ```bash
 # 1. Clone and install
@@ -116,13 +116,34 @@ npm install
 
 # 2. Add your LLM API key
 cp .env.example .env
-# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY
+# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, or TOGETHER_API_KEY
 
-# 3. Create your config (or use the example)
+# 3. Generate config interactively
+npm run gen:interactive
+```
+
+The interactive generator walks you through:
+1. **App details** — URL, endpoint, description
+2. **Authentication** — none, API key, bearer token, or JWT
+3. **Smart category selection** — explains WHY each category domain is selected based on your goals
+4. **Strategy selection** — picks encoding, social engineering, and escalation techniques with reasoning
+5. **Intensity** — quick scan (5 min), standard (20 min), or deep scan (60 min)
+6. **LLM provider** — Anthropic, Together AI, OpenAI, or OpenRouter
+
+After generation, iterate until satisfied:
+- Add/remove category domains
+- Change intensity (rounds, attacks per category)
+- View full JSON
+- Save and run immediately
+
+### Option B: CLI with existing config
+
+```bash
+# Create your config (or use the example)
 cp config.example.json config.json
 # Edit config.json — set target.baseUrl to your app's URL
 
-# 4. Run
+# Run
 npx tsx red-team.ts config.json
 ```
 
