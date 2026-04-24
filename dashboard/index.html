@@ -1930,6 +1930,7 @@
                 <div class="meta">
                   <span id="metaDate"></span>
                   <span id="metaScore"></span>
+                  <span id="metaRunId" style="font-size:10px;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:4px;cursor:pointer;display:none;" onclick="navigator.clipboard.writeText(this.textContent);this.style.color='var(--accent)';setTimeout(()=>this.style.color='var(--text2)',500)" title="Click to copy Run ID"></span>
                   <button id="downloadCsvBtn" onclick="downloadCsv()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:8px;">Download CSV</button>
                   <button id="downloadJsonBtn" onclick="downloadJson()" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">Download JSON</button>
                 </div>
@@ -2900,6 +2901,7 @@
           '<th style="' + thStyleCenter + '">Attacks</th>' +
           '<th style="' + thStyleCenter + '">Vulns</th>' +
           '<th style="' + thStyleCenter + '">Blocked</th>' +
+          '<th style="' + thStyle + '">Run ID</th>' +
           '</tr></thead><tbody>';
 
         reports.forEach(function(r) {
@@ -2915,6 +2917,7 @@
             '<td style="padding:10px 16px;text-align:center;color:var(--text2);">' + r.totalAttacks + '</td>' +
             '<td style="padding:10px 16px;text-align:center;color:var(--red);font-weight:600;">' + r.passed + '</td>' +
             '<td style="padding:10px 16px;text-align:center;color:var(--green);font-weight:500;">' + r.failed + '</td>' +
+            '<td style="padding:10px 16px;font-size:10px;color:var(--text2);">' + (r.runId ? r.runId.slice(0, 8) : '-') + '</td>' +
             '</tr>';
         });
 
@@ -2936,6 +2939,10 @@
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
           '<div style="font-size:14px;font-weight:700;">Business Impact & Real-World Incidents</div>' +
           '<button id="riskLlmBtn" onclick="runRiskLlmAnalysis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;">' + (riskLlmResults ? 'Re-analyze Risk' : 'Analyze Risk') + '</button>' +
+          (riskLlmResults && riskLlmResults.length > 0 ?
+            '<button onclick="downloadRiskCsv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:8px;">Export CSV</button>' +
+            '<button onclick="downloadRiskJson()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;margin-left:4px;">Export JSON</button>'
+          : '') +
           '</div>' +
           '<div style="font-size:11px;color:var(--text2);margin-bottom:16px;">AI-powered analysis of each vulnerability — business risk, financial exposure, compliance violations, and related real-world breaches.</div>' +
 
@@ -3551,6 +3558,7 @@
                 <span>${m.totalAttacks} attacks</span>
                 <span class="ri-vuln">${m.passed} vuln</span>
                 <span class="ri-safe">${m.failed} safe</span>
+                ${m.runId ? `<span style="color:var(--text2);font-size:9px;">${m.runId.slice(0, 8)}</span>` : ""}
               </div>
             </div>
           </div>`;
@@ -3690,6 +3698,22 @@
         $("#metaDate").textContent = new Date(r.timestamp).toLocaleString();
         $("#metaScore").textContent = `Score: ${s.score}/100`;
         $("#metaScore").style.color = scoreColor(s.score);
+        // Show run ID
+        const runIdEl = $("#metaRunId");
+        if (runIdEl) {
+          // Find matching report meta to get runId
+          const meta = reportsMeta.find(function(m) { return m.filename === currentFile; });
+          const runId = meta?.runId || currentFile?.replace("report-", "").replace(".json", "") || "";
+          runIdEl.textContent = runId ? "Run: " + runId.slice(0, 8) : "";
+          runIdEl.style.display = runId ? "inline-block" : "none";
+          runIdEl.title = runId ? "Click to copy: " + runId : "";
+          runIdEl.setAttribute("data-full-id", runId);
+          runIdEl.onclick = function() {
+            navigator.clipboard.writeText(runId);
+            this.style.color = "var(--accent)";
+            setTimeout(function() { runIdEl.style.color = "var(--text2)"; }, 500);
+          };
+        }
         $("#downloadCsvBtn").style.display = currentFile ? "inline-block" : "none";
         $("#downloadJsonBtn").style.display = currentFile ? "inline-block" : "none";
 
