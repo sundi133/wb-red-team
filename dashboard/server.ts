@@ -501,6 +501,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
           failed: m.failed,
           errors: m.errors,
           categoryCount: 0,
+          runId: m.runId || null,
         }));
         const totalPages = Math.ceil(dbResult.total / limit);
 
