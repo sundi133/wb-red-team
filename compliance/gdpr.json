@@ -1,0 +1,78 @@
+{
+  "id": "gdpr",
+  "name": "General Data Protection Regulation (EU 2016/679)",
+  "items": [
+    {
+      "code": "ART-5",
+      "title": "Principles Relating to Processing of Personal Data",
+      "description": "Personal data must be processed lawfully, fairly, and transparently; collected for specified legitimate purposes; adequate, relevant, and limited to what is necessary; accurate and kept up to date; stored no longer than necessary; and processed with appropriate security.",
+      "categories": ["pii_disclosure", "sensitive_data", "data_exfiltration", "regulatory_violation", "contextual_integrity_violation"]
+    },
+    {
+      "code": "ART-6",
+      "title": "Lawfulness of Processing",
+      "description": "Processing is lawful only if at least one legal basis applies: consent, contractual necessity, legal obligation, vital interests, public task, or legitimate interests. Processing must be justified and documented.",
+      "categories": ["consent_bypass", "regulatory_violation", "pii_disclosure"]
+    },
+    {
+      "code": "ART-7",
+      "title": "Conditions for Consent",
+      "description": "Where processing is based on consent, the controller must be able to demonstrate that the data subject has consented. Consent must be freely given, specific, informed, and unambiguous, and the data subject must be able to withdraw consent at any time.",
+      "categories": ["consent_bypass", "social_engineering", "emotional_manipulation", "regulatory_violation"]
+    },
+    {
+      "code": "ART-13",
+      "title": "Information to be Provided Where Data is Collected from the Data Subject",
+      "description": "Controllers must provide data subjects with identity of controller, purposes of processing, recipients of data, retention periods, and the existence of automated decision-making including profiling at the time personal data is obtained.",
+      "categories": ["pii_disclosure", "contextual_integrity_violation", "regulatory_violation", "hallucination"]
+    },
+    {
+      "code": "ART-15",
+      "title": "Right of Access by the Data Subject",
+      "description": "Data subjects have the right to obtain confirmation of whether personal data concerning them is being processed and access to that data along with information about the purposes, categories, recipients, retention period, and the existence of automated decision-making.",
+      "categories": ["auth_bypass", "rbac_bypass", "data_exfiltration", "pii_disclosure"]
+    },
+    {
+      "code": "ART-17",
+      "title": "Right to Erasure (Right to be Forgotten)",
+      "description": "Data subjects have the right to obtain the erasure of personal data concerning them without undue delay where the data is no longer necessary, consent is withdrawn, the subject objects, or data was unlawfully processed.",
+      "categories": ["gdpr_erasure_bypass", "training_data_extraction", "membership_inference", "re_identification", "regulatory_violation"]
+    },
+    {
+      "code": "ART-20",
+      "title": "Right to Data Portability",
+      "description": "Data subjects have the right to receive their personal data in a structured, commonly used, and machine-readable format and to transmit that data to another controller without hindrance.",
+      "categories": ["data_exfiltration", "auth_bypass", "regulatory_violation"]
+    },
+    {
+      "code": "ART-22",
+      "title": "Automated Individual Decision-Making Including Profiling",
+      "description": "Data subjects have the right not to be subject to a decision based solely on automated processing, including profiling, which produces legal effects concerning them or similarly significantly affects them, with exceptions for contractual necessity, legal authorization, or explicit consent.",
+      "categories": ["bias_exploitation", "overreliance", "hallucination", "regulatory_violation", "housing_discrimination"]
+    },
+    {
+      "code": "ART-25",
+      "title": "Data Protection by Design and by Default",
+      "description": "Controllers must implement appropriate technical and organizational measures designed to implement data-protection principles and safeguard data subject rights, both at design time and during processing. By default, only data necessary for each specific purpose is processed.",
+      "categories": ["sensitive_data", "pii_disclosure", "differential_privacy_violation", "inference_attack", "linkage_attack", "re_identification"]
+    },
+    {
+      "code": "ART-32",
+      "title": "Security of Processing",
+      "description": "Controllers and processors must implement appropriate technical and organizational measures to ensure a level of security appropriate to the risk, including pseudonymization, encryption, confidentiality, integrity, availability, resilience of systems, and regular testing.",
+      "categories": ["data_exfiltration", "model_extraction", "auth_bypass", "sandbox_escape", "ssrf", "sql_injection", "shell_injection", "path_traversal"]
+    },
+    {
+      "code": "ART-33",
+      "title": "Notification of a Personal Data Breach to the Supervisory Authority",
+      "description": "In the case of a personal data breach, the controller must notify the competent supervisory authority within 72 hours of becoming aware, describing the nature of the breach, categories and approximate number of data subjects affected, and measures taken or proposed to mitigate adverse effects.",
+      "categories": ["data_exfiltration", "pii_disclosure", "regulatory_violation"]
+    },
+    {
+      "code": "ART-35",
+      "title": "Data Protection Impact Assessment",
+      "description": "Where processing is likely to result in a high risk to the rights and freedoms of natural persons, the controller must carry out an assessment of the impact of the envisaged processing operations on the protection of personal data, especially for systematic and extensive profiling or large-scale processing of special categories of data.",
+      "categories": ["bias_exploitation", "pii_disclosure", "inference_attack", "differential_privacy_violation", "membership_inference", "regulatory_violation"]
+    }
+  ]
+}

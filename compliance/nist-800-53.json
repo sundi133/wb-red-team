@@ -1,0 +1,78 @@
+{
+  "id": "nist-sp-800-53-r5",
+  "name": "NIST SP 800-53 Rev 5 Security and Privacy Controls",
+  "items": [
+    {
+      "code": "AC-3",
+      "title": "Access Enforcement",
+      "description": "Enforce approved authorizations for logical access to information and system resources in accordance with applicable access control policies.",
+      "categories": ["rbac_bypass", "auth_bypass", "cross_tenant_access", "identity_privilege"]
+    },
+    {
+      "code": "AC-4",
+      "title": "Information Flow Enforcement",
+      "description": "Enforce approved authorizations for controlling the flow of information within the system and between connected systems based on information flow control policies.",
+      "categories": ["data_exfiltration", "cross_tenant_access", "indirect_prompt_injection", "contextual_integrity_violation"]
+    },
+    {
+      "code": "AU-6",
+      "title": "Audit Record Review, Analysis, and Reporting",
+      "description": "Review and analyze system audit records for indications of inappropriate or unusual activity and report findings to designated organizational officials.",
+      "categories": ["prompt_injection", "content_filter_bypass", "api_abuse", "rate_limit"]
+    },
+    {
+      "code": "IA-2",
+      "title": "Identification and Authentication (Organizational Users)",
+      "description": "Uniquely identify and authenticate organizational users and associate that unique identification with processes acting on behalf of those users.",
+      "categories": ["auth_bypass", "session_hijacking", "identity_privilege", "social_engineering"]
+    },
+    {
+      "code": "PT-2",
+      "title": "Authority to Process Personally Identifiable Information",
+      "description": "Determine and document the legal authority that permits the collection, use, maintenance, and sharing of personally identifiable information.",
+      "categories": ["pii_disclosure", "consent_bypass", "gdpr_erasure_bypass", "regulatory_violation"]
+    },
+    {
+      "code": "RA-5",
+      "title": "Vulnerability Monitoring and Scanning",
+      "description": "Monitor and scan for vulnerabilities in the system and hosted applications and remediate discovered vulnerabilities in accordance with organizational risk assessment.",
+      "categories": ["model_extraction", "capability_elicitation", "debug_access", "sandbox_escape"]
+    },
+    {
+      "code": "SA-11",
+      "title": "Developer Testing and Evaluation",
+      "description": "Require the developer of the system, system component, or system service to create and implement a security and privacy assessment plan.",
+      "categories": ["prompt_injection", "content_filter_bypass", "insecure_output_handling", "alignment_faking"]
+    },
+    {
+      "code": "SC-7",
+      "title": "Boundary Protection",
+      "description": "Monitor and control communications at the external managed interfaces to the system and at key internal managed interfaces within the system.",
+      "categories": ["ssrf", "data_exfiltration", "cross_tenant_access", "shell_injection"]
+    },
+    {
+      "code": "SC-28",
+      "title": "Protection of Information at Rest",
+      "description": "Protect the confidentiality and integrity of information at rest.",
+      "categories": ["sensitive_data", "training_data_extraction", "data_exfiltration", "model_extraction"]
+    },
+    {
+      "code": "SI-3",
+      "title": "Malicious Code Protection",
+      "description": "Implement malicious code protection mechanisms at system entry and exit points to detect and eradicate malicious code.",
+      "categories": ["backdoor_trigger", "data_poisoning", "rag_poisoning", "supply_chain"]
+    },
+    {
+      "code": "SI-10",
+      "title": "Information Input Validation",
+      "description": "Check the validity of information inputs to the system and system components.",
+      "categories": ["prompt_injection", "indirect_prompt_injection", "sql_injection", "shell_injection", "path_traversal"]
+    },
+    {
+      "code": "SR-3",
+      "title": "Supply Chain Controls and Processes",
+      "description": "Establish and apply a process for identifying and addressing weaknesses or deficiencies in the supply chain elements and processes.",
+      "categories": ["supply_chain", "backdoor_trigger", "data_poisoning", "rag_poisoning", "model_extraction"]
+    }
+  ]
+}
