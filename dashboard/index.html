@@ -3680,6 +3680,7 @@
           .slice(0, 12);
 
         const el = $("#strategySection");
+        if (!el) return;
         if (!strategies.length) {
           el.innerHTML = `
             <div class="strategy-empty">
