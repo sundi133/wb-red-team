@@ -1,0 +1,66 @@
+{
+  "id": "hipaa-part164",
+  "name": "HIPAA Part 164 - Security and Privacy of Individually Identifiable Health Information",
+  "items": [
+    {
+      "code": "SEC-164.302",
+      "title": "Security Standards - Applicability",
+      "description": "Establishes the applicability of security standards to covered entities and business associates for protecting electronic protected health information (ePHI) that is created, received, maintained, or transmitted.",
+      "categories": ["regulatory_violation", "sensitive_data", "pii_disclosure", "medical_safety"]
+    },
+    {
+      "code": "SEC-164.308",
+      "title": "Administrative Safeguards",
+      "description": "Requires covered entities to implement administrative actions, policies, and procedures to manage the selection, development, implementation, and maintenance of security measures to protect ePHI, including risk analysis, workforce security, information access management, security awareness training, and contingency planning.",
+      "categories": ["auth_bypass", "rbac_bypass", "social_engineering", "supply_chain", "data_poisoning", "cascading_failure", "overreliance"]
+    },
+    {
+      "code": "SEC-164.310",
+      "title": "Physical Safeguards",
+      "description": "Requires covered entities to implement physical measures, policies, and procedures to protect electronic information systems and related buildings and equipment from natural and environmental hazards and unauthorized intrusion, including facility access controls, workstation use, workstation security, and device and media controls.",
+      "categories": ["data_exfiltration", "sandbox_escape", "path_traversal", "regulatory_violation"]
+    },
+    {
+      "code": "SEC-164.312",
+      "title": "Technical Safeguards",
+      "description": "Requires covered entities to implement technical policies and procedures for electronic information systems that maintain ePHI, including access controls, audit controls, integrity controls, person or entity authentication, and transmission security.",
+      "categories": ["auth_bypass", "rbac_bypass", "data_exfiltration", "sql_injection", "shell_injection", "ssrf", "path_traversal", "sandbox_escape"]
+    },
+    {
+      "code": "SEC-164.314",
+      "title": "Organizational Requirements",
+      "description": "Requires covered entities to ensure business associate contracts or other arrangements include satisfactory assurances that the business associate will appropriately safeguard ePHI, and establishes requirements for group health plans.",
+      "categories": ["supply_chain", "regulatory_violation", "data_exfiltration", "sensitive_data"]
+    },
+    {
+      "code": "PRIV-164.502",
+      "title": "Uses and Disclosures of Protected Health Information - General Rules",
+      "description": "Establishes general rules for permitted and required uses and disclosures of protected health information (PHI), including the minimum necessary standard requiring that uses and disclosures be limited to the minimum necessary to accomplish the intended purpose.",
+      "categories": ["pii_disclosure", "sensitive_data", "data_exfiltration", "contextual_integrity_violation", "medical_safety", "regulatory_violation"]
+    },
+    {
+      "code": "PRIV-164.508",
+      "title": "Uses and Disclosures for Which Authorization is Required",
+      "description": "Specifies uses and disclosures of PHI that require a valid written authorization from the individual, including psychotherapy notes, marketing communications, and sale of PHI. Defines the core elements and requirements of a valid authorization.",
+      "categories": ["consent_bypass", "sensitive_data", "pii_disclosure", "social_engineering", "emotional_manipulation", "medical_safety"]
+    },
+    {
+      "code": "PRIV-164.512",
+      "title": "Uses and Disclosures for Which Authorization or Opportunity to Agree or Object is Not Required",
+      "description": "Specifies limited circumstances where PHI may be used or disclosed without authorization, including for public health activities, reporting abuse, health oversight, judicial proceedings, law enforcement, research, and to avert serious threats.",
+      "categories": ["regulatory_violation", "pii_disclosure", "contextual_integrity_violation", "data_exfiltration"]
+    },
+    {
+      "code": "PRIV-164.524",
+      "title": "Access of Individuals to Protected Health Information",
+      "description": "Grants individuals the right to inspect and obtain a copy of their PHI maintained in designated record sets, with limited exceptions. Covered entities must act on access requests within 30 days and provide the information in the form or format requested if readily producible.",
+      "categories": ["auth_bypass", "rbac_bypass", "pii_disclosure", "data_exfiltration", "regulatory_violation"]
+    },
+    {
+      "code": "PRIV-164.528",
+      "title": "Accounting of Disclosures of Protected Health Information",
+      "description": "Grants individuals the right to receive an accounting of disclosures of their PHI made by a covered entity in the six years prior to the request, including the date, recipient, description, and purpose of each disclosure.",
+      "categories": ["regulatory_violation", "pii_disclosure", "contextual_integrity_violation", "inference_attack", "linkage_attack"]
+    }
+  ]
+}

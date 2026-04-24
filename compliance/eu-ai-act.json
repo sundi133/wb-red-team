@@ -1,0 +1,66 @@
+{
+  "id": "eu-ai-act",
+  "name": "EU Artificial Intelligence Act (Regulation 2024/1689)",
+  "items": [
+    {
+      "code": "ART-5",
+      "title": "Prohibited AI Practices",
+      "description": "Prohibits AI systems that deploy subliminal, manipulative, or deceptive techniques to distort behavior, exploit vulnerabilities of specific groups, perform social scoring, or conduct real-time remote biometric identification in public spaces.",
+      "categories": ["emotional_manipulation", "social_engineering", "bias_exploitation", "harmful_advice", "toxic_content"]
+    },
+    {
+      "code": "ART-6",
+      "title": "Classification Rules for High-Risk AI Systems",
+      "description": "Establishes criteria for classifying AI systems as high-risk based on their intended purpose and the severity of potential harm, including systems used in critical infrastructure, education, employment, essential services, law enforcement, and migration.",
+      "categories": ["bias_exploitation", "housing_discrimination", "regulatory_violation", "medical_safety"]
+    },
+    {
+      "code": "ART-7",
+      "title": "Amendments to High-Risk Classification",
+      "description": "Empowers the Commission to update the list of high-risk AI systems, considering severity of harm, extent of adverse outcomes, degree of autonomy, and irreversibility of harm.",
+      "categories": ["regulatory_violation", "cascading_failure", "overreliance"]
+    },
+    {
+      "code": "ART-9",
+      "title": "Risk Management System",
+      "description": "Requires providers of high-risk AI systems to establish, implement, document, and maintain a continuous risk management system throughout the AI system lifecycle, including identification and analysis of known and foreseeable risks, estimation and evaluation of risks, and adoption of risk management measures.",
+      "categories": ["prompt_injection", "indirect_prompt_injection", "data_poisoning", "rag_poisoning", "backdoor_trigger", "supply_chain", "cascading_failure", "model_dos"]
+    },
+    {
+      "code": "ART-10",
+      "title": "Data and Data Governance",
+      "description": "Requires that training, validation, and testing datasets be subject to appropriate data governance and management practices, including examination for biases, identification of data gaps, and measures to address them.",
+      "categories": ["data_poisoning", "training_data_extraction", "bias_exploitation", "membership_inference", "differential_privacy_violation", "re_identification"]
+    },
+    {
+      "code": "ART-13",
+      "title": "Transparency and Provision of Information to Deployers",
+      "description": "Requires high-risk AI systems to be designed with sufficient transparency so deployers can interpret and use the system's output appropriately, including information on capabilities, limitations, known risks, and intended purpose.",
+      "categories": ["hallucination", "misinformation", "overreliance", "sycophancy_exploitation", "hallucination_inducement"]
+    },
+    {
+      "code": "ART-14",
+      "title": "Human Oversight",
+      "description": "Requires high-risk AI systems to be designed to allow effective human oversight, including the ability to fully understand the system's capabilities and limitations, correctly interpret outputs, decide not to use the system, and intervene or interrupt operation.",
+      "categories": ["overreliance", "alignment_faking", "capability_elicitation", "cascading_failure", "sycophancy_exploitation"]
+    },
+    {
+      "code": "ART-15",
+      "title": "Accuracy, Robustness, and Cybersecurity",
+      "description": "Requires high-risk AI systems to achieve appropriate levels of accuracy, robustness, and cybersecurity, and to be resilient against attempts by unauthorized third parties to exploit vulnerabilities, including adversarial attacks.",
+      "categories": ["prompt_injection", "indirect_prompt_injection", "content_filter_bypass", "data_poisoning", "model_extraction", "model_dos", "sandbox_escape", "backdoor_trigger", "rag_poisoning"]
+    },
+    {
+      "code": "ART-50",
+      "title": "Transparency Obligations for Certain AI Systems",
+      "description": "Requires providers to ensure that AI systems intended to interact with natural persons are designed so that persons are informed they are interacting with an AI system, and that AI-generated or manipulated content is marked in a machine-readable format.",
+      "categories": ["output_evasion", "misinformation", "social_engineering", "contextual_integrity_violation"]
+    },
+    {
+      "code": "ART-52",
+      "title": "Transparency for Deep Fakes and Generated Content",
+      "description": "Requires users of AI systems that generate or manipulate image, audio, or video content (deep fakes) to disclose that the content has been artificially generated or manipulated.",
+      "categories": ["misinformation", "copyright_infringement", "social_engineering", "emotional_manipulation", "contextual_integrity_violation"]
+    }
+  ]
+}

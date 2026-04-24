@@ -122,7 +122,7 @@ interface Job {
 
 const jobs = new Map<string, Job>();
 let activeRuns = 0;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_RUNS || "100", 10);
 
 async function startJob(job: Job): Promise<void> {
   activeRuns++;
@@ -134,66 +134,120 @@ async function startJob(job: Job): Promise<void> {
     const result = await runRedTeam(
       job.config,
       (p) => {
-        job.progress.push(p);
+        // Don't push progress if already cancelled
+        if (job.status !== "cancelled") job.progress.push(p);
       },
       undefined,
       ac.signal,
     );
-    job.report = result.report;
-    job.reportFile = result.jsonPath;
-    job.finishedAt = new Date().toISOString();
-    metaCache.clear();
-    // Store report in DB BEFORE setting status to done
-    // (client polls for "done" and immediately fetches report list)
-    if (isDbConfigured() && job.tenantId) {
-      try {
-        const storeResult = await storeReport(result.report, job.tenantId, job.id, {
-          skipFile: true,
-        });
-        console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
-      } catch (dbErr) {
-        console.error("Failed to store report in DB:", dbErr);
-        // Fallback: write to file so report isn't lost
+    // Don't overwrite if already cancelled by user
+    if (job.status === "cancelled") {
+      // Run completed despite cancel — still save partial results
+      console.log("  Run completed after cancel was requested");
+    } else {
+      job.report = result.report;
+      job.reportFile = result.jsonPath;
+      job.finishedAt = new Date().toISOString();
+      metaCache.clear();
+      if (isDbConfigured() && job.tenantId) {
+        try {
+          const storeResult = await storeReport(result.report, job.tenantId, job.id, {
+            skipFile: true,
+          });
+          console.log(`  Report stored in DB: ${storeResult.reportId} for tenant ${job.tenantId}`);
+        } catch (dbErr) {
+          console.error("Failed to store report in DB:", dbErr);
+          try {
+            const { writeReport } = await import("../lib/report-generator.js");
+            const paths = writeReport(result.report);
+            job.reportFile = paths.jsonPath;
+            console.log(`  Fallback: report written to file ${paths.jsonPath}`);
+          } catch {}
+        }
+      } else {
         try {
           const { writeReport } = await import("../lib/report-generator.js");
           const paths = writeReport(result.report);
           job.reportFile = paths.jsonPath;
-          console.log(`  Fallback: report written to file ${paths.jsonPath}`);
         } catch {}
       }
-    } else {
-      // No DB — write to file
-      try {
-        const { writeReport } = await import("../lib/report-generator.js");
-        const paths = writeReport(result.report);
-        job.reportFile = paths.jsonPath;
-      } catch {}
-    }
-    job.status = "done";
-    // Update run status in DB
-    if (isDbConfigured() && job.tenantId) {
-      query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
-        ["done", job.finishedAt, job.id]).catch(() => {});
+      job.status = "done";
+      if (isDbConfigured() && job.tenantId) {
+        query("UPDATE runs SET status=$1, finished_at=$2 WHERE id=$3",
+          ["done", job.finishedAt, job.id]).catch(() => {});
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg === "Run cancelled") {
-      job.status = "cancelled";
-      job.error = "Cancelled by user";
-    } else {
-      job.status = "error";
-      job.error = msg;
+    if (!job.finishedAt) job.finishedAt = new Date().toISOString();
+
+    // Don't overwrite if already cancelled by user
+    if (job.status !== "cancelled") {
+      if (msg === "Run cancelled") {
+        job.status = "cancelled";
+        job.error = "Cancelled by user";
+      } else {
+        // Check if we have partial results — save them as a report
+        const resultEvents = (job.progress || []).filter(p => p.result);
+        if (resultEvents.length > 0) {
+          job.status = "done";
+          job.error = "Completed with error: " + msg.slice(0, 200);
+          console.log(`  Run had error but saving ${resultEvents.length} partial results as report`);
+          try {
+            const { generateReport, writeReport } = await import("../lib/report-generator.js");
+            // Build rounds from progress results
+            const attackResults = resultEvents.map(p => ({
+              attack: { id: "partial", category: p.result!.category, name: p.result!.name, description: p.result!.description || "", severity: p.result!.severity, authMethod: p.result!.authMethod || "none", role: p.result!.role || "viewer", payload: { message: p.result!.payload || "" } },
+              verdict: p.result!.verdict as "PASS" | "FAIL" | "PARTIAL" | "ERROR",
+              statusCode: p.result!.statusCode,
+              responseBody: p.result!.responsePreview || "",
+              responseTimeMs: p.result!.responseTimeMs,
+              findings: p.result!.findings || [],
+              llmReasoning: p.result!.llmReasoning,
+            }));
+            const report = generateReport(
+              job.config.target.baseUrl + job.config.target.agentEndpoint,
+              [{ round: 1, results: attackResults }],
+            );
+            job.report = report;
+            if (isDbConfigured() && job.tenantId) {
+              try {
+                const sr = await storeReport(report, job.tenantId, job.id, { skipFile: true });
+                console.log(`  Partial report stored: ${sr.reportId}`);
+              } catch (dbErr) {
+                try {
+                  const paths = writeReport(report);
+                  job.reportFile = paths.jsonPath;
+                } catch {}
+              }
+            } else {
+              try {
+                const paths = writeReport(report);
+                job.reportFile = paths.jsonPath;
+              } catch {}
+            }
+          } catch (reportErr) {
+            console.error("  Failed to save partial report:", reportErr);
+            job.status = "error";
+            job.error = msg;
+          }
+        } else {
+          job.status = "error";
+          job.error = msg;
+        }
+      }
     }
-    job.finishedAt = new Date().toISOString();
-    // Update run status in DB on error/cancel
     if (isDbConfigured() && job.tenantId) {
       query("UPDATE runs SET status=$1, finished_at=$2, error=$3 WHERE id=$4",
         [job.status, job.finishedAt, job.error || null, job.id]).catch(() => {});
     }
   } finally {
     job.abortController = undefined;
-    activeRuns--;
-    drainQueue();
+    // Only decrement if not already decremented by cancel handler
+    if (job.status !== "cancelled") {
+      activeRuns = Math.max(0, activeRuns - 1);
+      drainQueue();
+    }
   }
 }
 
@@ -356,8 +410,14 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
     if (job.status === "running" && job.abortController) {
       job.abortController.abort();
+      job.status = "cancelled";
+      job.error = "Cancelled by user";
+      job.finishedAt = new Date().toISOString();
+      // Free up the concurrency slot so queued jobs can start
+      activeRuns = Math.max(0, activeRuns - 1);
+      drainQueue();
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ runId: id, status: "cancelling" }));
+      res.end(JSON.stringify({ runId: id, status: "cancelled" }));
     } else if (job.status === "queued") {
       // Remove from queue
       const idx = jobQueue.indexOf(id);

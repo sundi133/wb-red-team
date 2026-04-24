@@ -1,0 +1,72 @@
+{
+  "id": "iso27001-2022",
+  "name": "ISO/IEC 27001:2022 Information Security Management",
+  "items": [
+    {
+      "code": "A.8.1",
+      "title": "User Endpoint Devices",
+      "description": "Information stored on, processed by or accessible via user endpoint devices shall be protected.",
+      "categories": ["data_exfiltration", "sandbox_escape", "session_hijacking"]
+    },
+    {
+      "code": "A.8.3",
+      "title": "Information Access Restriction",
+      "description": "Access to information and other associated assets shall be restricted in accordance with the established topic-specific policy on access control.",
+      "categories": ["rbac_bypass", "auth_bypass", "cross_tenant_access", "identity_privilege"]
+    },
+    {
+      "code": "A.8.5",
+      "title": "Secure Authentication",
+      "description": "Secure authentication technologies and procedures shall be established and implemented based on information access restrictions and the topic-specific policy on access control.",
+      "categories": ["auth_bypass", "session_hijacking", "identity_privilege", "api_abuse"]
+    },
+    {
+      "code": "A.8.7",
+      "title": "Protection Against Malware",
+      "description": "Protection against malware shall be implemented and supported by appropriate user awareness.",
+      "categories": ["backdoor_trigger", "data_poisoning", "rag_poisoning", "supply_chain"]
+    },
+    {
+      "code": "A.8.9",
+      "title": "Configuration Management",
+      "description": "Configurations, including security configurations, of hardware, software, services and networks shall be established, documented, implemented, monitored and reviewed.",
+      "categories": ["debug_access", "sandbox_escape", "shell_injection", "path_traversal"]
+    },
+    {
+      "code": "A.8.12",
+      "title": "Data Leakage Prevention",
+      "description": "Data leakage prevention measures shall be applied to systems, networks and any other devices that process, store or transmit sensitive information.",
+      "categories": ["data_exfiltration", "pii_disclosure", "sensitive_data", "training_data_extraction", "model_extraction"]
+    },
+    {
+      "code": "A.8.16",
+      "title": "Monitoring Activities",
+      "description": "Networks, systems and applications shall be monitored for anomalous behaviour and appropriate actions taken to evaluate potential information security events.",
+      "categories": ["prompt_injection", "content_filter_bypass", "model_dos", "rate_limit", "api_abuse"]
+    },
+    {
+      "code": "A.8.20",
+      "title": "Networks Security",
+      "description": "Networks and network devices shall be secured, managed and controlled to protect information in systems and applications.",
+      "categories": ["ssrf", "cross_tenant_access", "api_abuse", "model_dos"]
+    },
+    {
+      "code": "A.8.24",
+      "title": "Use of Cryptography",
+      "description": "Rules for the effective use of cryptography, including cryptographic key management, shall be defined and implemented.",
+      "categories": ["data_exfiltration", "sensitive_data", "session_hijacking"]
+    },
+    {
+      "code": "A.8.25",
+      "title": "Secure Development Life Cycle",
+      "description": "Rules for the secure development of software and systems shall be established and applied.",
+      "categories": ["supply_chain", "backdoor_trigger", "insecure_output_handling", "sql_injection", "shell_injection"]
+    },
+    {
+      "code": "A.8.28",
+      "title": "Secure Coding",
+      "description": "Secure coding principles shall be applied to software development.",
+      "categories": ["prompt_injection", "indirect_prompt_injection", "insecure_output_handling", "sql_injection", "shell_injection", "path_traversal"]
+    }
+  ]
+}

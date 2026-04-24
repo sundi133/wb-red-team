@@ -343,6 +343,52 @@ export interface WebSocketTargetConfig {
   responseTimeoutMs?: number;
 }
 
+/**
+ * Optional infrastructure descriptor used by the dashboard's Attack Path graph
+ * to render Wiz-style typed nodes (Compute Instance, AI Model, Data Store, etc.).
+ * Everything here is optional — when omitted, the graph falls back to
+ * auto-inference from the target URL, tool calls, and codebase analysis.
+ */
+export interface TargetInfra {
+  /** Cloud provider: "aws", "gcp", "azure", "vercel", "self-hosted", etc. */
+  cloudProvider?: string;
+  /** Human-readable application name (e.g. "Votal AI LiteLLM Proxy"). */
+  applicationName?: string;
+  /** Compute instance hosting the agent (e.g. "ec2-0169f-scenario52"). */
+  computeInstance?: {
+    name: string;
+    /** "ec2", "gce", "aks", "lambda", "cloudrun", "container", etc. */
+    kind?: string;
+    region?: string;
+  };
+  /** Service account / managed identity the agent runs as. */
+  serviceAccount?: {
+    name: string;
+    /** "service_account", "managed_identity", "iam_role", etc. */
+    kind?: string;
+  };
+  /** Downstream data stores the agent can reach (DBs, buckets, vector stores). */
+  dataStores?: {
+    name: string;
+    /** "postgres", "redis", "s3", "pinecone", "neo4j", "cloudsql", etc. */
+    kind?: string;
+    /** Optional: what category(s) are likely to touch this store. */
+    categories?: AttackCategory[];
+  }[];
+  /** Explicit AI model label (e.g. "claude-sonnet-4.5", "gpt-4o"). Falls back to `attackConfig.llmModel`. */
+  aiModel?: {
+    name: string;
+    /** "anthropic", "openai", "openrouter", "bedrock", "vertex", etc. */
+    provider?: string;
+  };
+  /** Known/expected tools the agent has (adds to auto-detected tool calls). */
+  hostedTools?: {
+    name: string;
+    /** "api", "shell", "rag", "mcp", "plugin", etc. */
+    kind?: string;
+  }[];
+}
+
 export interface McpTargetConfig {
   transport: McpTransportType;
   command?: string;
@@ -383,6 +429,8 @@ export interface Config {
     };
     /** WebSocket chat settings when target.type is "websocket_agent". */
     websocket?: WebSocketTargetConfig;
+    /** Optional infrastructure descriptor for the Attack Path visualization. */
+    infra?: TargetInfra;
   };
   codebasePath?: string | null;
   codebaseGlob: string;
@@ -642,9 +690,32 @@ export interface RoundResult {
   results: AttackResult[];
 }
 
+/**
+ * Snapshot of target-related config persisted into the Report so the
+ * dashboard can render the Attack Path graph without needing the live config.
+ */
+export interface ReportTargetDescriptor {
+  type?: TargetType;
+  baseUrl?: string;
+  agentEndpoint?: string;
+  applicationDetails?: string;
+  mcp?: {
+    transport?: McpTransportType;
+    serverName?: string;
+    url?: string;
+  };
+  websocket?: { path?: string };
+  infra?: TargetInfra;
+  /** Primary LLM model used by the target (best-effort: from infra or attackConfig). */
+  llmModel?: string;
+  llmProvider?: string;
+}
+
 export interface Report {
   timestamp: string;
   targetUrl: string;
+  /** Snapshot of target config for UI rendering (Attack Path graph, etc.). */
+  target?: ReportTargetDescriptor;
   rounds: RoundResult[];
   summary: {
     totalAttacks: number;

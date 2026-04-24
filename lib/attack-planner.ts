@@ -105,6 +105,19 @@ export async function planAttacks(
     let seedCount = 0;
     if (round === 1) {
       const seedAttacks = mod.getSeedAttacks(analysis);
+      // Assign strategies to seed attacks (they don't have them by default)
+      const seedStrategies = sampleStrategies(
+        ALL_STRATEGIES,
+        config.attackConfig.enabledStrategies,
+        seedAttacks.length,
+      );
+      seedAttacks.forEach((a, idx) => {
+        if (!a.strategyName && seedStrategies.length > 0) {
+          const s = seedStrategies[idx % seedStrategies.length];
+          a.strategyId = s.id;
+          a.strategyName = s.name;
+        }
+      });
       allAttacks.push(...seedAttacks);
       seedCount = seedAttacks.length;
     }
@@ -422,16 +435,26 @@ CRITICAL — REALISM REQUIREMENTS:
     console.log(`      ✅ LLM responded (${llmTime}ms)`);
 
     const attacks = parseJsonArrayFromLlmResponse<Attack>(text);
-    return attacks.map((a) => ({
-      ...a,
-      category: mod.category,
-      isLlmGenerated: true,
-      id:
-        a.id ||
-        `${mod.category}-gen-${round}-${Math.random().toString(36).slice(2, 8)}`,
-      strategyId: a.strategyId,
-      strategyName: a.strategyName,
-    }));
+    return attacks.map((a, idx) => {
+      // Assign strategy: use LLM-provided if valid, otherwise assign from sampled list
+      let stratId = a.strategyId;
+      let stratName = a.strategyName;
+      if (!stratName && sampledStrategies.length > 0) {
+        const assigned = sampledStrategies[idx % sampledStrategies.length];
+        stratId = assigned.id;
+        stratName = assigned.name;
+      }
+      return {
+        ...a,
+        category: mod.category,
+        isLlmGenerated: true,
+        id:
+          a.id ||
+          `${mod.category}-gen-${round}-${Math.random().toString(36).slice(2, 8)}`,
+        strategyId: stratId,
+        strategyName: stratName,
+      };
+    });
   } catch (e) {
     console.error(
       `  Failed to generate attacks for ${mod.category}:`,

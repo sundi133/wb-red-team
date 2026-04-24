@@ -6,6 +6,7 @@ import type {
   AttackResult,
   RoundResult,
   Report,
+  ReportTargetDescriptor,
   StaticAnalysisResult,
   ComplianceResult,
 } from "./types.js";
@@ -163,6 +164,7 @@ export function generateReport(
   staticAnalysis?: StaticAnalysisResult,
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>,
   discoveryIntel?: Report["discovery"],
+  target?: ReportTargetDescriptor,
 ): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
@@ -208,6 +210,7 @@ export function generateReport(
   const report: Report = {
     timestamp: new Date().toISOString(),
     targetUrl,
+    target,
     rounds,
     summary: {
       totalAttacks: allResults.length,
