@@ -4041,9 +4041,15 @@
 
           const isExpanded = liveExpandAll || liveExpandedRows.has(idx);
 
+          // Multi-turn step info
+          var steps = r.conversation ? r.conversation.length : 0;
+          var stepsHtml = steps > 1
+            ? '<span style="font-size:9px;color:var(--purple);background:rgba(188,140,255,0.1);padding:1px 6px;border-radius:8px;margin-left:4px;">' + steps + ' steps</span>'
+            : steps === 1 ? '<span style="font-size:9px;color:var(--text2);margin-left:4px;">1 step</span>' : '';
+
           // Summary row (clickable)
           let html = '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="toggleLiveRow(' + idx + ')">' +
-            '<td style="padding:6px 8px;"><span style="color:' + (verdictColors[r.verdict] || "var(--text2)") + ';font-weight:600;">' + r.verdict + '</span></td>' +
+            '<td style="padding:6px 8px;"><span style="color:' + (verdictColors[r.verdict] || "var(--text2)") + ';font-weight:600;">' + r.verdict + '</span>' + stepsHtml + '</td>' +
             '<td style="padding:6px 8px;"><span style="color:' + (sevColors[r.severity] || "var(--text2)") + ';text-transform:uppercase;font-size:10px;font-weight:600;">' + r.severity + '</span></td>' +
             '<td style="padding:6px 8px;color:var(--text2);">' + esc(catLabel) + '</td>' +
             '<td style="padding:6px 8px;">' + esc(r.name) + '</td>' +
