@@ -2045,13 +2045,22 @@
         const panel = document.getElementById("dashboardPanel");
         const n = reportsMeta.length;
         const latest = n > 0 ? reportsMeta[0] : null;
-        const latestScore = latest ? latest.score : "-";
-        const prevScore = n > 1 ? reportsMeta[1].score : null;
+        // Calculate live score from metadata (handles old reports with broken score=0)
+        function calcLiveScore(r) {
+          if (!r || r.totalAttacks === 0) return 0;
+          // If stored score looks valid (>0 or genuinely 100% vuln), use it
+          if (r.score > 0) return r.score;
+          // Recalculate: 100 * (1 - vulnRate)
+          var vulnWeight = r.passed + (r.partial || 0) * 0.5;
+          return Math.round(100 * (1 - vulnWeight / r.totalAttacks));
+        }
+        const latestScore = latest ? calcLiveScore(latest) : "-";
+        const prevScore = n > 1 ? calcLiveScore(reportsMeta[1]) : null;
         const latestScoreColor = typeof latestScore === "number" ? scoreColor(latestScore) : "var(--text2)";
         const totalVulns = reportsMeta.reduce((s, r) => s + r.passed, 0);
         const totalBlocked = reportsMeta.reduce((s, r) => s + r.failed, 0);
         const totalAttacks = reportsMeta.reduce((s, r) => s + r.totalAttacks, 0);
-        const avgScore = n > 0 ? Math.round(reportsMeta.reduce((s, r) => s + r.score, 0) / n) : 0;
+        const avgScore = n > 0 ? Math.round(reportsMeta.reduce((s, r) => s + calcLiveScore(r), 0) / n) : 0;
         const activeRunCount = [...runDataCache.values()].filter(r => r.status === "running" || r.status === "queued").length;
 
         // Trend delta
