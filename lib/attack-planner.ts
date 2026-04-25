@@ -8,7 +8,7 @@ import type {
   AttackCategory,
   CategoryDefenseProfile,
 } from "./types.js";
-import { ALL_STRATEGIES, sampleStrategies } from "./attack-strategies.js";
+import { ALL_STRATEGIES, sampleStrategies, getAllStrategies } from "./attack-strategies.js";
 import { selectStrategiesForCategory } from "./strategy-selector.js";
 import { parseJsonArrayFromLlmResponse } from "./parse-llm-json-array.js";
 
@@ -91,8 +91,10 @@ export async function planAttacks(
 ): Promise<Attack[]> {
   const allAttacks: Attack[] = [];
   const totalModules = modules.length;
+  // Merge built-in + custom strategies
+  const mergedStrategies = getAllStrategies(config.attackConfig.customStrategiesFile);
 
-  console.log(`  📋 Planning attacks for ${totalModules} categories...`);
+  console.log(`  📋 Planning attacks for ${totalModules} categories (${mergedStrategies.length} strategies)...`);
 
   for (let i = 0; i < modules.length; i++) {
     const mod = modules[i];
@@ -107,7 +109,7 @@ export async function planAttacks(
       const seedAttacks = mod.getSeedAttacks(analysis);
       // Assign strategies to seed attacks (they don't have them by default)
       const seedStrategies = sampleStrategies(
-        ALL_STRATEGIES,
+        mergedStrategies,
         config.attackConfig.enabledStrategies,
         seedAttacks.length,
       );
@@ -364,12 +366,12 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
   const sampledStrategies = profile
     ? selectStrategiesForCategory(
         profile,
-        ALL_STRATEGIES,
+        mergedStrategies,
         config.attackConfig.enabledStrategies,
         strategiesPerRound,
       )
     : sampleStrategies(
-        ALL_STRATEGIES,
+        mergedStrategies,
         config.attackConfig.enabledStrategies,
         strategiesPerRound,
       );

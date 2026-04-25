@@ -1471,3 +1471,57 @@ export function sampleStrategies(
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(n, shuffled.length));
 }
+
+/**
+ * Load custom strategies from a JSON file and merge with built-in strategies.
+ * File format: array of { slug, name, level?, levelName?, promptModifier }
+ *
+ * Usage: set customStrategiesFile in config.json:
+ *   "attackConfig": { "customStrategiesFile": "my-strategies.json" }
+ */
+export function loadCustomStrategies(filePath: string): AttackStrategy[] {
+  try {
+    const { readFileSync } = require("fs");
+    const { resolve } = require("path");
+    const abs = resolve(filePath);
+    const raw = readFileSync(abs, "utf-8");
+    const customs = JSON.parse(raw) as Array<{
+      slug: string;
+      name: string;
+      level?: number;
+      levelName?: string;
+      promptModifier: string;
+    }>;
+
+    if (!Array.isArray(customs)) {
+      console.warn(`Custom strategies file is not an array: ${filePath}`);
+      return [];
+    }
+
+    // Assign IDs starting after the last built-in
+    const maxId = ALL_STRATEGIES.reduce((max, s) => Math.max(max, s.id), 0);
+    return customs.map((c, i) => ({
+      id: maxId + 1 + i,
+      slug: c.slug,
+      name: c.name,
+      level: c.level ?? 99,
+      levelName: c.levelName ?? "Custom Strategies",
+      promptModifier: c.promptModifier,
+    }));
+  } catch (err) {
+    console.warn(`Failed to load custom strategies from ${filePath}: ${(err as Error).message}`);
+    return [];
+  }
+}
+
+/**
+ * Get all strategies (built-in + custom from file).
+ */
+export function getAllStrategies(customFile?: string): AttackStrategy[] {
+  if (!customFile) return ALL_STRATEGIES;
+  const custom = loadCustomStrategies(customFile);
+  if (custom.length > 0) {
+    console.log(`  Loaded ${custom.length} custom strategies from ${customFile}`);
+  }
+  return [...ALL_STRATEGIES, ...custom];
+}
