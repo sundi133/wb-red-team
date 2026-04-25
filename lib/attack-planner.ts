@@ -363,15 +363,16 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
   // Per-category strategy selection: use defense-informed selection in round 2+,
   // fall back to random sampling for round 1 or categories with no profile.
   const strategiesPerRound = config.attackConfig.strategiesPerRound ?? 5;
+  const allStrats = getAllStrategies(config.attackConfig.customStrategiesFile);
   const sampledStrategies = profile
     ? selectStrategiesForCategory(
         profile,
-        mergedStrategies,
+        allStrats,
         config.attackConfig.enabledStrategies,
         strategiesPerRound,
       )
     : sampleStrategies(
-        mergedStrategies,
+        allStrats,
         config.attackConfig.enabledStrategies,
         strategiesPerRound,
       );

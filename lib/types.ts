@@ -463,11 +463,6 @@ export interface Config {
    * Omit or use an empty string to skip file-based custom attacks.
    */
   customAttacksFile?: string;
-  /**
-   * Path to a JSON file with custom delivery strategies.
-   * Format: [{ slug, name, promptModifier, level?, levelName? }]
-   */
-  customStrategiesFile?: string;
   /** Defaults for row-shaped entries in custom attack files (not full `Attack` objects). */
   customAttacksDefaults?: {
     authMethod?: Attack["authMethod"];
@@ -528,6 +523,11 @@ export interface Config {
     appTailoredCustomPromptCount?: number;
     /** Run an automated discovery round before attack rounds to probe the target and enrich sensitivePatterns. Default: false. */
     enableDiscovery?: boolean;
+    /**
+     * Path to a JSON file with custom delivery strategies.
+     * Format: [{ slug, name, promptModifier, level?, levelName? }]
+     */
+    customStrategiesFile?: string;
   };
 }
 
