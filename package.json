@@ -38,6 +38,7 @@
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
+    "scan": "tsx scripts/run-with-progress.ts",
     "ai": "tsx scripts/ai-assistant.ts",
     "gen:interactive": "tsx scripts/gen-interactive.ts",
     "dashboard": "tsx dashboard/server.ts 4200",
