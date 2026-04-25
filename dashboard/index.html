@@ -2543,8 +2543,43 @@
               '</div>' +
               '<div style="font-size:13px;margin-bottom:4px;">' + esc(targetUrl) + '</div>';
 
+            // Progress bar for running jobs
+            if (data.status === "running" || data.status === "queued") {
+              var resultEvents = (data.progress || []).filter(function(p) { return p.result; });
+              var totalResults = resultEvents.length;
+              var passes = resultEvents.filter(function(p) { return p.result.verdict === "PASS"; }).length;
+              var fails = resultEvents.filter(function(p) { return p.result.verdict === "FAIL"; }).length;
+              var partials = resultEvents.filter(function(p) { return p.result.verdict === "PARTIAL"; }).length;
+              var errors = resultEvents.filter(function(p) { return p.result.verdict === "ERROR"; }).length;
+
+              // Use server-calculated estimate based on config (categories × maxAttacks × rounds + seeds)
+              var estimatedTotal = data.estimatedTotal || Math.max(totalResults + 10, 50);
+              var pct = Math.min(Math.round((totalResults / estimatedTotal) * 100), data.status === "done" ? 100 : 95);
+              if (data.status === "queued") pct = 0;
+
+              html += '<div style="margin-top:8px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                '<div style="font-size:11px;color:var(--text2);">' +
+                (totalResults > 0 ? totalResults + ' / ~' + estimatedTotal + ' attacks (' + pct + '%)' : 'Starting...') +
+                '</div>' +
+                '<div style="font-size:11px;display:flex;gap:10px;">' +
+                (passes > 0 ? '<span style="color:var(--red);font-weight:600;">' + passes + ' vulns</span>' : '') +
+                (fails > 0 ? '<span style="color:var(--green);">' + fails + ' blocked</span>' : '') +
+                (partials > 0 ? '<span style="color:var(--orange);">' + partials + ' partial</span>' : '') +
+                '</div>' +
+                '</div>' +
+                '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;display:flex;">' +
+                (passes > 0 && totalResults > 0 ? '<div style="width:' + (passes/totalResults*100) + '%;background:var(--red);transition:width 0.5s;"></div>' : '') +
+                (partials > 0 && totalResults > 0 ? '<div style="width:' + (partials/totalResults*100) + '%;background:var(--orange);transition:width 0.5s;"></div>' : '') +
+                (fails > 0 && totalResults > 0 ? '<div style="width:' + (fails/totalResults*100) + '%;background:var(--green);transition:width 0.5s;"></div>' : '') +
+                (errors > 0 && totalResults > 0 ? '<div style="width:' + (errors/totalResults*100) + '%;background:var(--text2);opacity:0.3;transition:width 0.5s;"></div>' : '') +
+                '<div style="flex:1;background:var(--surface2);"></div>' +
+                '</div>' +
+                '</div>';
+            }
+
             if (summary) {
-              html += '<div style="font-size:12px;color:var(--text2);">' +
+              html += '<div style="font-size:12px;color:var(--text2);margin-top:6px;">' +
                 'Score: <span style="color:' + scoreColor(summary.score) + ';font-weight:600;">' + summary.score + '</span> &middot; ' +
                 summary.totalAttacks + ' attacks &middot; ' +
                 '<span style="color:var(--red);">' + summary.passed + ' vulns</span> &middot; ' +

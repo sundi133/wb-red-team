@@ -118,6 +118,7 @@ interface Job {
   abortController?: AbortController;
   tenantId?: string;
   userId?: string;
+  estimatedTotal?: number;
 }
 
 const jobs = new Map<string, Job>();
@@ -267,6 +268,15 @@ function enqueueJob(
   config: Config,
   ctx?: RequestContext | null,
 ): Job {
+  // Estimate total attacks: categories × maxAttacksPerCategory × rounds
+  // + seed attacks (roughly 2-3 per category on round 1)
+  const ac = config.attackConfig;
+  const numCategories = ac.enabledCategories?.length || 20; // default ~20 if unset
+  const attacksPerCat = ac.maxAttacksPerCategory || 5;
+  const rounds = ac.adaptiveRounds || 2;
+  const seedsPerCat = 3; // approximate
+  const estimatedTotal = (numCategories * attacksPerCat * rounds) + (numCategories * seedsPerCat);
+
   const job: Job = {
     id: randomUUID(),
     status: "queued",
@@ -275,6 +285,7 @@ function enqueueJob(
     startedAt: new Date().toISOString(),
     tenantId: ctx?.tenantId,
     userId: ctx?.userId,
+    estimatedTotal,
   };
   jobs.set(job.id, job);
 
@@ -393,6 +404,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         progress: job.progress.slice(since),
         reportFile: job.reportFile,
         summary: job.report?.summary,
+        estimatedTotal: job.estimatedTotal,
       }),
     );
     return;
