@@ -80,6 +80,35 @@ docker compose up -d
 
 Reports land in `report/` as both JSON and Markdown. Dashboard at `http://localhost:4200` with live progress, compliance analysis, and risk quantification.
 
+### Trigger a run via API (after config is created)
+
+```bash
+# Using a config file
+curl -X POST http://localhost:4200/api/run \
+  -H "Content-Type: application/json" \
+  -d @configs/config.my-app.json
+
+# If your target is on localhost (Docker needs host.docker.internal)
+curl -X POST http://localhost:4200/api/run \
+  -H "Content-Type: application/json" \
+  -d "$(cat configs/config.my-app.json | sed 's/localhost:4000/host.docker.internal:4000/g')"
+
+# Poll status
+curl http://localhost:4200/api/run/<runId>
+
+# List all runs
+curl http://localhost:4200/api/runs
+
+# Cancel a run
+curl -X DELETE http://localhost:4200/api/run/<runId>
+
+# With API key (enterprise mode)
+curl -X POST http://localhost:4200/api/run \
+  -H "X-API-Key: rtk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d @configs/config.insurance.json
+```
+
 ---
 
 ## How it works
