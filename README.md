@@ -320,7 +320,45 @@ curl -X POST https://your-host/api/run \
 | **[PyRIT](https://github.com/Azure/PyRIT)** | Python research framework with maximum extensibility. |
 | **[DeepTeam](https://github.com/confident-ai/deepteam)** | Already on the DeepEval stack. |
 
-The category breakdown is genuinely complementary. We do not replace Promptfoo for endpoints you don't own; Promptfoo doesn't replace us for agentic apps where you do own the source. Many teams will run both.
+### Red-Team AI vs Promptfoo — deep comparison
+
+Both are MIT-licensed, TypeScript-based. Promptfoo has 20k+ stars, OpenAI backing, and is the most mature LLM red-team tool. Red-Team AI is early-stage but fills a structural gap: white-box testing.
+
+**Where Red-Team AI is stronger:**
+
+| Area | Red-Team AI | Promptfoo |
+|------|------------|-----------|
+| Source code analysis | Reads codebase — discovers tools, roles, guardrails, hardcoded secrets, call graphs | No source access |
+| Agentic attacks | 13 categories (tool chain hijack, workflow bypass, scope creep, reflection exploit, multi-agent delegation) | ~5 (coding agent, tool abuse) |
+| Social engineering strategies | 20+ (authority, victim, emergency, flattery, guilt, grief, therapeutic, whistleblower) | ~3 (citation, authoritative markup) |
+| RAG attacks | 9 categories (corpus poisoning, ranking manipulation, vector store, chunk boundary, tenant bleed) | ~3 (RAG poisoning, indirect injection) |
+| Adaptive rounds | Multi-round — defense profiling → strategy rotation → re-targeting on partial successes | Single pass (Meta Agent has cross-plugin memory) |
+| Strategy × category composition | 155 strategies × 141 categories orthogonally composable | Strategies applied per-plugin |
+| Self-hosted enterprise | Built-in Postgres, AES-256 encryption, SSO/OIDC, RBAC, audit log, tenant isolation | Enterprise SaaS plan |
+| Risk quantification | LLM-powered business impact, financial exposure, real-world incident mapping | Not built-in |
+| Guardrail recommendations | Maps findings to Votal Shield configs | Not built-in |
+| Compliance frameworks | 11 built-in (OWASP LLM, OWASP Agentic, MITRE ATLAS, NIST AI RMF, NIST 800-53, EU AI Act, GDPR, HIPAA, ISO 27001, PCI-DSS, Saudi PDPL) | 6 (OWASP, NIST, MITRE ATLAS, ISO 42001, GDPR, EU AI Act) |
+
+**Where Promptfoo is stronger:**
+
+| Area | Promptfoo | Red-Team AI |
+|------|-----------|------------|
+| Maturity & community | 20k+ stars, OpenAI-backed, production-tested at scale | Beta, early stage |
+| Provider support | 50+ LLM providers | 4 (Anthropic, OpenAI, OpenRouter, Together) |
+| Compliance plugins | 56 granular plugins (FERPA, COPPA, accessibility, billing, product safety) | 10 industry-specific categories |
+| Dataset benchmarks | 11 curated datasets (HarmBench, BeaverTails, ToxicChat, XSTest) | None |
+| CI/CD | First-class GitHub Action, PR code scanning | API-based (curl/npm run scan) |
+| Eval + red-team | Combined accuracy eval + security testing in one tool | Security testing only |
+| Meta Agent | Builds custom attack taxonomy with persistent scan-wide memory | Round-based defense profiling |
+| Multi-turn agents | Hydra (adaptive branching with scan-wide memory), GOAT, crescendo | Scripted, adaptive (LLM follow-ups), crescendo |
+| GCG attacks | Gradient-based adversarial optimization (research-grade) | Not available |
+| Multimodal encoding | Image, video, audio encoding bypass | Semantic multimodal attacks (ghost injection, cross-modal conflict) |
+
+**Use both — they're complementary:**
+- Promptfoo for black-box testing of endpoints you don't own, model eval, CI/CD PR scanning, and dataset benchmarks
+- Red-Team AI for white-box testing where you own the source, agentic apps with tools/roles, and self-hosted enterprise deployment with compliance
+
+Promptfoo is DAST for AI. Red-Team AI is SAST+DAST for AI. Application security has always needed both.
 
 ---
 
