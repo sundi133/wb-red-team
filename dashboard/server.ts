@@ -95,6 +95,31 @@ function getReportMeta(filename: string): ReportMeta {
   }
 }
 
+/**
+ * Backfill `stepIndex` and `totalSteps` on each AttackResult from its
+ * `conversation` array when the scalar fields are missing. Older runs persisted
+ * the conversation but not the per-result step counts, which made downloads
+ * always show "Step 1 of 1" even for multi-turn attacks.
+ */
+function normalizeReportSteps(report: Record<string, unknown>): Record<string, unknown> {
+  const rounds = Array.isArray(report.rounds) ? report.rounds : [];
+  for (const round of rounds as Record<string, unknown>[]) {
+    const results = Array.isArray(round.results) ? round.results : [];
+    for (const r of results as Record<string, unknown>[]) {
+      const conv = Array.isArray(r.conversation) ? r.conversation : null;
+      if (conv && conv.length > 0) {
+        if (r.totalSteps == null) r.totalSteps = conv.length;
+        if (r.stepIndex == null) {
+          const last = conv[conv.length - 1] as Record<string, unknown> | undefined;
+          const lastIdx = last && typeof last.stepIndex === "number" ? last.stepIndex : conv.length - 1;
+          r.stepIndex = lastIdx;
+        }
+      }
+    }
+  }
+  return report;
+}
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -196,16 +221,50 @@ async function startJob(job: Job): Promise<void> {
           console.log(`  Run had error but saving ${resultEvents.length} partial results as report`);
           try {
             const { generateReport, writeReport } = await import("../lib/report-generator.js");
-            // Build rounds from progress results
-            const attackResults = resultEvents.map(p => ({
-              attack: { id: "partial", category: p.result!.category, name: p.result!.name, description: p.result!.description || "", severity: p.result!.severity, authMethod: p.result!.authMethod || "none", role: p.result!.role || "viewer", payload: { message: p.result!.payload || "" } },
-              verdict: p.result!.verdict as "PASS" | "FAIL" | "PARTIAL" | "ERROR",
-              statusCode: p.result!.statusCode,
-              responseBody: p.result!.responsePreview || "",
-              responseTimeMs: p.result!.responseTimeMs,
-              findings: p.result!.findings || [],
-              llmReasoning: p.result!.llmReasoning,
-            }));
+            // Build rounds from progress results. Preserve multi-turn data
+            // (conversation/totalSteps/stepIndex) and judge metadata so that
+            // partial reports survive errors with the same fidelity as
+            // successful runs — otherwise CSV/JSON exports always show a
+            // single step.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const attackResults = resultEvents.map(p => {
+              const pr = p.result!;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const conv = Array.isArray(pr.conversation) ? pr.conversation : undefined;
+              const totalSteps = conv && conv.length > 0 ? conv.length : undefined;
+              const lastStepIndex = conv && conv.length > 0
+                ? (typeof conv[conv.length - 1].stepIndex === "number"
+                    ? conv[conv.length - 1].stepIndex
+                    : conv.length - 1)
+                : undefined;
+              return {
+                attack: {
+                  id: "partial",
+                  category: pr.category,
+                  name: pr.name,
+                  description: pr.description || "",
+                  severity: pr.severity,
+                  authMethod: pr.authMethod || "none",
+                  role: pr.role || "viewer",
+                  payload: { message: pr.payload || "" },
+                  strategyName: pr.strategyName,
+                },
+                verdict: pr.verdict as "PASS" | "FAIL" | "PARTIAL" | "ERROR",
+                llmVerdict: pr.llmVerdict,
+                statusCode: pr.statusCode,
+                responseBody: pr.responsePreview || "",
+                responseTimeMs: pr.responseTimeMs,
+                findings: pr.findings || [],
+                llmReasoning: pr.llmReasoning,
+                llmEvidenceFor: pr.llmEvidenceFor,
+                llmEvidenceAgainst: pr.llmEvidenceAgainst,
+                judgeConfidence: pr.judgeConfidence,
+                idealResponse: pr.idealResponse,
+                conversation: conv,
+                totalSteps,
+                stepIndex: lastStepIndex,
+              };
+            });
             const report = generateReport(
               job.config.target.baseUrl + job.config.target.agentEndpoint,
               [{ round: 1, results: attackResults }],
@@ -619,40 +678,97 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         "Auth Method", "Role", "Status Code", "Response Time (ms)",
         "Findings", "LLM Reasoning", "LLM Evidence For",
         "LLM Evidence Against", "Judge Confidence",
-        "Policy Name", "Steps", "Total Steps",
+        "Policy Name", "Step", "Total Steps",
+        "Step Request", "Step Response",
       ];
 
       const rows: string[] = [headers.map(csvEscape).join(",")];
 
-      for (const round of data.rounds || []) {
-        for (const r of round.results || []) {
-          const a = r.attack || {};
-          rows.push(
-            [
-              round.round,
-              r.verdict,
-              r.llmVerdict ?? "",
-              a.category,
-              a.severity,
-              a.name,
-              a.description,
-              a.strategyName ?? "",
-              a.authMethod,
-              a.role,
-              r.statusCode ?? r.status_code ?? "",
-              r.responseTimeMs ?? r.response_time_ms ?? "",
-              (r.findings || []).join(" | "),
-              r.llmReasoning ?? "",
-              r.llmEvidenceFor ?? "",
-              r.llmEvidenceAgainst ?? "",
-              r.judgeConfidence ?? "",
-              r.policyUsed?.name ?? "",
-              r.stepIndex != null ? r.stepIndex + 1 : 1,
-              r.totalSteps ?? 1,
-            ]
-              .map(csvEscape)
-              .join(","),
-          );
+      // Render request/response payloads as readable strings for spreadsheet cells.
+      const stringify = (val: unknown): string => {
+        if (val == null) return "";
+        if (typeof val === "string") return val;
+        // Prefer a "message" field when the payload is a wrapper object — matches
+        // how the dashboard renders the per-step request preview.
+        if (typeof val === "object" && val !== null) {
+          const msg = (val as Record<string, unknown>).message;
+          if (typeof msg === "string") return msg;
+          const resp = (val as Record<string, unknown>).response;
+          if (typeof resp === "string") return resp;
+          try { return JSON.stringify(val); } catch { return String(val); }
+        }
+        return String(val);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rounds = (Array.isArray(data.rounds) ? data.rounds : []) as any[];
+      for (const round of rounds) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const results = (Array.isArray(round.results) ? round.results : []) as any[];
+        for (const r of results) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = (r.attack || {}) as any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const conv: any[] = Array.isArray(r.conversation) ? r.conversation : [];
+          // Derive total steps from the conversation array when present so multi-turn
+          // attacks are reflected in the export, not just the result-level scalar.
+          const totalSteps = conv.length || r.totalSteps || 1;
+
+          // Build one row per conversation step. For single-turn attacks (no
+          // conversation array), fall back to a single row using the result-level
+          // payload/responseBody so step 1 request/response are always exported.
+          const steps: {
+            stepNum: number;
+            statusCode: unknown;
+            responseTimeMs: unknown;
+            request: string;
+            response: string;
+          }[] = conv.length > 0
+            ? conv.map((step, idx: number) => ({
+                stepNum: typeof step.stepIndex === "number" ? step.stepIndex + 1 : idx + 1,
+                statusCode: step.statusCode ?? "",
+                responseTimeMs: step.responseTimeMs ?? "",
+                request: stringify(step.payload),
+                response: stringify(step.responseBody),
+              }))
+            : [{
+                stepNum: r.stepIndex != null ? r.stepIndex + 1 : 1,
+                statusCode: r.statusCode ?? r.status_code ?? "",
+                responseTimeMs: r.responseTimeMs ?? r.response_time_ms ?? "",
+                request: stringify(a.payload),
+                response: stringify(r.responseBody),
+              }];
+
+          for (const s of steps) {
+            rows.push(
+              [
+                round.round,
+                r.verdict,
+                r.llmVerdict ?? "",
+                a.category,
+                a.severity,
+                a.name,
+                a.description,
+                a.strategyName ?? "",
+                a.authMethod,
+                a.role,
+                s.statusCode,
+                s.responseTimeMs,
+                (r.findings || []).join(" | "),
+                r.llmReasoning ?? "",
+                r.llmEvidenceFor ?? "",
+                r.llmEvidenceAgainst ?? "",
+                r.judgeConfidence ?? "",
+                r.policyUsed?.name ?? "",
+                s.stepNum,
+                totalSteps,
+                s.request,
+                s.response,
+              ]
+                .map(csvEscape)
+                .join(","),
+            );
+          }
         }
       }
 
@@ -689,7 +805,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         }
         await logAudit(ctx, "report.view", "report", result.id, { filename });
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(result.report));
+        res.end(JSON.stringify(normalizeReportSteps(result.report as unknown as Record<string, unknown>)));
       } catch {
         res.writeHead(404);
         res.end("Not found");
@@ -699,9 +815,10 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
     // File-based fallback
     try {
-      const data = readFileSync(join(REPORT_DIR, filename), "utf-8");
+      const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(data);
+      res.end(JSON.stringify(normalizeReportSteps(parsed)));
     } catch {
       res.writeHead(404);
       res.end("Not found");
