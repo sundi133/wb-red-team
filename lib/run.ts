@@ -634,9 +634,10 @@ export async function runRedTeam(
         totalAttacks: attacks.length,
       };
 
-      // Rate-limit rapid-fire attacks
-      const rapidFire = (attack.payload as Record<string, unknown>)
-        ._rapidFire as number | undefined;
+      // Rate-limit rapid-fire attacks (payload may be missing on malformed LLM output)
+      const rapidFire = (
+        attack.payload as Record<string, unknown> | undefined
+      )?._rapidFire as number | undefined;
       if (rapidFire && attack.category === "rate_limit") {
         log("attacks", `[${i + 1}/${attacks.length}] ${attack.name} (${rapidFire}x rapid-fire)...`, progressExtra);
         const cleanPayload = { ...attack.payload };
