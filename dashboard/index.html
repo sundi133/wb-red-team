@@ -2682,14 +2682,14 @@
           html += '<div id="liveResultsContainer">' + buildLiveResultsHtml(liveResults) + '</div>';
         }
 
-        // Progress log
-        const progressLines = (data.progress || []).filter(p => p.phase !== "result").slice(-15);
+        // Progress log — preserve open/closed state across re-renders
+        const progressLines = (data.progress || []).filter(p => p.phase !== "result").slice(-30);
         if (progressLines.length > 0) {
-          html += '<details style="margin-top:12px;">' +
+          html += '<details' + (progressLogOpen ? ' open' : '') + ' style="margin-top:12px;" ontoggle="progressLogOpen=this.open">' +
             '<summary style="font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);">Progress Log (' + (data.progressTotal || data.progress?.length || 0) + ' events)</summary>' +
-            '<div style="max-height:200px;overflow-y:auto;background:var(--surface);border-radius:6px;padding:10px;margin-top:8px;">';
+            '<div style="max-height:260px;overflow-y:auto;background:var(--surface);border-radius:6px;padding:10px;margin-top:8px;">';
           for (const p of progressLines) {
-            const phaseColor = {config:"#58a6ff",analyze:"#58a6ff",auth:"#58a6ff",discovery:"#d29922",attacks:"#f85149",refine:"#d29922",report:"#3fb950"}[p.phase] || "#8b949e";
+            const phaseColor = {config:"#58a6ff",analyze:"#58a6ff",auth:"#58a6ff",clone:"#d2a8ff",discovery:"#d29922",attacks:"#f85149",refine:"#d29922",report:"#3fb950",static:"#79c0ff"}[p.phase] || "#8b949e";
             html += '<div style="font-size:11px;font-family:monospace;padding:1px 0;"><span style="color:' + phaseColor + ';">[' + esc(p.phase) + ']</span> ' + esc(p.message).slice(0, 120) + '</div>';
           }
           html += '</div></details>';
@@ -7674,6 +7674,7 @@
       let liveExpandAll = false;
       let liveFilterVerdict = "";
       let liveFilterSeverity = "";
+      let progressLogOpen = false;
       const runDataCache = new Map();
 
       function pollRun(runId) {
@@ -7706,7 +7707,15 @@
 
             renderSidebarRuns();
             if (selectedRunId === runId) {
-              if (currentTab === "runs") renderRunsTab();
+              if (currentTab === "runs") {
+                // Targeted update: only re-render the inline detail panel, not the entire tab
+                const detailEl = document.getElementById("runDetailInline");
+                if (detailEl) {
+                  detailEl.innerHTML = buildRunDetailContent(runId, merged);
+                } else {
+                  renderRunsTab();
+                }
+              }
               else renderRunMainPanel(runId, merged);
             }
 
