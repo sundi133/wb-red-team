@@ -6,7 +6,8 @@ RUN npm ci --omit=dev
 FROM node:20-slim
 WORKDIR /app
 
-# Install tsx globally for running TypeScript
+# Install git (needed for codebaseRepo cloning) and tsx
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm i -g tsx
 
 # Copy production dependencies
@@ -24,6 +25,7 @@ COPY policies/ ./policies/
 COPY lib/migrations/ ./lib/migrations/
 COPY compliance/ ./compliance/
 COPY config.example.json ./
+COPY examples/ ./examples/
 
 # Create report directory
 RUN mkdir -p report

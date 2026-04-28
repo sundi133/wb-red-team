@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage } from "node:http";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync, mkdtempSync } from "node:fs";
 import { join, extname } from "node:path";
+import { tmpdir } from "node:os";
+import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { loadConfig } from "../lib/config-loader.js";
 import { loadConfigFromObject } from "../lib/config-loader.js";
@@ -150,13 +152,57 @@ const jobs = new Map<string, Job>();
 let activeRuns = 0;
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_RUNS || "100", 10);
 
+/** Clone a git repo into a temp dir for white-box analysis. Returns the temp path. */
+function cloneCodebaseRepo(config: Config, jobId: string): string | null {
+  if (!config.codebaseRepo || config.codebasePath) return null;
+
+  const tmpDir = mkdtempSync(join(tmpdir(), `redteam-src-${jobId.slice(0, 8)}-`));
+  let repoUrl = config.codebaseRepo;
+
+  // Inject token for private repos: https://token@github.com/org/repo.git
+  // Token from config takes precedence, falls back to CODEBASE_REPO_TOKEN env var
+  const token = config.codebaseRepoToken || process.env.CODEBASE_REPO_TOKEN || "";
+  if (token && repoUrl.startsWith("https://")) {
+    repoUrl = repoUrl.replace("https://", `https://${token}@`);
+  }
+
+  const branch = config.codebaseRepoBranch || "";
+  const branchFlag = branch ? `--branch ${branch}` : "";
+
+  console.log(`  Cloning ${config.codebaseRepo} into ${tmpDir} ...`);
+  execSync(`git clone --depth 1 ${branchFlag} ${repoUrl} ${tmpDir}`, {
+    stdio: "pipe",
+    timeout: 120_000, // 2 min max
+  });
+  console.log(`  Clone complete: ${tmpDir}`);
+  return tmpDir;
+}
+
 async function startJob(job: Job): Promise<void> {
   activeRuns++;
   job.status = "running";
   const ac = new AbortController();
   job.abortController = ac;
 
+  let clonedDir: string | null = null;
   try {
+    // Clone repo if codebaseRepo is set and codebasePath is not
+    if (job.config.codebaseRepo && !job.config.codebasePath) {
+      job.progress.push({ phase: "clone", message: `Cloning ${job.config.codebaseRepo} (branch: ${job.config.codebaseRepoBranch || "HEAD"})...` });
+      try {
+        clonedDir = cloneCodebaseRepo(job.config, job.id);
+        if (clonedDir) {
+          job.config.codebasePath = clonedDir;
+          job.progress.push({ phase: "clone", message: `Clone successful → white-box analysis enabled` });
+        }
+      } catch (cloneErr) {
+        const msg = cloneErr instanceof Error ? cloneErr.message : String(cloneErr);
+        job.progress.push({ phase: "clone", message: `Clone failed: ${msg.slice(0, 150)} — falling back to black-box mode` });
+        console.error("  Clone failed:", msg);
+        // Continue without source code (black-box mode)
+      }
+    }
+
     const result = await runRedTeam(
       job.config,
       (p) => {
@@ -303,6 +349,10 @@ async function startJob(job: Job): Promise<void> {
     }
   } finally {
     job.abortController = undefined;
+    // Clean up cloned repo temp dir
+    if (clonedDir) {
+      try { rmSync(clonedDir, { recursive: true, force: true }); } catch {}
+    }
     // Only decrement if not already decremented by cancel handler
     if (job.status !== "cancelled") {
       activeRuns = Math.max(0, activeRuns - 1);

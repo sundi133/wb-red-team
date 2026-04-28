@@ -433,6 +433,12 @@ export interface Config {
     infra?: TargetInfra;
   };
   codebasePath?: string | null;
+  /** Git repo URL to clone for white-box analysis (used when codebasePath is not available, e.g. remote deployment). */
+  codebaseRepo?: string | null;
+  /** Branch/tag to checkout when cloning codebaseRepo (default: HEAD). */
+  codebaseRepoBranch?: string;
+  /** Git auth token for private repos (appended as https://token@host/...). */
+  codebaseRepoToken?: string;
   codebaseGlob: string;
   /** Path to the judge policy JSON file (default: "policies/default.json"). */
   policyFile?: string;
