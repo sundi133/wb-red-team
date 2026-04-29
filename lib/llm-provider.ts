@@ -277,6 +277,38 @@ class TogetherAIProvider implements LlmProvider {
   }
 }
 
+// ── Azure OpenAI Provider ──
+
+class AzureOpenAIProvider implements LlmProvider {
+  private client: OpenAI;
+
+  constructor() {
+    const apiKey = process.env.AZURE_OPENAI_API_KEY;
+    const endpoint = process.env.AZURE_OPENAI_ENDPOINT; // e.g. https://myresource.openai.azure.com
+    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-06-01";
+
+    if (!apiKey)
+      throw new Error(
+        "AZURE_OPENAI_API_KEY environment variable is required for azure provider",
+      );
+    if (!endpoint)
+      throw new Error(
+        "AZURE_OPENAI_ENDPOINT environment variable is required for azure provider (e.g. https://myresource.openai.azure.com)",
+      );
+
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: `${endpoint.replace(/\/+$/, "")}/openai/deployments`,
+      defaultQuery: { "api-version": apiVersion },
+      defaultHeaders: { "api-key": apiKey },
+    });
+  }
+
+  async chat(options: ChatOptions): Promise<string> {
+    return createOpenAICompatibleChatCompletion(this.client, options);
+  }
+}
+
 // ── Factory ──
 
 const providerCache = new Map<string, LlmProvider>();
@@ -300,9 +332,12 @@ function createProvider(name: string): LlmProvider {
     case "together":
       provider = new TogetherAIProvider();
       break;
+    case "azure":
+      provider = new AzureOpenAIProvider();
+      break;
     default:
       throw new Error(
-        `Unknown LLM provider: "${name}". Use "openai", "anthropic", "openrouter", or "together".`,
+        `Unknown LLM provider: "${name}". Use "openai", "anthropic", "openrouter", "together", or "azure".`,
       );
   }
 

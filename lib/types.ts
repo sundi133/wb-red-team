@@ -479,10 +479,10 @@ export interface Config {
     maxAttacksPerCategory: number;
     concurrency: number;
     delayBetweenRequestsMs: number;
-    llmProvider: "openai" | "anthropic" | "openrouter";
+    llmProvider: "openai" | "anthropic" | "openrouter" | "together" | "azure";
     llmModel: string;
     /** LLM provider for the judge (defaults to llmProvider if not set). */
-    judgeProvider?: "openai" | "anthropic" | "openrouter";
+    judgeProvider?: "openai" | "anthropic" | "openrouter" | "together" | "azure";
     judgeModel?: string;
     enableLlmGeneration: boolean;
     maxMultiTurnSteps: number;
