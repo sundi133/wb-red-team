@@ -456,10 +456,8 @@ async function main() {
     `  Review confirmation: ${requireReviewConfirmation ? "enabled" : "disabled"}`,
   );
 
-  // Estimate total attacks for progress bar
-  const ac = config.attackConfig;
-  const numCats = ac.enabledCategories?.length || relevantModules.length;
-  const estimatedTotalAttacks = numCats * (ac.maxAttacksPerCategory || 5) * (ac.adaptiveRounds || 2);
+  // Track actual total attacks for progress bar (updated as rounds are planned)
+  let knownTotalAttacks = 0;
 
   for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
     console.log(
@@ -493,6 +491,7 @@ async function main() {
       planned,
       customAttacks,
     );
+    knownTotalAttacks += attacks.length;
     console.log(`  Planned ${attacks.length} attacks`);
     printPlannedAttackReview(round, attacks, analysis, "initial");
     const approved = await confirmAttackExecution(
@@ -681,7 +680,7 @@ async function main() {
         else if (lastResult.verdict === "PARTIAL") globalPartials++;
         else globalErrors++;
         const elapsed = Math.round((Date.now() - attackStartTime) / 1000);
-        printProgressLine(globalAttackCount, estimatedTotalAttacks, globalPasses, globalFails, globalPartials, globalErrors, elapsed);
+        printProgressLine(globalAttackCount, knownTotalAttacks, globalPasses, globalFails, globalPartials, globalErrors, elapsed);
         console.log(); // newline after progress bar
       }
 
@@ -704,6 +703,7 @@ async function main() {
 
       if (refinedAttacks.length > 0) {
         console.log("  Refinement planning complete.");
+        knownTotalAttacks += refinedAttacks.length;
         console.log(`  Executing ${refinedAttacks.length} refined attacks`);
         printPlannedAttackReview(round, refinedAttacks, analysis, "refined");
         const refineApproved = await confirmAttackExecution(
