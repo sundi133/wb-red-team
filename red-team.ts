@@ -2,6 +2,9 @@
 
 import { createInterface } from "node:readline/promises";
 import { dirname, resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { execSync } from "node:child_process";
 
 // Color coding for security results
 function getColoredIcon(verdict: string): string {
@@ -24,6 +27,57 @@ function getColoredIcon(verdict: string): string {
       return `${colors.gray}[??]${colors.reset}`;
   }
 }
+const COLORS = {
+  reset: "\x1b[0m", bold: "\x1b[1m",
+  red: "\x1b[91m", green: "\x1b[92m", yellow: "\x1b[93m",
+  blue: "\x1b[94m", gray: "\x1b[90m", cyan: "\x1b[96m",
+};
+
+function progressBar(current: number, total: number, width = 30): string {
+  const pct = total > 0 ? current / total : 0;
+  const filled = Math.round(pct * width);
+  const bar = "█".repeat(filled) + "░".repeat(width - filled);
+  return `${bar} ${Math.round(pct * 100)}%`;
+}
+
+function printProgressLine(current: number, total: number, passes: number, fails: number, partials: number, errors: number, elapsed: number): void {
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  const bar = progressBar(current, total);
+  const stats = [
+    passes > 0 ? `${COLORS.red}${passes} vulns${COLORS.reset}` : "",
+    fails > 0 ? `${COLORS.green}${fails} blocked${COLORS.reset}` : "",
+    partials > 0 ? `${COLORS.yellow}${partials} partial${COLORS.reset}` : "",
+    errors > 0 ? `${COLORS.gray}${errors} errors${COLORS.reset}` : "",
+  ].filter(Boolean).join(" ");
+  process.stdout.write(`\r\x1b[K  ${COLORS.blue}${bar}${COLORS.reset} ${stats} ${COLORS.gray}(${timeStr})${COLORS.reset}`);
+}
+
+/** Clone a git repo for white-box analysis. Returns temp dir path or null. */
+function cloneCodebaseRepo(config: import("./lib/types.js").Config): string | null {
+  if (!config.codebaseRepo || config.codebasePath) return null;
+
+  const tmpDir = mkdtempSync(`${tmpdir()}/redteam-cli-`);
+  let repoUrl = config.codebaseRepo;
+
+  const token = config.codebaseRepoToken || process.env.CODEBASE_REPO_TOKEN || "";
+  if (token && repoUrl.startsWith("https://")) {
+    repoUrl = repoUrl.replace("https://", `https://${token}@`);
+  }
+
+  const branch = config.codebaseRepoBranch || "";
+  const branchFlag = branch ? `--branch ${branch}` : "";
+
+  console.log(`  Cloning ${config.codebaseRepo}${branch ? ` (branch: ${branch})` : ""}...`);
+  execSync(`git clone --depth 1 ${branchFlag} ${repoUrl} ${tmpDir}`, {
+    stdio: "pipe",
+    timeout: 120_000,
+  });
+  console.log(`  Clone complete → white-box analysis enabled`);
+  return tmpDir;
+}
+
 import { loadEnvFile } from "./lib/env-loader.js";
 import { loadConfig } from "./lib/config-loader.js";
 import { describeTarget, getTargetAdapter } from "./lib/target-adapter.js";
@@ -226,6 +280,18 @@ async function main() {
     console.log(`  Active categories: all (${moduleSet.length})`);
   }
 
+  // 1.5. Clone codebaseRepo if set (for white-box analysis)
+  let clonedDir: string | null = null;
+  if (config.codebaseRepo && !config.codebasePath) {
+    try {
+      clonedDir = cloneCodebaseRepo(config);
+      if (clonedDir) config.codebasePath = clonedDir;
+    } catch (cloneErr) {
+      console.log(`  Clone failed: ${cloneErr instanceof Error ? cloneErr.message.slice(0, 100) : String(cloneErr)}`);
+      console.log(`  Continuing in black-box mode`);
+    }
+  }
+
   // 2. Analyze codebase
   console.log("\n[2/5] Analyzing target codebase...");
   const analysis = await analyzeCodebase(config);
@@ -379,9 +445,20 @@ async function main() {
   let cancelledByUser = false;
   const requireReviewConfirmation =
     config.attackConfig.requireReviewConfirmation ?? true;
+  let globalAttackCount = 0;
+  let globalPasses = 0;
+  let globalFails = 0;
+  let globalPartials = 0;
+  let globalErrors = 0;
+  const attackStartTime = Date.now();
   console.log(
     `  Review confirmation: ${requireReviewConfirmation ? "enabled" : "disabled"}`,
   );
+
+  // Estimate total attacks for progress bar
+  const ac = config.attackConfig;
+  const numCats = ac.enabledCategories?.length || relevantModules.length;
+  const estimatedTotalAttacks = numCats * (ac.maxAttacksPerCategory || 5) * (ac.adaptiveRounds || 2);
 
   for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
     console.log(
@@ -592,6 +669,19 @@ async function main() {
             `Attack execution failed: ${attackErr instanceof Error ? attackErr.message : String(attackErr)}`,
           ],
         });
+      }
+
+      // Update progress counters
+      const lastResult = roundResults[roundResults.length - 1];
+      if (lastResult) {
+        globalAttackCount++;
+        if (lastResult.verdict === "PASS") globalPasses++;
+        else if (lastResult.verdict === "FAIL") globalFails++;
+        else if (lastResult.verdict === "PARTIAL") globalPartials++;
+        else globalErrors++;
+        const elapsed = Math.round((Date.now() - attackStartTime) / 1000);
+        printProgressLine(globalAttackCount, estimatedTotalAttacks, globalPasses, globalFails, globalPartials, globalErrors, elapsed);
+        console.log(); // newline after progress bar
       }
 
       // Delay between requests
@@ -815,6 +905,14 @@ async function main() {
     }
   }
 
+  // Final progress bar
+  const totalElapsed = Math.round((Date.now() - attackStartTime) / 1000);
+  const mins = Math.floor(totalElapsed / 60);
+  const secs = totalElapsed % 60;
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  console.log(`\n  ${COLORS.bold}Attacks complete${COLORS.reset} — ${globalAttackCount} attacks in ${timeStr}`);
+  console.log(`  ${COLORS.red}${globalPasses} vulns${COLORS.reset} | ${COLORS.green}${globalFails} blocked${COLORS.reset} | ${COLORS.yellow}${globalPartials} partial${COLORS.reset} | ${COLORS.gray}${globalErrors} errors${COLORS.reset}`);
+
   // 5. Generate report
   console.log("\n[5/5] Generating report...");
   if (cancelledByUser) {
@@ -835,6 +933,11 @@ async function main() {
   console.log(`  Markdown: ${mdPath}`);
 
   printConsoleSummary(report);
+
+  // Cleanup cloned repo
+  if (clonedDir) {
+    try { rmSync(clonedDir, { recursive: true, force: true }); } catch {}
+  }
 }
 
 main().catch((err) => {
