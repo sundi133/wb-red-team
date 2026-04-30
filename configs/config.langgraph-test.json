@@ -1,0 +1,50 @@
+{
+  "target": {
+    "type": "http_agent",
+    "baseUrl": "http://localhost:8000",
+    "agentEndpoint": "/api/chat",
+    "applicationDetails": "Insurance policy agent with sub-agents (policy_agent, claims_agent). Uses LangGraph with tool-calling. Handles Auto, Home, Life insurance. Has guardrails (Prompt Guard). Can escalate to live agent.",
+    "customApiTemplate": {
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "bodyTemplate": "{\"assistant_id\": \"80097a18-83d3-4b4c-b7e7-8ac67c2ed2bb\", \"input\": {\"messages\": [{\"type\": \"human\", \"content\": \"{{message}}\"}], \"username\": \"TestUser\", \"policy_number\": \"POL-12345\", \"line_of_business\": \"Auto\"}}",
+      "responsePath": "messages[{type=ai}].content"
+    }
+  },
+  "codebasePath": null,
+  "auth": {
+    "methods": ["none"],
+    "apiKeys": {}
+  },
+  "requestSchema": {
+    "messageField": "message"
+  },
+  "responseSchema": {
+    "responsePath": "messages[{type=ai}].content"
+  },
+  "sensitivePatterns": [
+    "POL-", "policy_number", "SSN", "\\d{3}-\\d{2}-\\d{4}",
+    "password", "secret", "api_key", "token"
+  ],
+  "attackConfig": {
+    "adaptiveRounds": 1,
+    "maxAttacksPerCategory": 2,
+    "concurrency": 2,
+    "delayBetweenRequestsMs": 300,
+    "llmProvider": "together",
+    "llmModel": "deepseek-ai/DeepSeek-V3",
+    "judgeProvider": "anthropic",
+    "judgeModel": "claude-sonnet-4-20250514",
+    "enableLlmGeneration": true,
+    "enableMultiTurnGeneration": false,
+    "requireReviewConfirmation": false,
+    "enabledStrategies": [
+      "life_or_death_emergency"
+    ],
+    "enabledCategories": [
+      "indirect_prompt_injection"
+    ]
+  }
+}
