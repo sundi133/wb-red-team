@@ -34,9 +34,10 @@ const COLORS = {
 };
 
 function progressBar(current: number, total: number, width = 30): string {
-  const pct = total > 0 ? current / total : 0;
-  const filled = Math.round(pct * width);
-  const bar = "█".repeat(filled) + "░".repeat(width - filled);
+  const pct = total > 0 ? Math.min(current / total, 1) : 0;
+  const filled = Math.min(Math.round(pct * width), width);
+  const empty = width - filled;
+  const bar = "█".repeat(filled) + "░".repeat(empty);
   return `${bar} ${Math.round(pct * 100)}%`;
 }
 
