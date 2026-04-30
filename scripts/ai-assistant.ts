@@ -80,7 +80,7 @@ async function callLlm(system: string, userMsg: string): Promise<string> {
 }
 
 // ── Intent classification ──
-type Intent = "generate_config" | "run_scan" | "show_status" | "show_results" | "suggest_guardrails" | "run_compliance" | "analyze_risk" | "show_help" | "save_report" | "general_question";
+type Intent = "generate_config" | "run_scan" | "show_status" | "show_results" | "suggest_guardrails" | "run_compliance" | "analyze_risk" | "show_help" | "save_report" | "show_config" | "general_question";
 
 async function classifyIntent(input: string): Promise<{ intent: Intent; params: Record<string, string> }> {
   const lower = input.toLowerCase();
@@ -90,10 +90,15 @@ async function classifyIntent(input: string): Promise<{ intent: Intent; params: 
   if (/^(status|progress)$/i.test(lower)) return { intent: "show_status", params: {} };
   if (/^(results?|findings?|show pass|show vuln)/i.test(lower)) return { intent: "show_results", params: {} };
   if (/^(save|export|download)/i.test(lower)) return { intent: "save_report", params: {} };
+  if (/show.*config|view.*config|describe|whats the (file|config)|current config|print config|display config/i.test(lower)) return { intent: "show_config" as Intent, params: {} };
   if (/guardrail|fix|remediat|protect|shield|defend/i.test(lower)) return { intent: "suggest_guardrails", params: {} };
   if (/compliance|owasp|nist|mitre|gdpr|hipaa|pci/i.test(lower)) return { intent: "run_compliance", params: {} };
   if (/risk|impact|business|financial/i.test(lower)) return { intent: "analyze_risk", params: {} };
   if (/^run\b|start scan|execute|launch/i.test(lower)) return { intent: "run_scan", params: {} };
+  if (/create.*config|generate.*config|make.*config|setup.*config|config.*for|new config|build.*config/i.test(lower)) {
+    const urlMatch = input.match(/https?:\/\/[^\s]+/);
+    return { intent: "generate_config", params: { url: urlMatch?.[0] || "", description: input } };
+  }
   if (/test|scan|attack|red.?team|check|probe|assess/i.test(lower)) {
     // Extract URL if present
     const urlMatch = input.match(/https?:\/\/[^\s]+/);
@@ -101,6 +106,57 @@ async function classifyIntent(input: string): Promise<{ intent: Intent; params: 
   }
 
   return { intent: "general_question", params: { question: input } };
+}
+
+// ── Smart defaults ──
+
+function selectDefaultCategories(focus: string): string[] {
+  const lower = focus.toLowerCase();
+  const base = ["prompt_injection", "indirect_prompt_injection", "content_filter_bypass", "output_evasion", "hallucination"];
+
+  if (/everything|all|full|comprehensive/i.test(lower)) {
+    return [...ALL_ATTACK_CATEGORIES].slice(0, 40); // Top 40 most important
+  }
+
+  const groups: Record<string, string[]> = {
+    safety: ["toxic_content", "harmful_advice", "drug_synthesis", "weapons_violence", "csam_minor_safety", "emotional_manipulation", "medical_safety"],
+    injection: ["prompt_injection", "indirect_prompt_injection", "cross_session_injection", "special_token_injection", "instruction_hierarchy_violation"],
+    exfiltration: ["data_exfiltration", "sensitive_data", "pii_disclosure", "steganographic_exfiltration", "slow_burn_exfiltration", "training_data_extraction"],
+    auth: ["auth_bypass", "rbac_bypass", "session_hijacking", "cross_tenant_access", "identity_privilege"],
+    agent: ["tool_misuse", "tool_chain_hijack", "agentic_workflow_bypass", "rogue_agent", "goal_hijack", "agentic_scope_creep", "tool_permission_escalation", "sandbox_escape"],
+    rag: ["rag_poisoning", "rag_corpus_poisoning", "vector_store_manipulation", "retrieval_ranking_attack", "chunk_boundary_injection", "retrieval_tenant_bleed"],
+    compliance: ["regulatory_violation", "gdpr_erasure_bypass", "financial_compliance", "insurance_compliance", "copyright_infringement"],
+    bias: ["bias_exploitation", "housing_discrimination", "hate_speech_dogwhistle"],
+    infra: ["ssrf", "path_traversal", "shell_injection", "sql_injection", "supply_chain"],
+  };
+
+  const selected = new Set(base);
+  for (const [key, cats] of Object.entries(groups)) {
+    if (lower.includes(key) || cats.some(c => lower.includes(c.replace(/_/g, " ")))) {
+      cats.forEach(c => selected.add(c));
+    }
+  }
+
+  // Add safety by default
+  if (selected.size <= base.length) {
+    groups.safety.forEach(c => selected.add(c));
+    groups.exfiltration.forEach(c => selected.add(c));
+  }
+
+  return [...selected].filter(c => ALL_ATTACK_CATEGORIES.includes(c as never));
+}
+
+function selectDefaultStrategies(): string[] {
+  return [
+    "base64_context_hint", "rot13_cipher_trick", "reverse_instruction",
+    "educational_series_framing", "fiction_writing_escape", "incremental_escalation_setup",
+    "building_on_previous_context", "life_or_death_emergency", "ego_boosting_capability_challenge",
+    "authority_mimicry_security_manager", "victim_narrative", "dan_style_persona",
+    "forced_persona_red_team_ai", "jailbreak_continuation", "dual_response_request",
+    "crescendo_multi_turn", "progressive_normalisation", "simulated_multi_turn_conversation",
+    "hex_encoding", "caesar_cipher_rot_n", "leetspeak_obfuscation",
+    "academic_computation_disguise", "historical_educational_framing", "peer_review_framing",
+  ];
 }
 
 // ── Actions ──
@@ -149,17 +205,46 @@ Test focus: ${whatToTest}`
   let suggestedCompliance: string[] = [];
 
   try {
-    const cleaned = llmResponse.replace(/```(?:json)?\s*/g, "").replace(/```/g, "");
-    const parsed = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] || "{}");
-    categories = (parsed.categories || []).filter((c: string) => ALL_ATTACK_CATEGORIES.includes(c as never));
-    strategies = (parsed.strategies || []).filter((s: string) => ALL_STRATEGIES.some(st => st.slug === s));
+    const cleaned = llmResponse.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in LLM response");
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Validate categories against known list
+    const rawCategories = (parsed.categories || []) as string[];
+    categories = rawCategories.filter((c: string) => ALL_ATTACK_CATEGORIES.includes(c as never));
+
+    // If LLM returned categories but none matched, it may have used different naming — try fuzzy match
+    if (categories.length === 0 && rawCategories.length > 0) {
+      console.log("  ⚠ LLM categories didn't match known list, using smart defaults for: " + whatToTest);
+      categories = selectDefaultCategories(whatToTest);
+    }
+
+    // Validate strategies
+    const allSlugs = new Set(ALL_STRATEGIES.map(s => s.slug));
+    const rawStrategies = (parsed.strategies || []) as string[];
+    strategies = rawStrategies.filter((s: string) => allSlugs.has(s));
+
+    if (strategies.length === 0 && rawStrategies.length > 0) {
+      strategies = selectDefaultStrategies();
+    }
+
     reasoning = parsed.reasoning || "";
     suggestedCompliance = parsed.suggestedCompliance || [];
-  } catch {
-    // Fallback
-    categories = ["prompt_injection", "data_exfiltration", "sensitive_data", "output_evasion", "content_filter_bypass", "toxic_content", "harmful_advice", "hallucination"];
-    strategies = ["base64_context_hint", "rot13_cipher_trick", "incremental_escalation_setup", "educational_series_framing", "fiction_writing_escape"];
-    reasoning = "Using default category set for general AI safety testing.";
+  } catch (parseErr) {
+    console.log("  ⚠ LLM response parsing failed, using smart defaults for: " + whatToTest);
+    categories = selectDefaultCategories(whatToTest);
+    strategies = selectDefaultStrategies();
+    reasoning = "Using curated category set based on test focus: " + whatToTest;
+  }
+
+  // Final safety net — never produce 0 categories
+  if (categories.length === 0) {
+    categories = selectDefaultCategories(whatToTest);
+    reasoning = reasoning || "Using default categories for general AI safety testing.";
+  }
+  if (strategies.length === 0) {
+    strategies = selectDefaultStrategies();
   }
 
   // Set intensity
@@ -221,6 +306,45 @@ Test focus: ${whatToTest}`
     console.log("  Suggested compliance: " + suggestedCompliance.join(", "));
   }
   console.log('\n  Say "run" to start the scan, or describe changes to adjust.\n');
+}
+
+function handleShowConfig() {
+  if (!currentConfig) {
+    console.log('\n  No config yet. Describe your app first, e.g., "create config for my app at localhost:3000"\n');
+    return;
+  }
+
+  const ac = currentConfig.attackConfig as Record<string, unknown>;
+  const target = currentConfig.target as Record<string, unknown>;
+  const categories = (ac.enabledCategories as string[]) || [];
+  const strategies = (ac.enabledStrategies as string[]) || [];
+
+  console.log("\n  ══════════════════════════════════════");
+  console.log("  Current Config");
+  console.log("  ══════════════════════════════════════\n");
+  console.log("  Target:      " + (target.baseUrl || "") + (target.agentEndpoint || ""));
+  console.log("  Description: " + ((target.applicationDetails as string) || "").slice(0, 80));
+  console.log("  Provider:    " + ac.llmProvider + " / " + ac.llmModel);
+  console.log("  Judge:       " + (ac.judgeProvider || ac.llmProvider) + " / " + (ac.judgeModel || ac.llmModel));
+  console.log("  Rounds:      " + ac.adaptiveRounds);
+  console.log("  Attacks/cat: " + ac.maxAttacksPerCategory);
+  console.log("  Concurrency: " + ac.concurrency);
+  console.log("  Multi-turn:  " + (ac.enableMultiTurnGeneration ? "on (" + Math.round((ac.multiTurnGenerationRate as number || 0) * 100) + "%)" : "off"));
+
+  console.log("\n  Categories (" + categories.length + "):");
+  for (let i = 0; i < categories.length; i += 4) {
+    console.log("    " + categories.slice(i, i + 4).join(", "));
+  }
+
+  console.log("\n  Strategies (" + strategies.length + "):");
+  for (let i = 0; i < strategies.length; i += 3) {
+    console.log("    " + strategies.slice(i, i + 3).join(", "));
+  }
+
+  if (currentConfigPath) {
+    console.log("\n  File: " + currentConfigPath);
+  }
+  console.log('\n  Say "run" to execute, or describe changes to adjust.\n');
 }
 
 async function handleRunScan() {
@@ -623,6 +747,7 @@ async function main() {
         case "run_compliance": await handleRunCompliance(); break;
         case "analyze_risk": await handleAnalyzeRisk(); break;
         case "save_report": await handleSaveReport(); break;
+        case "show_config": handleShowConfig(); break;
         case "general_question": await handleGeneralQuestion(input); break;
       }
     } catch (err) {
