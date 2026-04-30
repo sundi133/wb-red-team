@@ -56,13 +56,21 @@ export async function forgeJwt(
     .sign(secret);
 }
 
-/** Aggregate OpenAI-style SSE (data: {...}) into a single assistant text. */
-async function readSseResponseAsAssistantText(res: Response): Promise<string> {
+/**
+ * Read an SSE stream and return the response.
+ * - OpenAI-style: aggregates `choices[0].delta.content` from each chunk
+ * - Custom format: keeps the last valid JSON event as a full object for responsePath extraction
+ * Returns either a string (aggregated text) or an object (last SSE event for responsePath extraction).
+ */
+async function readSseResponse(res: Response): Promise<unknown> {
   const reader = res.body?.getReader();
   if (!reader) return "";
   const decoder = new TextDecoder();
   let buffer = "";
-  let out = "";
+  let aggregatedText = "";
+  let lastFullEvent: unknown = null;
+  let isOpenAIFormat = false;
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -77,22 +85,30 @@ async function readSseResponseAsAssistantText(res: Response): Promise<string> {
       const json = line.slice(6).trim();
       if (json === "[DONE]") continue;
       try {
-        const parsed = JSON.parse(json) as {
-          choices?: Array<{
-            delta?: { content?: string };
-            message?: { content?: string };
-          }>;
-        };
-        const piece =
-          parsed.choices?.[0]?.delta?.content ??
-          parsed.choices?.[0]?.message?.content;
-        if (typeof piece === "string" && piece.length > 0) out += piece;
+        const parsed = JSON.parse(json);
+        lastFullEvent = parsed;
+
+        // Try OpenAI delta format
+        const delta = parsed?.choices?.[0]?.delta;
+        const msgContent = parsed?.choices?.[0]?.message?.content;
+        if (delta?.content && typeof delta.content === "string") {
+          isOpenAIFormat = true;
+          aggregatedText += delta.content;
+        } else if (typeof msgContent === "string" && msgContent.length > 0) {
+          isOpenAIFormat = true;
+          aggregatedText += msgContent;
+        }
       } catch {
         // skip malformed SSE lines
       }
     }
   }
-  return out;
+
+  // If we successfully aggregated OpenAI-style text, return it
+  if (isOpenAIFormat && aggregatedText.length > 0) return aggregatedText;
+
+  // Otherwise return the last full event object (for responsePath extraction)
+  return lastFullEvent ?? aggregatedText;
 }
 
 export async function executeAttack(
@@ -282,7 +298,7 @@ export async function executeAttack(
     const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
     let responseBody: unknown;
     if (contentType.includes("text/event-stream")) {
-      responseBody = await readSseResponseAsAssistantText(res);
+      responseBody = await readSseResponse(res);
     } else {
       try {
         responseBody = await res.json();
@@ -292,6 +308,7 @@ export async function executeAttack(
     }
 
     // Extract response using custom path if provided
+    // Supports: "messages[-1].content", "messages[{type=ai}].content", "choices[0].message.content"
     if (
       apiTemplate?.responsePath &&
       typeof responseBody === "object" &&
@@ -299,11 +316,28 @@ export async function executeAttack(
     ) {
       try {
         const pathParts = apiTemplate.responsePath
-          .split(/[\.\[\]]+/)
-          .filter(Boolean);
-        let extracted = responseBody;
-        for (const part of pathParts) {
-          if (extracted && typeof extracted === "object") {
+          .match(/[^.\[\]]+|\[\-?\d+\]|\[\{[^}]+\}]/g) || [];
+        let extracted: unknown = responseBody;
+        for (const rawPart of pathParts) {
+          if (extracted == null) break;
+          const part = rawPart.replace(/^\[|\]$/g, "");
+
+          // Negative index: [-1] = last element
+          if (/^-\d+$/.test(part) && Array.isArray(extracted)) {
+            const idx = extracted.length + parseInt(part);
+            extracted = extracted[idx >= 0 ? idx : 0];
+          }
+          // Filter: [{type=ai}] = last element where property matches
+          else if (/^\{(\w+)=(\w+)\}$/.test(part) && Array.isArray(extracted)) {
+            const m = part.match(/^\{(\w+)=(\w+)\}$/);
+            if (m) {
+              const [, key, val] = m;
+              const matches = extracted.filter((item: any) => item?.[key] === val);
+              extracted = matches.length > 0 ? matches[matches.length - 1] : undefined;
+            }
+          }
+          // Normal property or numeric index
+          else if (typeof extracted === "object") {
             extracted = (extracted as any)[part];
           }
         }
