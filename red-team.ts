@@ -694,6 +694,7 @@ async function main() {
     const roundPartials = roundResults.filter((r) => r.verdict === "PARTIAL");
     if (roundPartials.length > 0 && config.attackConfig.enableLlmGeneration) {
       console.log(`\n  ── Refining ${roundPartials.length} PARTIAL results ──`);
+      console.log(`  Generating refined attacks with LLM... this may take a while.`);
       const refinedAttacks = await refinePartialAttacks(
         config,
         analysis,
