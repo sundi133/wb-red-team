@@ -10,7 +10,7 @@ import { join } from "path";
 let pool: pg.Pool | null = null;
 
 export function isDbConfigured(): boolean {
-  return !!process.env.DATABASE_URL;
+  return !!process.env.DATABASE_URL && !process.env.__DB_DISABLED;
 }
 
 export function getPool(): pg.Pool {

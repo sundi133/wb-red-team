@@ -1414,8 +1414,11 @@ Be specific and reference the actual attack results. Do not be generic.`;
       await runMigrations();
       console.log("  Enterprise mode: Postgres connected, auth enabled");
     } catch (err) {
-      console.error("Failed to initialize database:", err);
-      process.exit(1);
+      console.warn("  ⚠ Database connection failed — falling back to local mode (no auth, file-based reports)");
+      console.warn(`    ${err instanceof Error ? err.message : String(err)}`);
+      console.warn("    To fix: start Postgres, or unset DATABASE_URL in .env for local-only mode\n");
+      // Disable DB so the rest of the server works in local mode
+      process.env.__DB_DISABLED = "1";
     }
   }
 
