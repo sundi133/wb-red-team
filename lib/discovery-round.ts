@@ -450,15 +450,17 @@ Be aggressive — extract EVERY piece of useful information, even if implied or 
   const userPrompt = `Here are all ${probeResults.length} probe responses from the reconnaissance phase:\n\n${responseDigest}`;
 
   try {
+    const providerName = config.attackConfig.llmProvider;
+    const useJsonMode = providerName !== "custom" && providerName !== "together";
     const text = await llm.chat({
       model,
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: useJsonMode ? systemPrompt : systemPrompt + "\n\nIMPORTANT: Respond with valid JSON only, no other text." },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.2,
       maxTokens: 12000,
-      responseFormat: "json_object",
+      ...(useJsonMode ? { responseFormat: "json_object" } : {}),
     });
 
     if (!text?.trim()) return emptyIntel();
