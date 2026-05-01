@@ -18,7 +18,6 @@ console.log(`  Model:    ${model}\n`);
 
 if (!baseURL) {
   console.error("  ERROR: CUSTOM_LLM_BASE_URL is not set");
-  console.error("  Set it: export CUSTOM_LLM_BASE_URL=https://trussedaisb1.geico.net/provider/generic\n");
   process.exit(1);
 }
 
