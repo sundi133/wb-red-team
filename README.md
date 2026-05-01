@@ -44,7 +44,7 @@ cd wb-red-team && npm install
 
 # 2. Set your LLM key (one of)
 cp .env.example .env
-# Edit .env — add at least one: ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, or TOGETHER_API_KEY
+# Edit .env — add at least one LLM key: ANTHROPIC_API_KEY, OPENAI_API_KEY, TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, or CUSTOM_LLM_BASE_URL
 
 # 3. Generate config interactively
 npm run gen:interactive
@@ -471,14 +471,66 @@ Deploy anywhere — AWS, GCP, Azure, Railway, on-prem, or any environment that r
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes (one LLM key) | LLM provider for attack generation and judging |
-| `OPENROUTER_API_KEY` | No | Alternative LLM provider |
+| `ANTHROPIC_API_KEY` | Yes (one LLM key) | Anthropic provider |
+| `OPENAI_API_KEY` | No | OpenAI provider |
+| `OPENROUTER_API_KEY` | No | OpenRouter provider |
 | `TOGETHER_API_KEY` | No | Together AI provider |
+| `AZURE_OPENAI_API_KEY` | No | Azure OpenAI provider |
+| `AZURE_OPENAI_ENDPOINT` | With Azure key | Azure endpoint (e.g. `https://myresource.openai.azure.com`) |
+| `AZURE_OPENAI_API_VERSION` | No | Azure API version (default: `2024-06-01`) |
+| `CUSTOM_LLM_BASE_URL` | No | Custom OpenAI-compatible endpoint (Trussed AI, vLLM, LiteLLM, Ollama) |
+| `CUSTOM_LLM_API_KEY` | With custom URL | API key for custom endpoint |
+| `CODEBASE_REPO_TOKEN` | No | Git token for private repo white-box scanning |
 | `DATABASE_URL` | No | Postgres connection. Enables enterprise features |
 | `MASTER_ENCRYPTION_KEY` | With DB | 64 hex chars. Encrypts report data at rest |
 | `AUTH_MODE` | No | `dev` = no login required. Omit for OIDC auth |
 | `CLERK_PUBLISHABLE_KEY` | No | Clerk publishable key for browser SSO |
 | `MAX_CONCURRENT_RUNS` | No | Max parallel scans (default: 100) |
+
+### LLM Providers
+
+Use any combination of providers for attack generation (`llmProvider`) and judging (`judgeProvider`):
+
+| Provider | Config value | Models | Env vars |
+|----------|-------------|--------|----------|
+| **Anthropic** | `anthropic` | `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001` | `ANTHROPIC_API_KEY` |
+| **OpenAI** | `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-4.1-mini` | `OPENAI_API_KEY` |
+| **Together AI** | `together` | `deepseek-ai/DeepSeek-V3`, `meta-llama/Llama-3-70b` | `TOGETHER_API_KEY` |
+| **OpenRouter** | `openrouter` | Any model on OpenRouter | `OPENROUTER_API_KEY` |
+| **Azure OpenAI** | `azure` | Your deployment name | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT` |
+| **Custom** | `custom` | Any model name | `CUSTOM_LLM_BASE_URL`, `CUSTOM_LLM_API_KEY` |
+
+Mix and match — e.g. use Together for cheap attack generation and Anthropic for accurate judging:
+
+```json
+{
+  "attackConfig": {
+    "llmProvider": "together",
+    "llmModel": "deepseek-ai/DeepSeek-V3",
+    "judgeProvider": "anthropic",
+    "judgeModel": "claude-sonnet-4-20250514"
+  }
+}
+```
+
+**Custom provider** works with any OpenAI-compatible endpoint (Trussed AI, vLLM, LiteLLM, Ollama, etc.):
+
+```bash
+# .env
+CUSTOM_LLM_BASE_URL=https://your-internal-gateway.com/provider/generic
+CUSTOM_LLM_API_KEY=your-key
+```
+
+```json
+{
+  "attackConfig": {
+    "llmProvider": "custom",
+    "llmModel": "your-deployment-name",
+    "judgeProvider": "custom",
+    "judgeModel": "your-deployment-name"
+  }
+}
+```
 
 **API keys for programmatic access:**
 

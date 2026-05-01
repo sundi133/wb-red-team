@@ -309,6 +309,30 @@ class AzureOpenAIProvider implements LlmProvider {
   }
 }
 
+// ── Custom OpenAI-compatible Provider ──
+// For internal endpoints like Trussed AI, vLLM, LiteLLM, Ollama, etc.
+// Env: CUSTOM_LLM_API_KEY, CUSTOM_LLM_BASE_URL
+
+class CustomProvider implements LlmProvider {
+  private client: OpenAI;
+
+  constructor() {
+    const baseURL = process.env.CUSTOM_LLM_BASE_URL;
+    if (!baseURL)
+      throw new Error(
+        "CUSTOM_LLM_BASE_URL environment variable is required for custom provider (e.g. https://your-internal-gateway.com/v1)",
+      );
+    this.client = new OpenAI({
+      apiKey: process.env.CUSTOM_LLM_API_KEY || "no-key",
+      baseURL,
+    });
+  }
+
+  async chat(options: ChatOptions): Promise<string> {
+    return createOpenAICompatibleChatCompletion(this.client, options);
+  }
+}
+
 // ── Factory ──
 
 const providerCache = new Map<string, LlmProvider>();
@@ -335,9 +359,12 @@ function createProvider(name: string): LlmProvider {
     case "azure":
       provider = new AzureOpenAIProvider();
       break;
+    case "custom":
+      provider = new CustomProvider();
+      break;
     default:
       throw new Error(
-        `Unknown LLM provider: "${name}". Use "openai", "anthropic", "openrouter", "together", or "azure".`,
+        `Unknown LLM provider: "${name}". Use "openai", "anthropic", "openrouter", "together", "azure", or "custom".`,
       );
   }
 
