@@ -3,6 +3,7 @@ import type { Config, Attack, Credential, McpExecutionTrace } from "./types.js";
 import { getTargetAdapter } from "./target-adapter.js";
 import { getLlmProvider } from "./llm-provider.js";
 import { executeWebSocketAttack } from "./websocket-attack-executor.js";
+import { formatErrorDetails } from "./error-utils.js";
 
 // Cache JWT tokens per role
 const tokenCache = new Map<string, string>();
@@ -351,9 +352,11 @@ export async function executeAttack(
 
     return { statusCode: res.status, body: responseBody, timeMs };
   } catch (e) {
+    const details = formatErrorDetails(e);
+    console.error(`  ❌ Connection error: ${details}`);
     return {
       statusCode: 0,
-      body: { error: (e as Error).message },
+      body: { error: details },
       timeMs: Date.now() - start,
     };
   }

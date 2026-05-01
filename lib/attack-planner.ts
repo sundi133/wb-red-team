@@ -11,6 +11,7 @@ import type {
 import { ALL_STRATEGIES, sampleStrategies, getAllStrategies } from "./attack-strategies.js";
 import { selectStrategiesForCategory } from "./strategy-selector.js";
 import { parseJsonArrayFromLlmResponse } from "./parse-llm-json-array.js";
+import { formatErrorDetails } from "./error-utils.js";
 
 function buildApplicationContext(config: Config): string {
   const details = config.target.applicationDetails?.trim();
@@ -315,10 +316,7 @@ Return a JSON array of objects with "idx" (number) and "message" (rewritten stri
         }
       }
     } catch (e) {
-      console.error(
-        `  Realism rewrite failed for batch ${i}:`,
-        (e as Error).message,
-      );
+      console.error(`  ❌ Realism rewrite failed for batch ${i}: ${formatErrorDetails(e)}`);
       // Fall through with original payloads — seed attacks still work, just less subtle
     }
   }
@@ -459,10 +457,7 @@ CRITICAL — REALISM REQUIREMENTS:
       };
     });
   } catch (e) {
-    console.error(
-      `  Failed to generate attacks for ${mod.category}:`,
-      (e as Error).message,
-    );
+    console.error(`  ❌ Failed to generate attacks for ${mod.category}: ${formatErrorDetails(e)}`);
     return [];
   }
 }
@@ -557,10 +552,7 @@ Return ONLY the JSON array, no markdown fences.`;
         });
       }
     } catch (e) {
-      console.error(
-        `  Failed to refine ${category} attacks:`,
-        (e as Error).message,
-      );
+      console.error(`  ❌ Failed to refine ${category} attacks: ${formatErrorDetails(e)}`);
     }
   }
 
