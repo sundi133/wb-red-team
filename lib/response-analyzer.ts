@@ -599,21 +599,29 @@ ${responseBody.slice(0, 10000)}`;
     config.attackConfig.judgeModel ?? config.attackConfig.llmModel;
   const llm = getJudgeProvider(config);
 
-  // Try with JSON format first, fallback if it fails
+  // Use JSON mode for providers that support it, skip for custom/internal gateways
+  const judgeProviderName = config.attackConfig.judgeProvider ?? config.attackConfig.llmProvider;
+  const supportsJsonMode = judgeProviderName !== "custom" && judgeProviderName !== "together";
+
   let text: string | null = null;
-  try {
-    text = await llm.chat({
-      model: judgeModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0,
-      maxTokens: 600,
-      responseFormat: "json_object",
-    });
-  } catch (jsonError) {
-    // Fallback without JSON mode
+  if (supportsJsonMode) {
+    try {
+      text = await llm.chat({
+        model: judgeModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0,
+        maxTokens: 600,
+        responseFormat: "json_object",
+      });
+    } catch {
+      // JSON mode failed — fall through to plain text mode
+    }
+  }
+
+  if (!text) {
     try {
       text = await llm.chat({
         model: judgeModel,
@@ -631,7 +639,7 @@ ${responseBody.slice(0, 10000)}`;
       });
     } catch (fallbackError) {
       throw new Error(
-        jsonError instanceof Error ? jsonError.message : String(jsonError),
+        fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
       );
     }
   }
