@@ -12,6 +12,7 @@ import {
   resolvePolicy,
   buildPolicyPrompt,
 } from "./judge-policy.js";
+import { formatErrorDetails } from "./error-utils.js";
 
 /** Optional app context for more accurate LLM judging. */
 export interface AppContext {
@@ -232,7 +233,10 @@ export async function analyzeResponse(
         `Attack did not reach the AI agent due to authentication failure (${statusCode}), so there was no opportunity for the attack to succeed or fail`,
       );
     } else if (statusCode === 0) {
-      findings.push("Connection failed — target unreachable");
+      const errorDetail = typeof body === "object" && body && "error" in (body as any)
+        ? ` (${(body as any).error})`
+        : "";
+      findings.push(`Connection failed — target unreachable${errorDetail}`);
     } else {
       findings.push(
         `Infrastructure error (${statusCode}) — attack did not reach the AI agent`,
@@ -324,8 +328,10 @@ export async function analyzeResponse(
         findings,
       );
     } catch (err) {
+      const details = formatErrorDetails(err);
+      console.error(`  ❌ LLM judge error: ${details}`);
       findings.push(
-        `LLM judge error: ${err instanceof Error ? err.message : String(err)}`,
+        `LLM judge error: ${details}`,
       );
     }
   }
