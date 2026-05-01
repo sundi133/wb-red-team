@@ -239,7 +239,7 @@ async function maybeGenerateIdealResponse(
 }
 
 async function main() {
-  const configPath = process.argv[2];
+  const configPath = process.argv[2]?.trim();
   console.log("=== Red-Team Security Testing Framework ===\n");
 
   // 1. Load config
