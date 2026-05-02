@@ -322,6 +322,12 @@ class CustomProvider implements LlmProvider {
       throw new Error(
         "CUSTOM_LLM_BASE_URL environment variable is required for custom provider (e.g. https://your-internal-gateway.com/v1)",
       );
+
+    // Skip TLS verification for internal endpoints with self-signed/corporate certs
+    if (process.env.CUSTOM_LLM_SKIP_TLS_VERIFY === "true" || process.env.CUSTOM_LLM_SKIP_TLS_VERIFY === "1") {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    }
+
     this.client = new OpenAI({
       apiKey: process.env.CUSTOM_LLM_API_KEY || "no-key",
       baseURL,
