@@ -716,10 +716,11 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       const csvName = filename.replace(/\.json$/, ".csv");
 
       const csvEscape = (val: unknown): string => {
-        const s = String(val ?? "").replace(/"/g, '""');
-        return s.includes(",") || s.includes('"') || s.includes("\n")
-          ? `"${s}"`
-          : s;
+        const s = String(val ?? "")
+          .replace(/\r\n?/g, "\n")
+          .replace(/\n/g, "\\n")
+          .replace(/"/g, '""');
+        return s.includes(",") || s.includes('"') ? `"${s}"` : s;
       };
 
       const headers = [
