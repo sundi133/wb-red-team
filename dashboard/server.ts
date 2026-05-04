@@ -54,6 +54,12 @@ interface ReportMeta {
 
 const metaCache = new Map<string, ReportMeta>();
 
+interface LoadedReportRecord {
+  id: string | null;
+  report: Record<string, unknown>;
+  source: "db" | "file";
+}
+
 function getReportMeta(filename: string): ReportMeta {
   if (metaCache.has(filename)) return metaCache.get(filename)!;
 
@@ -94,6 +100,75 @@ function getReportMeta(filename: string): ReportMeta {
     };
     metaCache.set(filename, meta);
     return meta;
+  }
+}
+
+function listFileReportMetas(): ReportMeta[] {
+  try {
+    return readdirSync(REPORT_DIR)
+      .filter((f) => f.endsWith(".json"))
+      .sort()
+      .reverse()
+      .map((f) => getReportMeta(f));
+  } catch {
+    return [];
+  }
+}
+
+function matchesReportSearch(meta: ReportMeta, search: string): boolean {
+  if (!search) return true;
+  const needle = search.toLowerCase();
+  return (
+    meta.filename.toLowerCase().includes(needle) ||
+    meta.targetUrl.toLowerCase().includes(needle) ||
+    meta.timestamp.toLowerCase().includes(needle)
+  );
+}
+
+function compareReportMetaDesc(a: ReportMeta, b: ReportMeta): number {
+  const aTime = Date.parse(a.timestamp);
+  const bTime = Date.parse(b.timestamp);
+
+  if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) {
+    return bTime - aTime;
+  }
+
+  if (a.timestamp !== b.timestamp) {
+    return b.timestamp.localeCompare(a.timestamp);
+  }
+
+  return b.filename.localeCompare(a.filename);
+}
+
+async function loadReportRecord(
+  filename: string,
+  tenantId?: string,
+): Promise<LoadedReportRecord | null> {
+  if (tenantId && isDbConfigured()) {
+    try {
+      const dbResult = await getReportByFilename(filename, tenantId);
+      if (dbResult) {
+        return {
+          id: dbResult.id,
+          report: dbResult.report as unknown as Record<string, unknown>,
+          source: "db",
+        };
+      }
+    } catch {
+      // Fall back to file-based reports if DB lookup fails or the filename
+      // only exists on disk.
+    }
+  }
+
+  try {
+    const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
+    return {
+      id: null,
+      report: JSON.parse(raw) as Record<string, unknown>,
+      source: "file",
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -584,10 +659,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
   // API: list report filenames (legacy)
   if (url.pathname === "/api/reports") {
     try {
-      const files = readdirSync(REPORT_DIR)
-        .filter((f) => f.endsWith(".json"))
-        .sort()
-        .reverse();
+      const files = listFileReportMetas().map((meta) => meta.filename);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(files));
     } catch {
@@ -610,8 +682,12 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       // Enterprise mode: read from Postgres
       if (isDbConfigured() && ctx) {
         if (ctx) await logAudit(ctx, "report.list");
-        const dbResult = await listReportsFromDb(ctx.tenantId, { page, limit, search });
-        const items = dbResult.items.map((m) => ({
+        const dbResult = await listReportsFromDb(ctx.tenantId, {
+          page: 1,
+          limit: 200,
+          search,
+        });
+        const dbItems = dbResult.items.map((m) => ({
           filename: m.filename,
           timestamp: m.timestamp,
           targetUrl: m.targetUrl,
@@ -624,40 +700,46 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
           categoryCount: 0,
           runId: m.runId || null,
         }));
-        const totalPages = Math.ceil(dbResult.total / limit);
+        const merged = [...dbItems];
+        const seen = new Set(dbItems.map((item) => item.filename));
+        for (const meta of listFileReportMetas()) {
+          if (!matchesReportSearch(meta, search) || seen.has(meta.filename)) {
+            continue;
+          }
+          merged.push({ ...meta, runId: null });
+          seen.add(meta.filename);
+        }
+        merged.sort(compareReportMetaDesc);
 
-        // Trend from first page (all items sorted by time)
-        const trendResult = await listReportsFromDb(ctx.tenantId, { page: 1, limit: 100 });
-        const trend = trendResult.items.reverse().map((m) => ({
-          date: m.timestamp,
-          score: m.score,
-          vulns: m.passed,
-          total: m.totalAttacks,
-        }));
+        const total = merged.length;
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        const start = (page - 1) * limit;
+        const items = merged.slice(start, start + limit);
+
+        const trend = merged
+          .slice()
+          .reverse()
+          .slice(-100)
+          .map((m) => ({
+            date: m.timestamp,
+            score: m.score,
+            vulns: m.passed,
+            total: m.totalAttacks,
+          }));
 
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ items, total: dbResult.total, page, totalPages, trend }));
+        res.end(JSON.stringify({ items, total, page, totalPages, trend }));
         return;
       }
 
       // File-based fallback
-      let files = readdirSync(REPORT_DIR)
-        .filter((f) => f.endsWith(".json"))
-        .sort()
-        .reverse();
-
-      const metas = files.map((f) => getReportMeta(f));
+      const metas = listFileReportMetas();
       const filtered = search
-        ? metas.filter(
-            (m) =>
-              m.filename.toLowerCase().includes(search) ||
-              m.targetUrl.toLowerCase().includes(search) ||
-              m.timestamp.toLowerCase().includes(search),
-          )
+        ? metas.filter((m) => matchesReportSearch(m, search))
         : metas;
 
       const total = filtered.length;
-      const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
       const start = (page - 1) * limit;
       const items = filtered.slice(start, start + limit);
 
@@ -704,14 +786,21 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
     }
     try {
       // Load report from DB or file
-      let data: Record<string, unknown>;
-      if (isDbConfigured() && ctx) {
-        const result = await getReportByFilename(filename, ctx.tenantId);
-        if (!result) { res.writeHead(404); res.end("Not found"); return; }
-        data = result.report as unknown as Record<string, unknown>;
-        await logAudit(ctx, "report.export_csv", "report", result.id, { filename });
-      } else {
-        data = JSON.parse(readFileSync(join(REPORT_DIR, filename), "utf-8"));
+      const loaded = await loadReportRecord(filename, ctx?.tenantId);
+      if (!loaded) {
+        res.writeHead(404);
+        res.end("Not found");
+        return;
+      }
+      const data = loaded.report;
+      if (ctx) {
+        await logAudit(
+          ctx,
+          "report.export_csv",
+          "report",
+          loaded.id ?? filename,
+          { filename, source: loaded.source },
+        );
       }
       const csvName = filename.replace(/\.json$/, ".csv");
 
@@ -845,31 +934,24 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       return;
     }
 
-    // Enterprise mode: decrypt from Postgres
-    if (isDbConfigured() && ctx) {
-      try {
-        const result = await getReportByFilename(filename, ctx.tenantId);
-        if (!result) {
-          res.writeHead(404);
-          res.end("Not found");
-          return;
-        }
-        await logAudit(ctx, "report.view", "report", result.id, { filename });
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(normalizeReportSteps(result.report as unknown as Record<string, unknown>)));
-      } catch {
+    try {
+      const loaded = await loadReportRecord(filename, ctx?.tenantId);
+      if (!loaded) {
         res.writeHead(404);
         res.end("Not found");
+        return;
       }
-      return;
-    }
-
-    // File-based fallback
-    try {
-      const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (ctx) {
+        await logAudit(
+          ctx,
+          "report.view",
+          "report",
+          loaded.id ?? filename,
+          { filename, source: loaded.source },
+        );
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(normalizeReportSteps(parsed)));
+      res.end(JSON.stringify(normalizeReportSteps(loaded.report)));
     } catch {
       res.writeHead(404);
       res.end("Not found");
@@ -901,20 +983,13 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       }
 
       // Load report from DB or file
-      let reportData: Record<string, unknown>;
-      if (isDbConfigured() && ctx) {
-        const dbReport = await getReportByFilename(reportFile, ctx.tenantId);
-        if (!dbReport) {
-          res.writeHead(404, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Report not found" }));
-          return;
-        }
-        reportData = dbReport.report as unknown as Record<string, unknown>;
-      } else {
-        reportData = JSON.parse(
-          readFileSync(join(REPORT_DIR, reportFile), "utf-8"),
-        );
+      const loadedReport = await loadReportRecord(reportFile, ctx?.tenantId);
+      if (!loadedReport) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Report not found" }));
+        return;
       }
+      const reportData = loadedReport.report;
 
       // Stream results as newline-delimited JSON
       res.writeHead(200, {
