@@ -45,6 +45,36 @@ async function loginForToken(
   return data.token;
 }
 
+function validateAttackOrThrow(attack: Attack): void {
+  const problems: string[] = [];
+
+  if (!attack?.name || typeof attack.name !== "string" || !attack.name.trim()) {
+    problems.push("missing attack.name");
+  }
+
+  if (
+    !attack?.category ||
+    typeof attack.category !== "string" ||
+    !attack.category.trim()
+  ) {
+    problems.push("missing attack.category");
+  }
+
+  const payload = attack?.payload;
+  if (!payload || typeof payload !== "object") {
+    problems.push("missing attack.payload");
+  } else {
+    const message = (payload as Record<string, unknown>).message;
+    if (typeof message !== "string" || !message.trim()) {
+      problems.push("missing attack.payload.message");
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`INVALID_ATTACK: ${problems.join(", ")}`);
+  }
+}
+
 export async function forgeJwt(
   config: Config,
   claims: Record<string, unknown>,
@@ -121,6 +151,8 @@ export async function executeAttack(
   timeMs: number;
   executionTrace?: McpExecutionTrace;
 }> {
+  validateAttackOrThrow(attack);
+
   const adapter = getTargetAdapter(config);
   if (adapter) {
     return adapter.executeAttack(config, attack);
@@ -382,6 +414,8 @@ export async function executeMultiTurn(
   }[];
   stoppedEarly: boolean;
 }> {
+  validateAttackOrThrow(attack);
+
   const steps = attack.steps ?? [];
   const maxSteps = Math.min(
     1 + steps.length,
@@ -487,6 +521,8 @@ export async function executeAdaptiveMultiTurn(
     stepIndex: number;
   }>;
 }> {
+  validateAttackOrThrow(attack);
+
   const maxTurns = Math.min(
     config.attackConfig.maxAdaptiveTurns ?? 15,
     config.attackConfig.maxMultiTurnSteps,
