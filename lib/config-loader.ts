@@ -70,7 +70,10 @@ function validateAndNormalizeConfig(config: Config): Config {
     );
     config.target.applicationDetails = "";
   }
-  if (!config.auth?.credentials?.length && !config.auth?.apiKeys) {
+  if (
+    !config.auth?.credentials?.length &&
+    !Object.keys(config.auth?.apiKeys ?? {}).length
+  ) {
     throw new Error(
       "config: at least one auth method (credentials or apiKeys) is required",
     );
