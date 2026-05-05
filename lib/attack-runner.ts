@@ -3,6 +3,7 @@ import type { Config, Attack, Credential, McpExecutionTrace } from "./types.js";
 import { getTargetAdapter } from "./target-adapter.js";
 import { getLlmProvider } from "./llm-provider.js";
 import { executeWebSocketAttack } from "./websocket-attack-executor.js";
+import { formatErrorDetails } from "./error-utils.js";
 
 // Cache JWT tokens per role
 const tokenCache = new Map<string, string>();
@@ -42,6 +43,36 @@ async function loginForToken(
   const data = (await res.json()) as { token?: string };
   if (!data.token) throw new Error("No token in login response");
   return data.token;
+}
+
+function validateAttackOrThrow(attack: Attack): void {
+  const problems: string[] = [];
+
+  if (!attack?.name || typeof attack.name !== "string" || !attack.name.trim()) {
+    problems.push("missing attack.name");
+  }
+
+  if (
+    !attack?.category ||
+    typeof attack.category !== "string" ||
+    !attack.category.trim()
+  ) {
+    problems.push("missing attack.category");
+  }
+
+  const payload = attack?.payload;
+  if (!payload || typeof payload !== "object") {
+    problems.push("missing attack.payload");
+  } else {
+    const message = (payload as Record<string, unknown>).message;
+    if (typeof message !== "string" || !message.trim()) {
+      problems.push("missing attack.payload.message");
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`INVALID_ATTACK: ${problems.join(", ")}`);
+  }
 }
 
 export async function forgeJwt(
@@ -120,6 +151,8 @@ export async function executeAttack(
   timeMs: number;
   executionTrace?: McpExecutionTrace;
 }> {
+  validateAttackOrThrow(attack);
+
   const adapter = getTargetAdapter(config);
   if (adapter) {
     return adapter.executeAttack(config, attack);
@@ -351,9 +384,11 @@ export async function executeAttack(
 
     return { statusCode: res.status, body: responseBody, timeMs };
   } catch (e) {
+    const details = formatErrorDetails(e);
+    console.error(`  ❌ Connection error: ${details}`);
     return {
       statusCode: 0,
-      body: { error: (e as Error).message },
+      body: { error: details },
       timeMs: Date.now() - start,
     };
   }
@@ -379,6 +414,8 @@ export async function executeMultiTurn(
   }[];
   stoppedEarly: boolean;
 }> {
+  validateAttackOrThrow(attack);
+
   const steps = attack.steps ?? [];
   const maxSteps = Math.min(
     1 + steps.length,
@@ -484,6 +521,8 @@ export async function executeAdaptiveMultiTurn(
     stepIndex: number;
   }>;
 }> {
+  validateAttackOrThrow(attack);
+
   const maxTurns = Math.min(
     config.attackConfig.maxAdaptiveTurns ?? 15,
     config.attackConfig.maxMultiTurnSteps,

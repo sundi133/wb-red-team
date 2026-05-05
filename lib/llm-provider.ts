@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
 import type { Config } from "./types.js";
+import { formatErrorDetails } from "./error-utils.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -100,7 +101,10 @@ async function createOpenAICompatibleChatCompletion(
       !initialOmitTemperature && shouldRetryWithoutTemperature(error);
 
     if (!retryAlternateTokenField && !retryWithoutTemperature) {
-      throw error;
+      const details = formatErrorDetails(error);
+      const enriched = new Error(`LLM request failed: ${details}`);
+      (enriched as any).skipConfig = true; // prevent duplicate [config] lines
+      throw enriched;
     }
 
     const fallbackTokenLimitField: TokenLimitField =

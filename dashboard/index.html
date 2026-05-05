@@ -3981,7 +3981,7 @@
 
     <!-- Results -->
     <div class="section">
-      <h2>Results <span class="badge">${r.rounds.reduce((sum, round) => sum + round.results.length, 0)} total</span></h2>
+      <h2>Results <span class="badge" id="findingsCountBadge">${r.rounds.reduce((sum, round) => sum + round.results.length, 0)} total</span></h2>
       <div class="filter-bar">
         <label>Verdict:</label>
         <select id="filterVerdict"><option value="">All</option><option value="PASS">PASS</option><option value="PARTIAL">PARTIAL</option><option value="FAIL">FAIL</option><option value="ERROR">ERROR</option></select>
@@ -6679,6 +6679,7 @@
         const search = ($("#filterSearch")?.value || "").toLowerCase();
 
         let findings = buildResultRows();
+        const totalFindings = findings.length;
         if (verdict) findings = findings.filter((f) => f.verdict === verdict);
         if (sev) findings = findings.filter((f) => f.severity === sev);
         if (cat) findings = findings.filter((f) => f.category === cat);
@@ -6693,6 +6694,14 @@
               (f.strategyName || "").toLowerCase().includes(search) ||
               (f.verdict || "").toLowerCase().includes(search),
           );
+
+        const countBadge = $("#findingsCountBadge");
+        if (countBadge) {
+          countBadge.textContent =
+            findings.length === totalFindings
+              ? `${totalFindings} total`
+              : `${findings.length} of ${totalFindings} results`;
+        }
 
         const el = $("#findingsTable");
         if (!findings.length) {
