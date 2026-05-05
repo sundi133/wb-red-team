@@ -21,6 +21,10 @@ export interface LlmProvider {
   chat(options: ChatOptions): Promise<string>;
 }
 
+interface OpenAICompatibleRequestConfig {
+  guardrails?: string[];
+}
+
 type TokenLimitField = "max_tokens" | "max_completion_tokens";
 
 function prefersMaxCompletionTokens(model: string): boolean {
@@ -34,8 +38,9 @@ function shouldOmitTemperature(model: string): boolean {
 function buildOpenAIChatRequest(
   options: ChatOptions,
   tokenLimitField: TokenLimitField,
+  requestConfig: OpenAICompatibleRequestConfig = {},
   omitTemperature = false,
-): ChatCompletionCreateParamsNonStreaming {
+): ChatCompletionCreateParamsNonStreaming & { guardrails?: string[] } {
   return {
     model: options.model,
     messages: options.messages,
@@ -43,6 +48,9 @@ function buildOpenAIChatRequest(
     [tokenLimitField]: options.maxTokens ?? 4096,
     ...(options.responseFormat
       ? { response_format: { type: options.responseFormat } }
+      : {}),
+    ...(requestConfig.guardrails?.length
+      ? { guardrails: requestConfig.guardrails }
       : {}),
   };
 }
@@ -78,6 +86,7 @@ function shouldRetryWithoutTemperature(error: unknown): boolean {
 async function createOpenAICompatibleChatCompletion(
   client: OpenAI,
   options: ChatOptions,
+  requestConfig: OpenAICompatibleRequestConfig = {},
 ): Promise<string> {
   const initialTokenLimitField: TokenLimitField = prefersMaxCompletionTokens(
     options.model,
@@ -91,6 +100,7 @@ async function createOpenAICompatibleChatCompletion(
       buildOpenAIChatRequest(
         options,
         initialTokenLimitField,
+        requestConfig,
         initialOmitTemperature,
       ),
     );
@@ -117,6 +127,7 @@ async function createOpenAICompatibleChatCompletion(
       buildOpenAIChatRequest(
         options,
         fallbackTokenLimitField,
+        requestConfig,
         initialOmitTemperature || retryWithoutTemperature,
       ),
     );
@@ -128,13 +139,19 @@ async function createOpenAICompatibleChatCompletion(
 
 class OpenAIProvider implements LlmProvider {
   private client: OpenAI;
+  private requestConfig: OpenAICompatibleRequestConfig;
 
-  constructor() {
+  constructor(requestConfig: OpenAICompatibleRequestConfig = {}) {
     this.client = new OpenAI();
+    this.requestConfig = requestConfig;
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    return createOpenAICompatibleChatCompletion(this.client, options);
+    return createOpenAICompatibleChatCompletion(
+      this.client,
+      options,
+      this.requestConfig,
+    );
   }
 }
 
@@ -236,8 +253,9 @@ class AnthropicProvider implements LlmProvider {
 
 class OpenRouterProvider implements LlmProvider {
   private client: OpenAI;
+  private requestConfig: OpenAICompatibleRequestConfig;
 
-  constructor() {
+  constructor(requestConfig: OpenAICompatibleRequestConfig = {}) {
     const key = process.env.OPENROUTER_API_KEY;
     if (!key)
       throw new Error(
@@ -252,10 +270,15 @@ class OpenRouterProvider implements LlmProvider {
         "X-OpenRouter-Title": process.env.OPENROUTER_SITE_NAME || "Red Team AI",
       },
     });
+    this.requestConfig = requestConfig;
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    return createOpenAICompatibleChatCompletion(this.client, options);
+    return createOpenAICompatibleChatCompletion(
+      this.client,
+      options,
+      this.requestConfig,
+    );
   }
 }
 
@@ -263,8 +286,9 @@ class OpenRouterProvider implements LlmProvider {
 
 class TogetherAIProvider implements LlmProvider {
   private client: OpenAI;
+  private requestConfig: OpenAICompatibleRequestConfig;
 
-  constructor() {
+  constructor(requestConfig: OpenAICompatibleRequestConfig = {}) {
     const key = process.env.TOGETHER_API_KEY;
     if (!key)
       throw new Error(
@@ -274,10 +298,15 @@ class TogetherAIProvider implements LlmProvider {
       baseURL: "https://api.together.xyz/v1",
       apiKey: key,
     });
+    this.requestConfig = requestConfig;
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    return createOpenAICompatibleChatCompletion(this.client, options);
+    return createOpenAICompatibleChatCompletion(
+      this.client,
+      options,
+      this.requestConfig,
+    );
   }
 }
 
@@ -285,8 +314,9 @@ class TogetherAIProvider implements LlmProvider {
 
 class AzureOpenAIProvider implements LlmProvider {
   private client: OpenAI;
+  private requestConfig: OpenAICompatibleRequestConfig;
 
-  constructor() {
+  constructor(requestConfig: OpenAICompatibleRequestConfig = {}) {
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT; // e.g. https://myresource.openai.azure.com
     const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-06-01";
@@ -306,10 +336,15 @@ class AzureOpenAIProvider implements LlmProvider {
       defaultQuery: { "api-version": apiVersion },
       defaultHeaders: { "api-key": apiKey },
     });
+    this.requestConfig = requestConfig;
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    return createOpenAICompatibleChatCompletion(this.client, options);
+    return createOpenAICompatibleChatCompletion(
+      this.client,
+      options,
+      this.requestConfig,
+    );
   }
 }
 
@@ -319,8 +354,9 @@ class AzureOpenAIProvider implements LlmProvider {
 
 class CustomProvider implements LlmProvider {
   private client: OpenAI;
+  private requestConfig: OpenAICompatibleRequestConfig;
 
-  constructor() {
+  constructor(requestConfig: OpenAICompatibleRequestConfig = {}) {
     const baseURL = process.env.CUSTOM_LLM_BASE_URL;
     if (!baseURL)
       throw new Error(
@@ -336,10 +372,15 @@ class CustomProvider implements LlmProvider {
       apiKey: process.env.CUSTOM_LLM_API_KEY || "no-key",
       baseURL,
     });
+    this.requestConfig = requestConfig;
   }
 
   async chat(options: ChatOptions): Promise<string> {
-    return createOpenAICompatibleChatCompletion(this.client, options);
+    return createOpenAICompatibleChatCompletion(
+      this.client,
+      options,
+      this.requestConfig,
+    );
   }
 }
 
@@ -347,30 +388,34 @@ class CustomProvider implements LlmProvider {
 
 const providerCache = new Map<string, LlmProvider>();
 
-function createProvider(name: string): LlmProvider {
-  if (providerCache.has(name)) {
-    return providerCache.get(name)!;
+function createProvider(
+  name: string,
+  requestConfig: OpenAICompatibleRequestConfig = {},
+): LlmProvider {
+  const cacheKey = `${name}:${JSON.stringify(requestConfig.guardrails ?? [])}`;
+  if (providerCache.has(cacheKey)) {
+    return providerCache.get(cacheKey)!;
   }
 
   let provider: LlmProvider;
   switch (name) {
     case "openai":
-      provider = new OpenAIProvider();
+      provider = new OpenAIProvider(requestConfig);
       break;
     case "anthropic":
       provider = new AnthropicProvider();
       break;
     case "openrouter":
-      provider = new OpenRouterProvider();
+      provider = new OpenRouterProvider(requestConfig);
       break;
     case "together":
-      provider = new TogetherAIProvider();
+      provider = new TogetherAIProvider(requestConfig);
       break;
     case "azure":
-      provider = new AzureOpenAIProvider();
+      provider = new AzureOpenAIProvider(requestConfig);
       break;
     case "custom":
-      provider = new CustomProvider();
+      provider = new CustomProvider(requestConfig);
       break;
     default:
       throw new Error(
@@ -378,18 +423,26 @@ function createProvider(name: string): LlmProvider {
       );
   }
 
-  providerCache.set(name, provider);
+  providerCache.set(cacheKey, provider);
   return provider;
 }
 
 /** Get the LLM provider for attack generation. */
 export function getLlmProvider(config: Config): LlmProvider {
-  return createProvider(config.attackConfig.llmProvider);
+  return createProvider(config.attackConfig.llmProvider, {
+    guardrails: config.attackConfig.llmGuardrails,
+  });
 }
 
 /** Get the LLM provider for the judge. Falls back to the attack provider if judgeProvider is not set. */
 export function getJudgeProvider(config: Config): LlmProvider {
   const judgeName =
     config.attackConfig.judgeProvider ?? config.attackConfig.llmProvider;
-  return createProvider(judgeName);
+  return createProvider(judgeName, {
+    guardrails:
+      config.attackConfig.judgeGuardrails ??
+      (judgeName === config.attackConfig.llmProvider
+        ? config.attackConfig.llmGuardrails
+        : undefined),
+  });
 }

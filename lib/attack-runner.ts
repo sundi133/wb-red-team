@@ -258,6 +258,14 @@ export async function executeAttack(
       };
 
       body = replaceInObject(templateObj);
+      if (
+        apiTemplate.guardrails?.length &&
+        body &&
+        typeof body === "object" &&
+        !Array.isArray(body)
+      ) {
+        (body as Record<string, unknown>).guardrails = apiTemplate.guardrails;
+      }
       if (showDebug) {
         console.log(`    ✅ Template processed successfully (object method)`);
       }
@@ -275,6 +283,9 @@ export async function executeAttack(
             content: message || "",
           },
         ],
+        ...(apiTemplate?.guardrails?.length
+          ? { guardrails: apiTemplate.guardrails }
+          : {}),
       };
       if (showDebug) {
         console.log(`    ✅ Using hardcoded OpenAI format fallback`);

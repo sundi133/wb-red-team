@@ -424,6 +424,8 @@ export interface Config {
       headers?: Record<string, string>;
       /** Template for request body. Use {{message}} placeholder for the attack message */
       bodyTemplate?: string;
+      /** Optional request-level guardrails array for OpenAI-compatible chat endpoints. */
+      guardrails?: string[];
       /** JSONPath to extract response from API response (e.g., "choices[0].message.content" for OpenAI) */
       responsePath?: string;
     };
@@ -481,9 +483,13 @@ export interface Config {
     delayBetweenRequestsMs: number;
     llmProvider: "openai" | "anthropic" | "openrouter" | "together" | "azure" | "custom";
     llmModel: string;
+    /** Optional request-level guardrails array for attack generation LLM calls. */
+    llmGuardrails?: string[];
     /** LLM provider for the judge (defaults to llmProvider if not set). */
     judgeProvider?: "openai" | "anthropic" | "openrouter" | "together" | "azure" | "custom";
     judgeModel?: string;
+    /** Optional request-level guardrails array for judge LLM calls. */
+    judgeGuardrails?: string[];
     enableLlmGeneration: boolean;
     maxMultiTurnSteps: number;
     /** Optional allowlist of attack categories to run. Omit or set to empty array to run all. */

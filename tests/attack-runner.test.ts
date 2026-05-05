@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { executeAttack } from "../lib/attack-runner.js";
 import type { Attack, Config } from "../lib/types.js";
 
@@ -76,5 +76,44 @@ describe("executeAttack validation", () => {
         makeAttack({ payload: {} }) as Attack,
       ),
     ).rejects.toThrow("INVALID_ATTACK: missing attack.payload.message");
+  });
+});
+
+describe("executeAttack custom API template", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("adds configured guardrails to OpenAI-style request bodies", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: { get: () => "application/json" },
+      json: async () => ({ choices: [{ message: { content: "ok" } }] }),
+      text: async () => "",
+    } as Response);
+
+    const config = makeConfig();
+    config.target.baseUrl = "http://localhost:4000";
+    config.target.agentEndpoint = "/v1/chat/completions";
+    config.target.customApiTemplate = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      guardrails: ["votal-input-guard", "votal-output-guard"],
+      bodyTemplate:
+        '{"model":"qwen3.5-27b","messages":[{"role":"user","content":"{{message}}"}]}',
+      responsePath: "choices[0].message.content",
+    };
+
+    await executeAttack(config, makeAttack({ payload: { message: "user message" } }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      model: "qwen3.5-27b",
+      messages: [{ role: "user", content: "user message" }],
+      guardrails: ["votal-input-guard", "votal-output-guard"],
+    });
   });
 });

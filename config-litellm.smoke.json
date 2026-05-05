@@ -9,6 +9,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
+      "guardrails": ["votal-input-guard", "votal-output-guard"],
       "bodyTemplate": "{\"model\": \"qwen3.5-27b\", \"messages\": [{\"role\": \"user\", \"content\": \"{{message}}\"}]}",
       "responsePath": "choices[0].message.content"
     }

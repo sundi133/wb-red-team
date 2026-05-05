@@ -532,6 +532,36 @@ CUSTOM_LLM_API_KEY=your-key
 }
 ```
 
+If your OpenAI-compatible gateway supports request-level guardrails, you can attach them only when needed:
+
+```json
+{
+  "target": {
+    "customApiTemplate": {
+      "guardrails": ["votal-input-guard", "votal-output-guard"]
+    }
+  },
+  "attackConfig": {
+    "llmProvider": "custom",
+    "llmModel": "qwen3.5-27b",
+    "llmGuardrails": ["votal-input-guard", "votal-output-guard"],
+    "judgeProvider": "custom",
+    "judgeModel": "qwen3.5-27b",
+    "judgeGuardrails": ["votal-input-guard", "votal-output-guard"]
+  }
+}
+```
+
+When configured, outbound OpenAI-style requests are sent in this shape:
+
+```json
+{
+  "model": "qwen3.5-27b",
+  "messages": [{ "role": "user", "content": "user message" }],
+  "guardrails": ["votal-input-guard", "votal-output-guard"]
+}
+```
+
 **API keys for programmatic access:**
 
 ```bash
