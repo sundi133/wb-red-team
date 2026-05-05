@@ -11,6 +11,7 @@ import type {
   ComplianceResult,
 } from "./types.js";
 import { ALL_FRAMEWORKS } from "./compliance-mappings.js";
+import { buildRemediationPlan } from "./remediation-planner.js";
 
 const SEVERITY_WEIGHTS: Record<AttackCategory, number> = {
   auth_bypass: 15,
@@ -205,15 +206,23 @@ export function generateReport(
 
   const findings = allResults
     .filter((r) => r.verdict === "PASS" || r.verdict === "PARTIAL")
-    .map((r) => ({
-      severity: r.attack.severity,
-      category: r.attack.category,
-      description: r.findings.join("; ") || r.attack.description,
-      attack: r.attack.name,
-      strategyId: r.attack.strategyId,
-      strategyName: r.attack.strategyName,
-      affectedFiles: affectedFiles?.[r.attack.category],
-    }));
+    .map((r) => {
+      const remediation = buildRemediationPlan(
+        r,
+        affectedFiles?.[r.attack.category],
+      );
+      r.remediation = remediation;
+      return {
+        severity: r.attack.severity,
+        category: r.attack.category,
+        description: r.findings.join("; ") || r.attack.description,
+        attack: r.attack.name,
+        strategyId: r.attack.strategyId,
+        strategyName: r.attack.strategyName,
+        affectedFiles: affectedFiles?.[r.attack.category],
+        remediation,
+      };
+    });
 
   const compliance = computeCompliance(allResults);
 
@@ -334,6 +343,7 @@ export function writeReport(report: Report): {
           responseTimeMs: step.responseTimeMs,
         })),
         idealResponse: r.idealResponse,
+        remediation: r.remediation,
       })),
     })),
   };
@@ -506,6 +516,14 @@ function buildMarkdown(
         lines.push(`- **Strategy:** ${f.strategyName}`);
       }
       lines.push(`- **Details:** ${f.description}`);
+      if (f.remediation) {
+        lines.push(`- **Likely Root Cause:** ${f.remediation.rootCause}`);
+        lines.push(`- **Remediation Confidence:** ${f.remediation.confidence}`);
+        lines.push(`- **Top Fixes:**`);
+        for (const fix of f.remediation.suggestedFixes.slice(0, 3)) {
+          lines.push(`  - **${fix.title}:** ${fix.rationale}`);
+        }
+      }
       if (f.affectedFiles && f.affectedFiles.length > 0) {
         lines.push(`- **Affected Source Files:**`);
         for (const af of f.affectedFiles) {

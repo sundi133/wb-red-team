@@ -138,6 +138,25 @@ describe("generateReport", () => {
     expect(report.findings).toHaveLength(2);
     expect(report.findings[0].severity).toBe("critical");
     expect(report.findings[1].description).toBe("partial leak");
+    expect(report.findings[0].remediation).toBeDefined();
+    expect(report.findings[1].remediation).toBeDefined();
+  });
+
+  it("does not attach remediation to defended or errored results", () => {
+    const rounds: RoundResult[] = [
+      {
+        round: 1,
+        results: [
+          makeResult({ verdict: "FAIL" }),
+          makeResult({ verdict: "ERROR" }),
+        ],
+      },
+    ];
+
+    const report = generateReport("http://localhost:3000/api/agent", rounds);
+    expect(report.findings).toHaveLength(0);
+    expect(report.rounds[0].results[0].remediation).toBeUndefined();
+    expect(report.rounds[0].results[1].remediation).toBeUndefined();
   });
 
   it("groups results by category", () => {
