@@ -14,6 +14,8 @@
     }
   },
   "codebasePath": null,
+  "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+  "codebaseRepoBranch": "main",
   "codebaseGlob": "**/*.ts",
   "policyFile": "policies/strict.json",
   "auth": {
