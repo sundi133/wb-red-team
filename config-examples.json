@@ -14,20 +14,9 @@
       }
     },
     "codebasePath": null,
+    "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+    "codebaseRepoBranch": "main",
     "auth": {
-      "methods": ["none"],
-      "jwtSecret": "",
-      "credentials": [],
-      "apiKeys": {}
-    },
-    "requestSchema": {
-      "messageField": "message",
-      "roleField": "role",
-      "apiKeyField": "api_key",
-      "guardrailModeField": "guardrail_mode"
-    },
-    "responseSchema": {
-      "responsePath": "choices[0].message.content",
       "toolCallsPath": "",
       "userInfoPath": "",
       "guardrailsPath": ""
@@ -78,6 +67,8 @@
       }
     },
     "codebasePath": null,
+    "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+    "codebaseRepoBranch": "main",
     "auth": {
       "methods": ["none"],
       "jwtSecret": "",
@@ -142,6 +133,8 @@
       }
     },
     "codebasePath": null,
+    "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+    "codebaseRepoBranch": "main",
     "auth": {
       "methods": ["none"],
       "jwtSecret": "",
@@ -205,6 +198,8 @@
       }
     },
     "codebasePath": null,
+    "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+    "codebaseRepoBranch": "main",
     "auth": {
       "methods": ["none"],
       "jwtSecret": "",
@@ -269,6 +264,8 @@
       }
     },
     "codebasePath": null,
+    "codebaseRepo": "https://github.com/sundi133/demo-agentic-app.git",
+    "codebaseRepoBranch": "main",
     "auth": {
       "methods": ["none"],
       "jwtSecret": "",
