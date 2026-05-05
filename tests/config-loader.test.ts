@@ -73,6 +73,8 @@ describe("loadConfig", () => {
     expect(config.attackConfig.maxAttacksPerCategory).toBe(15);
     expect(config.attackConfig.concurrency).toBe(3);
     expect(config.attackConfig.delayBetweenRequestsMs).toBe(200);
+    expect(config.attackConfig.targetTimeoutMs).toBe(30000);
+    expect(config.attackConfig.llmTimeoutMs).toBe(60000);
     expect(config.attackConfig.llmModel).toBe("gpt-4o");
     expect(config.attackConfig.enableLlmGeneration).toBe(true);
     expect(config.attackConfig.maxMultiTurnSteps).toBe(8);
@@ -233,7 +235,7 @@ describe("loadConfig", () => {
     expect(() => loadConfig(path)).toThrow("target.agentEndpoint is required");
   });
 
-  it("throws on missing auth credentials and apiKeys", () => {
+  it("throws on missing auth credentials and apiKeys without explicit auth.mode none", () => {
     const path = writeTestConfig(
       tmpDir,
       makeValidConfig({
@@ -245,7 +247,26 @@ describe("loadConfig", () => {
         },
       }),
     );
-    expect(() => loadConfig(path)).toThrow("at least one auth method");
+    expect(() => loadConfig(path)).toThrow("auth.mode=\"none\"");
+  });
+
+  it("allows explicit unauthenticated local testing with auth.mode none", () => {
+    const path = writeTestConfig(
+      tmpDir,
+      makeValidConfig({
+        auth: {
+          mode: "none",
+          reason: "Local unauthenticated endpoint testing only",
+          methods: ["none"],
+          jwtSecret: "not-used",
+          credentials: [],
+          apiKeys: {},
+        },
+      }),
+    );
+    const config = loadConfig(path);
+    expect(config.auth.mode).toBe("none");
+    expect(config.auth.methods).toContain("none");
   });
 
   it("throws on non-existent config file", () => {

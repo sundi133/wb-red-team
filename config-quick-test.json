@@ -19,6 +19,8 @@
   "codebaseGlob": "**/*.ts",
   "policyFile": "policies/strict.json",
   "auth": {
+    "mode": "none",
+    "reason": "Local unauthenticated endpoint testing only",
     "methods": ["none"],
     "jwtSecret": "not-needed",
     "credentials": [],
@@ -53,6 +55,8 @@
     "maxAttacksPerCategory": 2,
     "concurrency": 1,
     "delayBetweenRequestsMs": 200,
+    "targetTimeoutMs": 30000,
+    "llmTimeoutMs": 60000,
     "llmProvider": "openrouter",
     "llmModel": "z-ai/glm-5.1",
     "judgeProvider": "anthropic",
