@@ -13,8 +13,21 @@ function findDuplicates(values: string[] | undefined): string[] {
     .map(([value]) => value);
 }
 
+function positiveEnvNumber(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function validateAndNormalizeConfig(config: Config): Config {
   config.target.type = config.target.type ?? "http_agent";
+  if (!config.auth) {
+    throw new Error("config: auth is required");
+  }
+  config.auth.methods = config.auth.methods ?? [];
+  config.auth.credentials = config.auth.credentials ?? [];
+  config.auth.apiKeys = config.auth.apiKeys ?? {};
 
   // Validate required fields
   if (config.target.type === "http_agent") {
@@ -70,10 +83,28 @@ function validateAndNormalizeConfig(config: Config): Config {
     );
     config.target.applicationDetails = "";
   }
-  if (!config.auth?.credentials?.length && !config.auth?.apiKeys) {
+  const explicitAuthMode =
+    config.auth.mode ??
+    (config.auth.methods?.includes("none") ? "none" : undefined);
+  const apiKeyCount = Object.keys(config.auth.apiKeys ?? {}).length;
+  const credentialCount = config.auth.credentials?.length ?? 0;
+  config.auth.mode =
+    explicitAuthMode ??
+    (config.auth.methods?.includes("jwt")
+      ? "jwt"
+      : apiKeyCount > 0
+        ? "api_key"
+        : credentialCount > 0
+          ? "login"
+          : undefined);
+
+  if (config.auth.mode !== "none" && credentialCount === 0 && apiKeyCount === 0) {
     throw new Error(
-      "config: at least one auth method (credentials or apiKeys) is required",
+      'config: at least one auth method (credentials or apiKeys) is required, or set auth.mode="none" for authorized local unauthenticated testing',
     );
+  }
+  if (config.auth.mode === "none" && !config.auth.methods.includes("none")) {
+    config.auth.methods = [...config.auth.methods, "none"];
   }
   if (!config.sensitivePatterns?.length) {
     config.sensitivePatterns = [];
@@ -94,6 +125,8 @@ function validateAndNormalizeConfig(config: Config): Config {
     maxAttacksPerCategory: 15,
     concurrency: 3,
     delayBetweenRequestsMs: 200,
+    targetTimeoutMs: positiveEnvNumber("TARGET_TIMEOUT_MS", 30_000),
+    llmTimeoutMs: positiveEnvNumber("LLM_TIMEOUT_MS", 60_000),
     llmProvider: "openai",
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
@@ -107,6 +140,15 @@ function validateAndNormalizeConfig(config: Config): Config {
     appTailoredCustomPromptCount: 0,
   };
   config.attackConfig = { ...defaults, ...config.attackConfig };
+
+  for (const [field, value] of [
+    ["targetTimeoutMs", config.attackConfig.targetTimeoutMs],
+    ["llmTimeoutMs", config.attackConfig.llmTimeoutMs],
+  ] as const) {
+    if (value != null && (!Number.isFinite(value) || value <= 0)) {
+      throw new Error(`config: attackConfig.${field} must be a positive number`);
+    }
+  }
 
   const duplicateCategories = findDuplicates(
     config.attackConfig.enabledCategories,

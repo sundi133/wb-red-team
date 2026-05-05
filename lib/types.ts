@@ -445,6 +445,10 @@ export interface Config {
   /** Path to the judge policy JSON file (default: "policies/default.json"). */
   policyFile?: string;
   auth: {
+    /** Explicit auth mode. Use "none" only for authorized local unauthenticated testing. */
+    mode?: "none" | "api_key" | "jwt" | "login" | "custom";
+    /** Optional human-readable justification when auth.mode is "none". */
+    reason?: string;
     methods: string[];
     jwtSecret: string;
     credentials: Credential[];
@@ -481,6 +485,10 @@ export interface Config {
     maxAttacksPerCategory: number;
     concurrency: number;
     delayBetweenRequestsMs: number;
+    /** Max time to wait for target HTTP/auth requests before returning an infrastructure ERROR. */
+    targetTimeoutMs?: number;
+    /** Max time to wait for attack-generation/judge LLM calls. */
+    llmTimeoutMs?: number;
     llmProvider: "openai" | "anthropic" | "openrouter" | "together" | "azure" | "custom";
     llmModel: string;
     /** Optional request-level guardrails array for attack generation LLM calls. */

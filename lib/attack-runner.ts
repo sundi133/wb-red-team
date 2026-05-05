@@ -8,6 +8,30 @@ import { formatErrorDetails } from "./error-utils.js";
 // Cache JWT tokens per role
 const tokenCache = new Map<string, string>();
 
+function targetTimeoutMs(config: Config): number {
+  return config.attackConfig.targetTimeoutMs ?? 30_000;
+}
+
+async function fetchWithTargetTimeout(
+  config: Config,
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const timeoutMs = targetTimeoutMs(config);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Target request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function preAuthenticate(config: Config): Promise<void> {
   const adapter = getTargetAdapter(config);
   if (adapter) {
@@ -34,7 +58,7 @@ async function loginForToken(
   cred: Credential,
 ): Promise<string> {
   const url = `${config.target.baseUrl}${config.target.authEndpoint}`;
-  const res = await fetch(url, {
+  const res = await fetchWithTargetTimeout(config, url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: cred.email, password: cred.password }),
@@ -331,7 +355,7 @@ export async function executeAttack(
 
   const start = Date.now();
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTargetTimeout(config, url, {
       method,
       headers: finalHeaders,
       body: requestBody,

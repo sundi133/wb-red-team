@@ -13,6 +13,7 @@ export interface ChatOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  timeoutMs?: number;
   /** Request JSON output from the model (OpenAI/OpenRouter only). */
   responseFormat?: "json_object";
 }
@@ -103,6 +104,7 @@ async function createOpenAICompatibleChatCompletion(
         requestConfig,
         initialOmitTemperature,
       ),
+      options.timeoutMs ? { timeout: options.timeoutMs } : undefined,
     );
     return response.choices[0]?.message?.content?.trim() ?? "";
   } catch (error) {
@@ -130,6 +132,7 @@ async function createOpenAICompatibleChatCompletion(
         requestConfig,
         initialOmitTemperature || retryWithoutTemperature,
       ),
+      options.timeoutMs ? { timeout: options.timeoutMs } : undefined,
     );
     return response.choices[0]?.message?.content?.trim() ?? "";
   }
@@ -192,6 +195,10 @@ class AnthropicProvider implements LlmProvider {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       let response: Response;
+      const controller = options.timeoutMs ? new AbortController() : undefined;
+      const timer = options.timeoutMs
+        ? setTimeout(() => controller?.abort(), options.timeoutMs)
+        : undefined;
       try {
         response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -201,8 +208,14 @@ class AnthropicProvider implements LlmProvider {
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify(body),
+          signal: controller?.signal,
         });
       } catch (fetchErr) {
+        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+          throw new Error(
+            `Anthropic API timeout after ${options.timeoutMs}ms`,
+          );
+        }
         if (attempt < MAX_RETRIES) {
           const delayMs = RETRY_DELAYS_MS[attempt];
           console.warn(
@@ -214,6 +227,8 @@ class AnthropicProvider implements LlmProvider {
         throw new Error(
           `Anthropic API network error after ${MAX_RETRIES} retries: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`,
         );
+      } finally {
+        if (timer) clearTimeout(timer);
       }
 
       if (
@@ -429,20 +444,38 @@ function createProvider(
 
 /** Get the LLM provider for attack generation. */
 export function getLlmProvider(config: Config): LlmProvider {
-  return createProvider(config.attackConfig.llmProvider, {
+  const provider = createProvider(config.attackConfig.llmProvider, {
     guardrails: config.attackConfig.llmGuardrails,
   });
+  const timeoutMs = config.attackConfig.llmTimeoutMs;
+  return {
+    chat(options) {
+      return provider.chat({
+        ...options,
+        timeoutMs: options.timeoutMs ?? timeoutMs,
+      });
+    },
+  };
 }
 
 /** Get the LLM provider for the judge. Falls back to the attack provider if judgeProvider is not set. */
 export function getJudgeProvider(config: Config): LlmProvider {
   const judgeName =
     config.attackConfig.judgeProvider ?? config.attackConfig.llmProvider;
-  return createProvider(judgeName, {
+  const provider = createProvider(judgeName, {
     guardrails:
       config.attackConfig.judgeGuardrails ??
       (judgeName === config.attackConfig.llmProvider
         ? config.attackConfig.llmGuardrails
         : undefined),
   });
+  const timeoutMs = config.attackConfig.llmTimeoutMs;
+  return {
+    chat(options) {
+      return provider.chat({
+        ...options,
+        timeoutMs: options.timeoutMs ?? timeoutMs,
+      });
+    },
+  };
 }
