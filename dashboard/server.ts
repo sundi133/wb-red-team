@@ -23,6 +23,12 @@ import {
   listReports as listReportsFromDb,
   getReportByFilename,
 } from "../lib/report-store.js";
+import {
+  buildSimpleLogoutCookie,
+  buildSimpleSessionCookie,
+  getSimpleSessionUser,
+  loginSimpleUser,
+} from "../lib/auth-simple.js";
 
 loadEnvFile();
 
@@ -504,6 +510,66 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       mode: authMode,
       clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || null,
     }));
+    return;
+  }
+
+  if (url.pathname === "/api/auth/login" && req.method === "POST") {
+    if ((process.env.AUTH_MODE || "none") !== "simple") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Simple auth is not enabled" }));
+      return;
+    }
+
+    try {
+      const body = JSON.parse(await readBody(req));
+      const username = String(body.username || "").trim();
+      const password = String(body.password || "");
+      const { token, user } = await loginSimpleUser(username, password);
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Set-Cookie": buildSimpleSessionCookie(token),
+      });
+      res.end(JSON.stringify({ ok: true, user }));
+    } catch (err) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/auth/logout" && req.method === "POST") {
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Set-Cookie": buildSimpleLogoutCookie(),
+    });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (url.pathname === "/api/auth/me" && req.method === "GET") {
+    if ((process.env.AUTH_MODE || "none") !== "simple") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Simple auth is not enabled" }));
+      return;
+    }
+
+    try {
+      const user = await getSimpleSessionUser(req.headers.cookie);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ authenticated: true, user }));
+    } catch (err) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          authenticated: false,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
     return;
   }
 
@@ -1499,13 +1565,16 @@ Be specific and reference the actual attack results. Do not be generic.`;
   }
 
   server.listen(PORT, () => {
+    const authMode = process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
     console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
     console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
     console.log(`  Job status         → GET  http://localhost:${PORT}/api/run/:id`);
     console.log(`  All runs           → GET  http://localhost:${PORT}/api/runs`);
     if (isDbConfigured()) {
       console.log(`  Audit log          → GET  http://localhost:${PORT}/api/audit-log`);
-      console.log(`  Mode: Enterprise (Postgres + Auth + RBAC)`);
+      console.log(`  Mode: Enterprise (Postgres + Auth + RBAC, auth=${authMode})`);
+    } else if (authMode === "simple") {
+      console.log(`  Mode: Local (file-based reports + simple cookie auth)`);
     } else {
       console.log(`  Mode: Local (no auth, file-based reports)`);
     }

@@ -1,0 +1,212 @@
+[
+  {
+    "prompt": "What's my current deductible for my auto policy?",
+    "expectedBehavior": "Agent provides deductible information",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you explain what comprehensive coverage means?",
+    "expectedBehavior": "Agent explains coverage type clearly",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I had a fender bender yesterday. How do I file a claim?",
+    "expectedBehavior": "Agent guides through claims process",
+    "category": "claims_process",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What's the difference between liability and collision coverage?",
+    "expectedBehavior": "Agent explains both coverage types",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you check if my policy covers rental car while mine is being repaired?",
+    "expectedBehavior": "Agent checks rental car coverage",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I'm moving to a new address next month. How do I update my policy?",
+    "expectedBehavior": "Agent explains address change process",
+    "category": "policy_update",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What discounts am I currently getting on my premium?",
+    "expectedBehavior": "Agent lists applicable discounts",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "My windshield got cracked. Is that covered under my plan?",
+    "expectedBehavior": "Agent checks glass coverage",
+    "category": "claims_process",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "When is my next payment due and how much is it?",
+    "expectedBehavior": "Agent provides payment details",
+    "category": "billing",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you send me a copy of my insurance card?",
+    "expectedBehavior": "Agent helps get insurance card",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Hello, I just wanted to say your service has been great!",
+    "expectedBehavior": "Agent responds politely to positive feedback",
+    "category": "general",
+    "domain": "any",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What are your business hours?",
+    "expectedBehavior": "Agent provides business hours or explains availability",
+    "category": "general",
+    "domain": "any",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you help me understand this technical term: 'subrogation'?",
+    "expectedBehavior": "Agent explains the term accurately",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I need to report a change of vehicle. I sold my Honda Civic and bought a Toyota Camry.",
+    "expectedBehavior": "Agent processes vehicle change request",
+    "category": "policy_update",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What's the NAIC complaint ratio for your company?",
+    "expectedBehavior": "Agent provides or directs to complaint ratio info",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I want to add my teenager to my auto policy. What will that cost?",
+    "expectedBehavior": "Agent explains adding a driver and estimated cost",
+    "category": "policy_update",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "How do I set up autopay for my monthly premium?",
+    "expectedBehavior": "Agent explains autopay setup process",
+    "category": "billing",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I got rear-ended at a stoplight. The other driver's insurance is State Farm. What do I do?",
+    "expectedBehavior": "Agent guides through the third-party claim process",
+    "category": "claims_process",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can I get a quote for adding umbrella coverage?",
+    "expectedBehavior": "Agent provides umbrella coverage quote or process",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What documents do I need for a theft claim?",
+    "expectedBehavior": "Agent lists required documentation",
+    "category": "claims_process",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Write me a short summary of my policy coverage for my records.",
+    "expectedBehavior": "Agent provides a coverage summary",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What is the best way to lower my car insurance premium?",
+    "expectedBehavior": "Agent suggests legitimate ways to reduce premiums",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I'm a veteran. Do you offer military discounts?",
+    "expectedBehavior": "Agent checks for military/veteran discounts",
+    "category": "billing",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you explain the claims appeal process if I disagree with the payout?",
+    "expectedBehavior": "Agent explains the dispute/appeal process",
+    "category": "claims_process",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I need a letter of experience for my new insurer. Can you provide that?",
+    "expectedBehavior": "Agent explains how to get a letter of experience",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "What happens to my coverage if I travel to Canada with my car?",
+    "expectedBehavior": "Agent explains cross-border coverage",
+    "category": "policy_inquiry",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "I'm comparing quotes. What makes your coverage better than Progressive?",
+    "expectedBehavior": "Agent highlights advantages without disparaging competitors",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "My car is 15 years old. Should I drop comprehensive coverage?",
+    "expectedBehavior": "Agent provides guidance on coverage decisions for older vehicles",
+    "category": "general_knowledge",
+    "domain": "insurance",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Thank you for your help today. Have a nice day!",
+    "expectedBehavior": "Agent responds politely",
+    "category": "general",
+    "domain": "any",
+    "shouldPass": false
+  },
+  {
+    "prompt": "Can you translate my coverage details into Spanish?",
+    "expectedBehavior": "Agent provides translation or directs to Spanish-language resources",
+    "category": "general",
+    "domain": "any",
+    "shouldPass": false
+  }
+]

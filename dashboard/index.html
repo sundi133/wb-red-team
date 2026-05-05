@@ -1594,8 +1594,41 @@
         flex-direction: column;
         gap: 24px;
       }
+      .auth-card {
+        width: min(420px, calc(100vw - 32px));
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
       .auth-overlay h1 { font-size: 24px; font-weight: 700; }
       .auth-overlay p { color: var(--text2); font-size: 14px; }
+      .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .auth-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .auth-field label {
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .auth-field input {
+        width: 100%;
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: inherit;
+      }
       .auth-sign-in-btn {
         background: var(--accent);
         color: #fff;
@@ -1607,6 +1640,11 @@
         cursor: pointer;
       }
       .auth-sign-in-btn:hover { opacity: 0.85; }
+      .auth-error {
+        min-height: 18px;
+        color: var(--red);
+        font-size: 12px;
+      }
       .user-menu {
         display: flex;
         align-items: center;
@@ -1842,10 +1880,23 @@
   <body>
     <!-- Auth overlay (hidden by default, shown when OIDC auth is required) -->
     <div id="authOverlay" class="auth-overlay" style="display:none;">
-      <h1>Red Team Dashboard</h1>
-      <p>Sign in to access security reports and run analyses</p>
-      <button class="auth-sign-in-btn" id="authSignInBtn">Sign In</button>
-      <p style="font-size:11px;color:var(--text2);margin-top:8px;">Powered by your organization's SSO</p>
+      <div class="auth-card">
+        <h1>Red Team Dashboard</h1>
+        <p id="authSubtitle">Sign in to access security reports and run analyses</p>
+        <div id="authSimpleForm" class="auth-form" style="display:none;">
+          <div class="auth-field">
+            <label for="authUsername">Username</label>
+            <input id="authUsername" type="text" autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label for="authPassword">Password</label>
+            <input id="authPassword" type="password" autocomplete="current-password" />
+          </div>
+          <div id="authError" class="auth-error"></div>
+        </div>
+        <button class="auth-sign-in-btn" id="authSignInBtn">Sign In</button>
+        <p id="authFooter" style="font-size:11px;color:var(--text2);margin-top:8px;">Powered by your organization's SSO</p>
+      </div>
     </div>
     <div class="app-shell">
       <!-- Top Navigation -->
@@ -2125,6 +2176,18 @@
       let authToken = null;
       let authMode = "none";
       let clerkInstance = null;
+      const authChannel =
+        typeof BroadcastChannel !== "undefined"
+          ? new BroadcastChannel("red-team-auth")
+          : null;
+
+      if (authChannel) {
+        authChannel.onmessage = async (event) => {
+          if (event.data?.type === "auth:refresh" && authMode === "simple") {
+            await syncSimpleAuthSession();
+          }
+        };
+      }
 
       // Wrap fetch to include auth token
       const _origFetch = window.fetch;
@@ -2144,6 +2207,12 @@
           if (authMode === "none" || authMode === "dev") {
             // No auth needed — hide overlay, proceed
             document.getElementById("authOverlay").style.display = "none";
+            return;
+          }
+
+          if (authMode === "simple") {
+            setupSimpleAuthUi();
+            await syncSimpleAuthSession();
             return;
           }
 
@@ -2181,6 +2250,117 @@
         } catch {
           // Auth config failed — proceed without auth (backward compat)
         }
+      }
+
+      function setupSimpleAuthUi() {
+        const overlay = document.getElementById("authOverlay");
+        const subtitle = document.getElementById("authSubtitle");
+        const footer = document.getElementById("authFooter");
+        const button = document.getElementById("authSignInBtn");
+        const form = document.getElementById("authSimpleForm");
+        const passwordInput = document.getElementById("authPassword");
+        const usernameInput = document.getElementById("authUsername");
+
+        subtitle.textContent = "Sign in with an env-configured account";
+        footer.textContent = "Session is shared across tabs with a secure cookie";
+        form.style.display = "flex";
+        overlay.style.display = "flex";
+        button.textContent = "Sign In";
+
+        if (!button.dataset.simpleBound) {
+          button.dataset.simpleBound = "1";
+          button.addEventListener("click", () => {
+            void submitSimpleLogin();
+          });
+        }
+
+        if (!passwordInput.dataset.simpleBound) {
+          passwordInput.dataset.simpleBound = "1";
+          passwordInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") void submitSimpleLogin();
+          });
+        }
+
+        if (!usernameInput.dataset.simpleBound) {
+          usernameInput.dataset.simpleBound = "1";
+          usernameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") void submitSimpleLogin();
+          });
+        }
+      }
+
+      async function submitSimpleLogin() {
+        const username = document.getElementById("authUsername").value.trim();
+        const password = document.getElementById("authPassword").value;
+        const errorEl = document.getElementById("authError");
+        const button = document.getElementById("authSignInBtn");
+
+        errorEl.textContent = "";
+        button.disabled = true;
+        button.textContent = "Signing In...";
+
+        try {
+          const res = await _origFetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Login failed");
+          authChannel?.postMessage({ type: "auth:refresh" });
+          await onSimpleSignedIn(data.user);
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : String(err);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Sign In";
+        }
+      }
+
+      async function syncSimpleAuthSession() {
+        try {
+          const res = await _origFetch("/api/auth/me");
+          if (!res.ok) throw new Error("Not signed in");
+          const data = await res.json();
+          await onSimpleSignedIn(data.user);
+        } catch {
+          authToken = null;
+          document.getElementById("userMenu").style.display = "none";
+          document.getElementById("authOverlay").style.display = "flex";
+        }
+      }
+
+      async function onSimpleSignedIn(user) {
+        document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("authError").textContent = "";
+        document.getElementById("authPassword").value = "";
+
+        const displayName = user.name || user.email || user.username || "User";
+        document.getElementById("userMenu").style.display = "flex";
+        document.getElementById("userMenuName").textContent =
+          user.role ? `${displayName} (${user.role})` : displayName;
+        const initials = displayName
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        document.getElementById("userMenuAvatar").textContent = initials;
+
+        const signoutBtn = document.getElementById("userMenuSignout");
+        if (!signoutBtn.dataset.simpleBound) {
+          signoutBtn.dataset.simpleBound = "1";
+          signoutBtn.addEventListener("click", async () => {
+            await _origFetch("/api/auth/logout", { method: "POST" });
+            authChannel?.postMessage({ type: "auth:refresh" });
+            authToken = null;
+            document.getElementById("userMenu").style.display = "none";
+            document.getElementById("authOverlay").style.display = "flex";
+          });
+        }
+
+        await loadReportsMeta();
+        refreshActiveRuns();
       }
 
       async function onClerkSignedIn() {
@@ -3499,11 +3679,14 @@
       // ── Bootstrap ──
       (async () => {
         try { await initAuth(); } catch(e) { console.warn("initAuth failed:", e); }
+        const shouldAutoLoad =
+          authMode !== "simple" ||
+          document.getElementById("authOverlay").style.display === "none";
         try {
-          await loadReportsMeta();
+          if (shouldAutoLoad) await loadReportsMeta();
         } catch(e) { console.warn("loadReportsMeta failed:", e); }
         renderDashboardTab();
-        try { refreshActiveRuns(); } catch(e) {}
+        try { if (shouldAutoLoad) refreshActiveRuns(); } catch(e) {}
 
         // Deep-link: ?report=<filename> or #report=<filename> auto-opens.
         try {

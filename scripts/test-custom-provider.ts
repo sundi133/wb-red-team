@@ -5,6 +5,14 @@
  */
 
 import OpenAI from "openai";
+import { loadEnvFile } from "../lib/env-loader.js";
+
+loadEnvFile();
+
+// Auto TLS skip for internal endpoints
+if (process.env.CUSTOM_LLM_SKIP_TLS_VERIFY === "true" || process.env.CUSTOM_LLM_SKIP_TLS_VERIFY === "1") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
 
 const baseURL = process.env.CUSTOM_LLM_BASE_URL;
 const apiKey = process.env.CUSTOM_LLM_API_KEY;

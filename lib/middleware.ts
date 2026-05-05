@@ -8,6 +8,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { validateToken, type AuthContext } from "./auth.js";
 import { validateDevToken } from "./auth-dev.js";
 import { validateApiKey } from "./auth-apikey.js";
+import { validateSimpleSession } from "./auth-simple.js";
 import { checkPermission } from "./rbac.js";
 import { isDbConfigured } from "./db.js";
 import type { Role } from "./rbac.js";
@@ -60,21 +61,32 @@ async function handleRequest(
     const url = new URL(req.url ?? "/", `http://localhost`);
 
     // Static files and public API endpoints — no auth needed
-    if (!url.pathname.startsWith("/api/") || url.pathname === "/api/auth-config" || url.pathname === "/api/reference") {
+    if (
+      !url.pathname.startsWith("/api/") ||
+      url.pathname === "/api/auth-config" ||
+      url.pathname === "/api/reference" ||
+      url.pathname === "/api/auth/login" ||
+      url.pathname === "/api/auth/logout" ||
+      url.pathname === "/api/auth/me"
+    ) {
       return handler(req, res, null);
     }
 
-    // If no DB configured, skip auth (backward compat)
-    if (!isDbConfigured()) {
+    const authMode = process.env.AUTH_MODE || "none";
+
+    // If no DB configured, skip auth unless an explicit auth mode still applies.
+    if (!isDbConfigured() && authMode !== "simple") {
       return handler(req, res, null);
     }
 
     // Validate token — try multiple auth methods
     let authCtx: AuthContext;
     try {
-      if (process.env.AUTH_MODE === "dev") {
+      if (authMode === "dev") {
         // Dev mode: auto-authenticate all requests as admin
         authCtx = await validateDevToken("Bearer " + (process.env.DEV_API_KEY || "dev-key"));
+      } else if (authMode === "simple") {
+        authCtx = await validateSimpleSession(req.headers.cookie);
       } else if (req.headers["x-api-key"]) {
         // API key auth — for CI/CD, scripts, and programmatic access
         authCtx = await validateApiKey(req.headers["x-api-key"] as string);
