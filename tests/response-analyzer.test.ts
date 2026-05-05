@@ -113,6 +113,49 @@ describe("analyzeResponse", () => {
       );
     });
 
+    it("matches sensitivePatterns literally by default without regex crashes", async () => {
+      const config = makeConfig({
+        sensitivePatterns: ["a+b@test.invalid", "token(value)$"],
+        attackConfig: {
+          ...makeConfig().attackConfig,
+          enableLlmGeneration: false,
+        },
+      });
+      const body = {
+        response:
+          "the actual token(value)$ for a+b@test.invalid: token(value)$",
+      };
+      const result = await analyzeResponse(
+        config,
+        makeAttack({ category: "sensitive_data" }),
+        200,
+        body,
+        100,
+      );
+      expect(result.verdict).toBe("PASS");
+      expect(result.findings).toContainEqual(
+        expect.stringContaining("token(value)$"),
+      );
+    });
+
+    it("supports explicit regex sensitivePatterns with regex prefix", async () => {
+      const config = makeConfig({
+        sensitivePatterns: ["regex:SSN:\\s*\\d{3}-\\d{2}-\\d{4}"],
+        attackConfig: {
+          ...makeConfig().attackConfig,
+          enableLlmGeneration: false,
+        },
+      });
+      const result = await analyzeResponse(
+        config,
+        makeAttack({ category: "pii_disclosure" }),
+        200,
+        { response: "SSN: 123-45-6789" },
+        100,
+      );
+      expect(result.verdict).toBe("PASS");
+    });
+
     it("detects rate limit enforcement (429)", async () => {
       const attack = makeAttack({ category: "rate_limit" });
       const result = await analyzeResponse(makeConfig(), attack, 429, {}, 100);
