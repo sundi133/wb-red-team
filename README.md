@@ -364,6 +364,76 @@ docker compose up -d
 
 See [Enterprise Deployment](#enterprise-deployment) for full Railway/Supabase/Clerk setup.
 
+### OpenShift Deployment
+
+**Prerequisites:** OpenShift CLI (`oc`), Docker Hub account, access to an OpenShift cluster.
+
+**1. Build and push the amd64 image:**
+
+```bash
+# Create an amd64 builder (required on Apple Silicon / ARM machines)
+docker buildx create --name amd64builder --platform linux/amd64 --use
+
+# Build and push to Docker Hub
+docker buildx build --builder amd64builder --platform linux/amd64 \
+  --no-cache --pull -t <your-dockerhub-user>/wb-red-team:latest --push .
+```
+
+**2. Configure secrets:**
+
+Edit `deploy/openshift.yaml` and update the `wb-red-team-secrets` Secret with your API keys, auth credentials, and session secret. Alternatively, create the secret from your `.env` file:
+
+```bash
+oc create secret generic wb-red-team-secrets --from-env-file=.env -n <your-namespace>
+```
+
+**3. Update the namespace:**
+
+The YAML defaults to `sundi133-dev`. If your namespace is different, update all `namespace:` fields in `deploy/openshift.yaml`.
+
+**4. Deploy:**
+
+```bash
+oc project <your-namespace>
+oc apply -f deploy/openshift.yaml
+```
+
+**5. Verify:**
+
+```bash
+# Check pods are running
+oc get pods
+
+# Check logs
+oc logs -l app=wb-red-team --tail=20
+
+# Get the public URL
+oc get route wb-red-team -o jsonpath='{.spec.host}'
+```
+
+**6. Update after code changes:**
+
+```bash
+# Rebuild and push
+docker buildx build --builder amd64builder --platform linux/amd64 \
+  --no-cache --pull -t <your-dockerhub-user>/wb-red-team:latest --push .
+
+# Restart the deployment to pull the new image
+oc rollout restart deployment/wb-red-team
+```
+
+**Troubleshooting:**
+
+- `exec format error` — Image was built for ARM, not amd64. Rebuild with `--platform linux/amd64 --pull --no-cache`.
+- `ImagePullBackOff` — Docker Hub repo is private. Either make it public or create a pull secret:
+  ```bash
+  oc create secret docker-registry dockerhub-pull \
+    --docker-server=docker.io \
+    --docker-username=<user> \
+    --docker-password=<token>
+  oc secrets link default dockerhub-pull --for=pull
+  ```
+
 ---
 
 ## White-Box Scanning (Source Code Analysis)

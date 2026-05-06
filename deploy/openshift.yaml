@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wb-red-team-secrets
+  namespace: sundi133-dev
+type: Opaque
+stringData:
+  AUTH_MODE: "simple"
+  SIMPLE_AUTH_USERNAME: "admin"
+  SIMPLE_AUTH_PASSWORD: "changeme"
+  SIMPLE_AUTH_ROLE: "admin"
+  SIMPLE_AUTH_NAME: "Admin User"
+  SIMPLE_AUTH_SESSION_SECRET: "replace-with-random-string"
+  SIMPLE_AUTH_SESSION_TTL_HOURS: "12"
+  ANTHROPIC_API_KEY: ""
+  OPENAI_API_KEY: ""
+  OPENROUTER_API_KEY: ""
+  TOGETHER_API_KEY: ""
+  DATABASE_URL: ""
+  MASTER_ENCRYPTION_KEY: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wb-red-team
+  namespace: sundi133-dev
+  labels:
+    app: wb-red-team
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wb-red-team
+  template:
+    metadata:
+      labels:
+        app: wb-red-team
+    spec:
+      containers:
+        - name: wb-red-team
+          image: docker.io/sundi133/wb-red-team:latest
+          ports:
+            - containerPort: 4200
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: wb-red-team-secrets
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /api/auth-config
+              port: 4200
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/auth-config
+              port: 4200
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: report-data
+              mountPath: /app/report
+      volumes:
+        - name: report-data
+          persistentVolumeClaim:
+            claimName: wb-red-team-reports
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wb-red-team-reports
+  namespace: sundi133-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wb-red-team
+  namespace: sundi133-dev
+  labels:
+    app: wb-red-team
+spec:
+  selector:
+    app: wb-red-team
+  ports:
+    - port: 4200
+      targetPort: 4200
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: wb-red-team
+  namespace: sundi133-dev
+  labels:
+    app: wb-red-team
+spec:
+  to:
+    kind: Service
+    name: wb-red-team
+    weight: 100
+  port:
+    targetPort: 4200
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
