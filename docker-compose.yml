@@ -22,6 +22,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://redteam:${POSTGRES_PASSWORD:-redteam_dev}@postgres:5432/redteam
+      DASHBOARD_HOST: 0.0.0.0
     depends_on:
       postgres:
         condition: service_healthy

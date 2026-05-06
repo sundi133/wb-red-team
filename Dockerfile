@@ -32,5 +32,9 @@ RUN mkdir -p report
 
 EXPOSE 4200
 
+# Containers need to listen on all interfaces; host exposure is still controlled
+# by Docker port publishing.
+ENV DASHBOARD_HOST=0.0.0.0
+
 # Run the dashboard server (serves UI + run API)
 CMD ["tsx", "dashboard/server.ts", "4200"]

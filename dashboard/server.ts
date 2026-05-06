@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage } from "node:http";
 import { readFileSync, readdirSync, rmSync, mkdtempSync } from "node:fs";
-import { join, extname } from "node:path";
+import { basename, join, resolve, sep, extname } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -33,8 +33,15 @@ import {
 loadEnvFile();
 
 const PORT = parseInt(process.argv[2] || "4100", 10);
+const HOST = process.env.DASHBOARD_HOST || "127.0.0.1";
 const REPORT_DIR = join(import.meta.dirname, "..", "report");
 const DASHBOARD_DIR = import.meta.dirname;
+const MAX_BODY_BYTES = parseInt(
+  process.env.MAX_REPORT_BODY_BYTES ||
+    process.env.MAX_REQUEST_BODY_BYTES ||
+    "2000000",
+  10,
+);
 
 const MIME: Record<string, string> = {
   ".html": "text/html",
@@ -60,6 +67,28 @@ interface ReportMeta {
 
 const metaCache = new Map<string, ReportMeta>();
 
+function safeReportPath(filename: string): string | null {
+  let decoded = filename;
+  try {
+    decoded = decodeURIComponent(filename);
+  } catch {
+    return null;
+  }
+
+  if (
+    decoded !== basename(decoded) ||
+    decoded.includes("/") ||
+    decoded.includes("\\") ||
+    !/^[A-Za-z0-9._-]+\.json$/.test(decoded)
+  ) {
+    return null;
+  }
+
+  const root = resolve(REPORT_DIR);
+  const full = resolve(root, decoded);
+  return full === root || !full.startsWith(root + sep) ? null : full;
+}
+
 interface LoadedReportRecord {
   id: string | null;
   report: Record<string, unknown>;
@@ -70,7 +99,9 @@ function getReportMeta(filename: string): ReportMeta {
   if (metaCache.has(filename)) return metaCache.get(filename)!;
 
   try {
-    const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
+    const reportPath = safeReportPath(filename);
+    if (!reportPath) throw new Error("invalid report filename");
+    const raw = readFileSync(reportPath, "utf-8");
     const data = JSON.parse(raw);
     const s = data.summary || {};
     const meta: ReportMeta = {
@@ -167,7 +198,9 @@ async function loadReportRecord(
   }
 
   try {
-    const raw = readFileSync(join(REPORT_DIR, filename), "utf-8");
+    const reportPath = safeReportPath(filename);
+    if (!reportPath) return null;
+    const raw = readFileSync(reportPath, "utf-8");
     return {
       id: null,
       report: JSON.parse(raw) as Record<string, unknown>,
@@ -206,9 +239,31 @@ function normalizeReportSteps(report: Record<string, unknown>): Record<string, u
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (c) => chunks.push(c));
-    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
-    req.on("error", reject);
+    let total = 0;
+    let settled = false;
+    req.on("data", (c: Buffer) => {
+      if (settled) return;
+      total += c.length;
+      if (total > MAX_BODY_BYTES) {
+        settled = true;
+        reject(
+          new Error(`Request body too large (max ${MAX_BODY_BYTES} bytes)`),
+        );
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (settled) return;
+      settled = true;
+      resolve(Buffer.concat(chunks).toString());
+    });
+    req.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
   });
 }
 
@@ -232,6 +287,11 @@ interface Job {
 const jobs = new Map<string, Job>();
 let activeRuns = 0;
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_RUNS || "100", 10);
+let activeAnalyses = 0;
+const MAX_CONCURRENT_ANALYSES = parseInt(
+  process.env.MAX_CONCURRENT_ANALYSES || "2",
+  10,
+);
 
 /** Clone a git repo into a temp dir for white-box analysis. Returns the temp path. */
 function cloneCodebaseRepo(config: Config, jobId: string): string | null {
@@ -353,10 +413,8 @@ async function startJob(job: Job): Promise<void> {
             // partial reports survive errors with the same fidelity as
             // successful runs — otherwise CSV/JSON exports always show a
             // single step.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const attackResults = resultEvents.map(p => {
               const pr = p.result!;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const conv = Array.isArray(pr.conversation) ? pr.conversation : undefined;
               const totalSteps = conv && conv.length > 0 ? conv.length : undefined;
               const lastStepIndex = conv && conv.length > 0
@@ -401,7 +459,7 @@ async function startJob(job: Job): Promise<void> {
               try {
                 const sr = await storeReport(report, job.tenantId, job.id, { skipFile: true });
                 console.log(`  Partial report stored: ${sr.reportId}`);
-              } catch (dbErr) {
+              } catch {
                 try {
                   const paths = writeReport(report);
                   job.reportFile = paths.jsonPath;
@@ -504,7 +562,11 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
   // ── Auth config (public — no auth required) ──
   if (url.pathname === "/api/auth-config" && req.method === "GET") {
-    const authMode = process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
+    const authMode =
+      process.env.DASHBOARD_REQUIRE_AUTH === "true" &&
+      (!isDbConfigured() || process.env.DASHBOARD_TOKEN_BYPASS_RBAC === "true")
+        ? "token"
+        : process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       mode: authMode,
@@ -845,7 +907,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
   // API: download report as CSV
   if (url.pathname.startsWith("/api/report-csv/") && req.method === "GET") {
     const filename = url.pathname.slice("/api/report-csv/".length);
-    if (filename.includes("..") || filename.includes("/")) {
+    if (!safeReportPath(filename)) {
       res.writeHead(400);
       res.end("Bad request");
       return;
@@ -994,7 +1056,7 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
   // API: get a specific report
   if (url.pathname.startsWith("/api/report/") && req.method === "GET") {
     const filename = url.pathname.slice("/api/report/".length);
-    if (filename.includes("..") || filename.includes("/")) {
+    if (!safeReportPath(filename)) {
       res.writeHead(400);
       res.end("Bad request");
       return;
@@ -1035,14 +1097,11 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
   // API: compliance analysis — LLM-powered per-item analysis
   if (url.pathname === "/api/owasp-analyze" && req.method === "POST") {
+    let analysisSlotAcquired = false;
     try {
       const body = JSON.parse(await readBody(req));
       const { reportFile } = body;
-      if (
-        !reportFile ||
-        reportFile.includes("..") ||
-        reportFile.includes("/")
-      ) {
+      if (typeof reportFile !== "string" || !safeReportPath(reportFile)) {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Invalid report file" }));
         return;
@@ -1056,6 +1115,14 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         return;
       }
       const reportData = loadedReport.report;
+
+      if (activeAnalyses >= MAX_CONCURRENT_ANALYSES) {
+        res.writeHead(429, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Too many concurrent analyses" }));
+        return;
+      }
+      activeAnalyses++;
+      analysisSlotAcquired = true;
 
       // Stream results as newline-delimited JSON
       res.writeHead(200, {
@@ -1103,38 +1170,46 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
             .map((fw) => ({ name: fw.name, items: fw.items }))
         : allFrameworks.map((fw) => ({ name: fw.name, items: fw.items }));
 
-      for (const fw of frameworks) {
-        for (const item of fw.items) {
-          try {
-            const analysis = await analyzeOwaspItem(
-              llm,
-              model,
-              fw.name,
-              item,
-              allResults,
-            );
-            res.write(JSON.stringify(analysis) + "\n");
-          } catch (err) {
-            res.write(
-              JSON.stringify({
-                framework: fw.name,
-                code: item.code,
-                title: item.title,
-                status: "error",
-                summary: `Analysis failed: ${err instanceof Error ? err.message : String(err)}`,
-                details: "",
-                recommendations: [],
-                attacksAnalyzed: 0,
-                vulnerabilitiesFound: 0,
-              }) + "\n",
-            );
+      try {
+        for (const fw of frameworks) {
+          for (const item of fw.items) {
+            try {
+              const analysis = await analyzeOwaspItem(
+                llm,
+                model,
+                fw.name,
+                item,
+                allResults,
+              );
+              res.write(JSON.stringify(analysis) + "\n");
+            } catch (err) {
+              res.write(
+                JSON.stringify({
+                  framework: fw.name,
+                  code: item.code,
+                  title: item.title,
+                  status: "error",
+                  summary: `Analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+                  details: "",
+                  recommendations: [],
+                  attacksAnalyzed: 0,
+                  vulnerabilitiesFound: 0,
+                }) + "\n",
+              );
+            }
           }
         }
+      } finally {
+        activeAnalyses = Math.max(0, activeAnalyses - 1);
+        analysisSlotAcquired = false;
       }
 
       // Save the analysis alongside the report
       res.end();
     } catch (err) {
+      if (analysisSlotAcquired) {
+        activeAnalyses = Math.max(0, activeAnalyses - 1);
+      }
       if (!res.headersSent) {
         res.writeHead(500, { "Content-Type": "application/json" });
       }
@@ -1364,15 +1439,27 @@ Be specific and factual. Reference real incidents and realistic financial figure
   }
 
   // Serve static files from dashboard dir
-  let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
-  // Prevent path traversal
-  if (filePath.includes("..")) {
+  let filePath = url.pathname === "/" ? "index.html" : url.pathname;
+  try {
+    filePath = decodeURIComponent(filePath).replace(/^\/+/, "");
+  } catch {
+    res.writeHead(400);
+    res.end("Bad request");
+    return;
+  }
+
+  const dashboardRoot = resolve(DASHBOARD_DIR);
+  const fullPath = resolve(dashboardRoot, filePath);
+  if (
+    filePath.includes("..") ||
+    filePath.includes("\\") ||
+    !fullPath.startsWith(dashboardRoot + sep)
+  ) {
     res.writeHead(400);
     res.end("Bad request");
     return;
   }
   try {
-    const fullPath = join(DASHBOARD_DIR, filePath);
     const data = readFileSync(fullPath);
     const mime = MIME[extname(fullPath)] || "application/octet-stream";
     res.writeHead(200, { "Content-Type": mime });
@@ -1564,7 +1651,7 @@ Be specific and reference the actual attack results. Do not be generic.`;
     }
   }
 
-  server.listen(PORT, () => {
+  server.listen(PORT, HOST, () => {
     const authMode = process.env.AUTH_MODE || (isDbConfigured() ? "oidc" : "none");
     console.log(`\n  Red Team Dashboard → http://localhost:${PORT}`);
     console.log(`  Run API            → POST http://localhost:${PORT}/api/run`);
