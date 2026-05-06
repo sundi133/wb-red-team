@@ -8,10 +8,78 @@ import type {
   AttackCategory,
   CategoryDefenseProfile,
 } from "./types.js";
-import { ALL_STRATEGIES, sampleStrategies, getAllStrategies } from "./attack-strategies.js";
+import { sampleStrategies, getAllStrategies } from "./attack-strategies.js";
 import { selectStrategiesForCategory } from "./strategy-selector.js";
 import { parseJsonArrayFromLlmResponse } from "./parse-llm-json-array.js";
 import { formatErrorDetails } from "./error-utils.js";
+
+const VALID_AUTH_METHODS = new Set<Attack["authMethod"]>([
+  "jwt",
+  "api_key",
+  "body_role",
+  "none",
+  "forged_jwt",
+]);
+
+function defaultAuthMethod(config: Config): Attack["authMethod"] {
+  const configured = config.auth.methods.find((method) =>
+    VALID_AUTH_METHODS.has(method as Attack["authMethod"]),
+  );
+  return (configured as Attack["authMethod"] | undefined) ?? "none";
+}
+
+function normalizePayload(payload: unknown): Record<string, unknown> | null {
+  if (typeof payload === "string") {
+    const message = payload.trim();
+    return message ? { message } : null;
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const normalized = { ...(payload as Record<string, unknown>) };
+  if (typeof normalized.message === "string" && normalized.message.trim()) {
+    return normalized;
+  }
+  if (typeof normalized.prompt === "string" && normalized.prompt.trim()) {
+    normalized.message = normalized.prompt;
+    return normalized;
+  }
+  if (typeof normalized.content === "string" && normalized.content.trim()) {
+    normalized.message = normalized.content;
+    return normalized;
+  }
+
+  return null;
+}
+
+export function normalizeGeneratedAttack(
+  config: Config,
+  attack: Attack,
+): Attack | null {
+  const payload = normalizePayload(
+    (attack as unknown as { payload?: unknown }).payload,
+  );
+  if (!payload) return null;
+
+  const authMethod = VALID_AUTH_METHODS.has(attack.authMethod)
+    ? attack.authMethod
+    : defaultAuthMethod(config);
+
+  const role =
+    typeof attack.role === "string" && attack.role.trim()
+      ? attack.role
+      : config.auth.credentials[0]?.role ||
+        Object.keys(config.auth.apiKeys)[0] ||
+        "default";
+
+  return {
+    ...attack,
+    authMethod,
+    role,
+    payload,
+  };
+}
 
 function buildApplicationContext(config: Config): string {
   const details = config.target.applicationDetails?.trim();
@@ -447,26 +515,35 @@ CRITICAL — REALISM REQUIREMENTS:
     console.log(`      ✅ LLM responded (${llmTime}ms)`);
 
     const attacks = parseJsonArrayFromLlmResponse<Attack>(text);
-    return attacks.map((a, idx) => {
-      // Assign strategy: use LLM-provided if valid, otherwise assign from sampled list
-      let stratId = a.strategyId;
-      let stratName = a.strategyName;
-      if (!stratName && sampledStrategies.length > 0) {
-        const assigned = sampledStrategies[idx % sampledStrategies.length];
-        stratId = assigned.id;
-        stratName = assigned.name;
-      }
-      return {
-        ...a,
-        category: mod.category,
-        isLlmGenerated: true,
-        id:
-          a.id ||
-          `${mod.category}-gen-${round}-${Math.random().toString(36).slice(2, 8)}`,
-        strategyId: stratId,
-        strategyName: stratName,
-      };
-    });
+    const normalized = attacks
+      .map((a, idx) => {
+        // Assign strategy: use LLM-provided if valid, otherwise assign from sampled list.
+        let stratId = a.strategyId;
+        let stratName = a.strategyName;
+        if (!stratName && sampledStrategies.length > 0) {
+          const assigned = sampledStrategies[idx % sampledStrategies.length];
+          stratId = assigned.id;
+          stratName = assigned.name;
+        }
+        return normalizeGeneratedAttack(config, {
+          ...a,
+          category: mod.category,
+          isLlmGenerated: true,
+          id:
+            a.id ||
+            `${mod.category}-gen-${round}-${Math.random().toString(36).slice(2, 8)}`,
+          strategyId: stratId,
+          strategyName: stratName,
+        });
+      })
+      .filter((attack): attack is Attack => attack !== null);
+    const skipped = attacks.length - normalized.length;
+    if (skipped > 0) {
+      console.warn(
+        `      Skipped ${skipped} malformed generated attack(s) for ${mod.category}`,
+      );
+    }
+    return normalized;
   } catch (e) {
     console.error(`  ❌ Failed to generate attacks for ${mod.category}: ${formatErrorDetails(e)}`);
     return [];
@@ -551,8 +628,9 @@ Return ONLY the JSON array, no markdown fences.`;
       const attacks = parseJsonArrayFromLlmResponse<
         Attack & { refinedFrom?: string }
       >(text);
+      let skipped = 0;
       for (const a of attacks) {
-        allRefined.push({
+        const normalized = normalizeGeneratedAttack(config, {
           ...a,
           category,
           isLlmGenerated: true,
@@ -561,6 +639,16 @@ Return ONLY the JSON array, no markdown fences.`;
             a.id ||
             `refined-${category}-r${round}-${Math.random().toString(36).slice(2, 8)}`,
         });
+        if (normalized) {
+          allRefined.push(normalized);
+        } else {
+          skipped++;
+        }
+      }
+      if (skipped > 0) {
+        console.warn(
+          `  Skipped ${skipped} malformed refined attack(s) for ${category}`,
+        );
       }
     } catch (e) {
       console.error(`  ❌ Failed to refine ${category} attacks: ${formatErrorDetails(e)}`);
