@@ -469,7 +469,7 @@ export async function executeAttack(
       await runPreSetup(config);
       // Re-interpolate headers with fresh token
       for (const [k, v] of Object.entries(rawHeaders)) {
-        finalHeaders[k] = interpolateVars(v);
+        (finalHeaders as Record<string, string>)[k] = interpolateVars(v);
       }
       // Re-interpolate body template with fresh conversationId + new UUIDs
       let retryBody = requestBody;
