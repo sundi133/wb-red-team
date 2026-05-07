@@ -19,7 +19,7 @@ const sessionVars = new Map<string, string>();
 export function interpolateVars(text: string): string {
   return text
     .replace(/\{\{uuid\}\}/g, () => randomUUID())
-    .replace(/\{\{var:(\w+)\}\}/g, (_, name) => sessionVars.get(name) ?? "");
+    .replace(/\{\{var:(\w+)\}\}/g, (_, name) => sessionVars.get(name) ?? process.env[name] ?? "");
 }
 
 /** Recursively interpolate all string values in an object. */
@@ -457,11 +457,47 @@ export async function executeAttack(
 
   const start = Date.now();
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method,
       headers: finalHeaders,
       body: requestBody,
     });
+
+    // On 401, refresh token + conversationId and retry once
+    if (res.status === 401 && (config.target.preAuthCommand || config.target.setupSteps)) {
+      console.log(`  ⚠ Got 401 — refreshing token, creating new conversation, retrying...`);
+      await runPreSetup(config);
+      // Re-interpolate headers with fresh token
+      for (const [k, v] of Object.entries(rawHeaders)) {
+        finalHeaders[k] = interpolateVars(v);
+      }
+      // Re-interpolate body template with fresh conversationId + new UUIDs
+      let retryBody = requestBody;
+      if (apiTemplate?.bodyTemplate) {
+        const msg = (attack.payload as Record<string, unknown>).message as string;
+        const retryTemplate = interpolateVars(apiTemplate.bodyTemplate);
+        try {
+          const tObj = JSON.parse(retryTemplate.replace(/\{\{message\}\}/g, "PLACEHOLDER"));
+          const replace = (o: any): any => {
+            if (typeof o === "string") return o === "PLACEHOLDER" ? msg || "" : o;
+            if (Array.isArray(o)) return o.map(replace);
+            if (o && typeof o === "object") {
+              const r: any = {};
+              for (const [k2, v2] of Object.entries(o)) r[k2] = replace(v2);
+              return r;
+            }
+            return o;
+          };
+          retryBody = JSON.stringify(replace(tObj));
+        } catch { /* use original body */ }
+      }
+      res = await fetch(url, {
+        method,
+        headers: finalHeaders,
+        body: retryBody,
+      });
+    }
+
     const timeMs = Date.now() - start;
 
     console.log(`  Response: ${res.status} ${res.statusText} (${timeMs}ms)`);
