@@ -2,7 +2,7 @@
 
 import { createInterface } from "node:readline/promises";
 import { dirname, resolve } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 
@@ -440,9 +440,77 @@ async function main() {
 
   // 4. Run adaptive attack rounds
   console.log("\n[4/5] Running attacks...");
-  const rounds: RoundResult[] = [];
-  let allPreviousResults: AttackResult[] = [];
+
+  // -- Checkpoint helpers (CLI) --
+  const CHECKPOINT_DIR = resolve("report", ".checkpoints");
+  const cpConfigKey = JSON.stringify({
+    url: config.target.baseUrl || config.target.agentEndpoint || "",
+    model: config.attackConfig.llmModel,
+    rounds: config.attackConfig.adaptiveRounds,
+  });
+  let cpHash = 0;
+  for (let i = 0; i < cpConfigKey.length; i++) {
+    cpHash = ((cpHash << 5) - cpHash + cpConfigKey.charCodeAt(i)) | 0;
+  }
+  const cpFile = resolve(CHECKPOINT_DIR, `checkpoint-${Math.abs(cpHash).toString(36)}.json`);
+
+  function saveCliCheckpoint(
+    completedRounds: RoundResult[],
+    lastRound: number,
+    partialResults?: AttackResult[],
+    completedCategories?: string[],
+  ): void {
+    mkdirSync(CHECKPOINT_DIR, { recursive: true });
+    writeFileSync(cpFile, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      completedRounds,
+      lastCompletedRound: lastRound,
+      partialRoundResults: partialResults || [],
+      completedCategories: completedCategories || [],
+    }), "utf-8");
+  }
+
+  function loadCliCheckpoint(): {
+    completedRounds: RoundResult[];
+    lastCompletedRound: number;
+    partialRoundResults?: AttackResult[];
+    completedCategories?: string[];
+  } | null {
+    if (!existsSync(cpFile)) return null;
+    try {
+      return JSON.parse(readFileSync(cpFile, "utf-8"));
+    } catch { return null; }
+  }
+
+  function clearCliCheckpoint(): void {
+    if (existsSync(cpFile)) {
+      try { unlinkSync(cpFile); } catch { /* ignore */ }
+    }
+  }
+
+  // Resume from checkpoint if available
+  const checkpoint = loadCliCheckpoint();
+  const rounds: RoundResult[] = checkpoint ? [...checkpoint.completedRounds] : [];
+  let allPreviousResults: AttackResult[] = rounds.flatMap((r) => r.results);
   let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
+
+  // Determine where to resume
+  const hasPartialResults = checkpoint?.partialRoundResults && checkpoint.partialRoundResults.length > 0;
+  const startRound = hasPartialResults
+    ? checkpoint!.lastCompletedRound + 1  // resume the partial round
+    : checkpoint
+      ? checkpoint.lastCompletedRound + 1
+      : 1;
+  const resumedPartialResults: AttackResult[] = hasPartialResults ? checkpoint!.partialRoundResults! : [];
+  const resumedCategories: Set<string> = new Set(checkpoint?.completedCategories || []);
+
+  if (checkpoint && (startRound > 1 || hasPartialResults)) {
+    const totalRecovered = allPreviousResults.length + resumedPartialResults.length;
+    console.log(`  ✅ Checkpoint found — resuming round ${startRound} (${totalRecovered} results recovered, ${resumedCategories.size} categories done in current round)`);
+    for (const r of rounds) {
+      defenseProfiles = analyzeRound(r.results, config, defenseProfiles);
+    }
+  }
   let cancelledByUser = false;
   const requireReviewConfirmation =
     config.attackConfig.requireReviewConfirmation ?? true;
@@ -459,7 +527,7 @@ async function main() {
   // Track actual total attacks for progress bar (updated as rounds are planned)
   let knownTotalAttacks = 0;
 
-  for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
+  for (let round = startRound; round <= config.attackConfig.adaptiveRounds; round++) {
     console.log(
       `\n  ── Round ${round}/${config.attackConfig.adaptiveRounds} ──`,
     );
@@ -504,11 +572,38 @@ async function main() {
       break;
     }
 
-    const roundResults: AttackResult[] = [];
+    // Seed with partial results from checkpoint (if resuming mid-round)
+    const roundResults: AttackResult[] = (round === startRound && resumedPartialResults.length > 0)
+      ? [...resumedPartialResults]
+      : [];
+    const skipCategories: Set<string> = (round === startRound) ? new Set(resumedCategories) : new Set();
+    let lastCategory: string | null = null;
+    const doneCategories: string[] = Array.from(skipCategories);
+
+    if (skipCategories.size > 0) {
+      console.log(`  Skipping already-completed categories: ${Array.from(skipCategories).join(", ")}`);
+    }
 
     for (let i = 0; i < attacks.length; i++) {
       const attack = attacks[i];
+
+      // Skip attacks from already-completed categories
+      if (skipCategories.has(attack.category)) continue;
+
       const progress = `[${i + 1}/${attacks.length}]`;
+
+      // Save checkpoint when category changes (per-category checkpointing)
+      if (lastCategory !== null && attack.category !== lastCategory) {
+        if (!doneCategories.includes(lastCategory)) {
+          doneCategories.push(lastCategory);
+        }
+        try {
+          // Save completed full rounds + partial results from current round
+          saveCliCheckpoint(rounds, round - 1, [...roundResults], doneCategories);
+          console.log(`  ✅ Checkpoint saved after category "${lastCategory}" (${roundResults.length} attacks, ${doneCategories.length} categories done)`);
+        } catch { /* ignore */ }
+      }
+      lastCategory = attack.category;
 
       // Handle rate-limit rapid-fire attacks specially
       const rapidFire = (
@@ -877,6 +972,14 @@ async function main() {
     rounds.push({ round, results: roundResults });
     allPreviousResults = allPreviousResults.concat(roundResults);
 
+    // Save checkpoint — full round complete (no partial results)
+    try {
+      saveCliCheckpoint(rounds, round);
+      console.log(`  ✅ Checkpoint saved — round ${round} complete (${allPreviousResults.length} total results)`);
+    } catch (cpErr) {
+      console.warn(`  ⚠ Checkpoint save failed: ${cpErr instanceof Error ? cpErr.message : String(cpErr)}`);
+    }
+
     const passCount = roundResults.filter((r) => r.verdict === "PASS").length;
     const failCount = roundResults.filter((r) => r.verdict === "FAIL").length;
     console.log(
@@ -933,6 +1036,7 @@ async function main() {
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);
   console.log(`  Markdown: ${mdPath}`);
+  clearCliCheckpoint();
 
   printConsoleSummary(report);
 
