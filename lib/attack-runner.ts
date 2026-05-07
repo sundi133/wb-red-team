@@ -57,6 +57,8 @@ function runPreAuthCommand(config: Config): void {
     const output = execSync(cmd.command, {
       encoding: "utf-8",
       timeout: 30000,
+      env: { ...process.env },
+      shell: "/bin/bash",
     }).trim();
     sessionVars.set(cmd.outputVar, output);
     console.log(`    [OK] ${cmd.outputVar} = ${output.substring(0, 60)}${output.length > 60 ? "..." : ""}`);
