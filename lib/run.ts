@@ -19,6 +19,8 @@ import {
   generateReport,
   writeReport,
 } from "./report-generator.js";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "fs";
+import { resolve } from "path";
 import { runStaticAnalysis } from "./static-analyzer.js";
 import { analyzeRound } from "./round-analyzer.js";
 import { generateIdealResponse } from "./ideal-response-generator.js";
@@ -392,6 +394,69 @@ export interface RunResult {
  * @param onProgress - Optional callback for progress updates
  * @param configDir - Directory for resolving relative paths in config (e.g., customAttacksFile). Defaults to cwd.
  */
+
+// ---------------------------------------------------------------------------
+// Checkpoint / resume helpers
+// ---------------------------------------------------------------------------
+
+const CHECKPOINT_DIR = resolve("report", ".checkpoints");
+
+interface Checkpoint {
+  timestamp: string;
+  configHash: string;
+  completedRounds: RoundResult[];
+  lastCompletedRound: number;
+}
+
+function checkpointPath(configHash: string): string {
+  return resolve(CHECKPOINT_DIR, `checkpoint-${configHash}.json`);
+}
+
+function configToHash(config: Config): string {
+  // Simple hash from target + model to identify the same run
+  const key = JSON.stringify({
+    url: config.target.baseUrl || config.target.agentEndpoint || "",
+    model: config.attackConfig.llmModel,
+    rounds: config.attackConfig.adaptiveRounds,
+  });
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function saveCheckpoint(config: Config, rounds: RoundResult[], round: number): void {
+  mkdirSync(CHECKPOINT_DIR, { recursive: true });
+  const cp: Checkpoint = {
+    timestamp: new Date().toISOString(),
+    configHash: configToHash(config),
+    completedRounds: rounds,
+    lastCompletedRound: round,
+  };
+  writeFileSync(checkpointPath(cp.configHash), JSON.stringify(cp), "utf-8");
+}
+
+function loadCheckpoint(config: Config): Checkpoint | null {
+  const hash = configToHash(config);
+  const path = checkpointPath(hash);
+  if (!existsSync(path)) return null;
+  try {
+    const data = JSON.parse(readFileSync(path, "utf-8")) as Checkpoint;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function clearCheckpoint(config: Config): void {
+  const hash = configToHash(config);
+  const path = checkpointPath(hash);
+  if (existsSync(path)) {
+    try { unlinkSync(path); } catch { /* ignore */ }
+  }
+}
+
 export async function runRedTeam(
   config: Config,
   onProgress?: (p: RunProgress) => void,
@@ -590,11 +655,23 @@ export async function runRedTeam(
   // 4. Run adaptive attack rounds
   checkAbort();
   log("attacks", "Running attacks...");
-  const rounds: RoundResult[] = [];
-  let allPreviousResults: AttackResult[] = [];
-  let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
 
-  for (let round = 1; round <= config.attackConfig.adaptiveRounds; round++) {
+  // Resume from checkpoint if available
+  const checkpoint = loadCheckpoint(config);
+  const rounds: RoundResult[] = checkpoint ? [...checkpoint.completedRounds] : [];
+  let allPreviousResults: AttackResult[] = rounds.flatMap((r) => r.results);
+  let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
+  const startRound = checkpoint ? checkpoint.lastCompletedRound + 1 : 1;
+
+  if (checkpoint && startRound > 1) {
+    log("attacks", `Resuming from checkpoint — ${checkpoint.completedRounds.length} rounds recovered (${allPreviousResults.length} results)`);
+    // Rebuild defense profiles from recovered rounds
+    for (const r of rounds) {
+      defenseProfiles = analyzeRound(r.results, config, defenseProfiles);
+    }
+  }
+
+  for (let round = startRound; round <= config.attackConfig.adaptiveRounds; round++) {
     log("attacks", `Round ${round}/${config.attackConfig.adaptiveRounds}`, {
       round,
       totalRounds: config.attackConfig.adaptiveRounds,
@@ -867,6 +944,14 @@ export async function runRedTeam(
     rounds.push({ round, results: roundResults });
     allPreviousResults = allPreviousResults.concat(roundResults);
 
+    // Save checkpoint after each completed round
+    try {
+      saveCheckpoint(config, rounds, round);
+      log("checkpoint", `Round ${round} checkpoint saved (${allPreviousResults.length} total results)`);
+    } catch (cpErr) {
+      log("checkpoint", `Warning: failed to save checkpoint: ${cpErr instanceof Error ? cpErr.message : String(cpErr)}`);
+    }
+
     const passCount = roundResults.filter((r) => r.verdict === "PASS").length;
     const failCount = roundResults.filter((r) => r.verdict === "FAIL").length;
     log("attacks", `Round ${round}: ${passCount} vulns found, ${failCount} blocked`, { round });
@@ -916,6 +1001,9 @@ export async function runRedTeam(
   } else {
     log("report", "Report generated (stored in database)");
   }
+
+  // Clear checkpoint — run completed successfully
+  clearCheckpoint(config);
 
   return { report, jsonPath, mdPath };
 }
