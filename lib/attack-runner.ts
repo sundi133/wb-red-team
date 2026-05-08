@@ -73,6 +73,7 @@ async function runSetupSteps(config: Config): Promise<void> {
   if (!steps || steps.length === 0) return;
 
   console.log("  Running setup steps...");
+  const showDebug = process.env.DEBUG_ATTACKS === "true";
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     const label = step.name || `Step ${i + 1}`;
@@ -92,6 +93,15 @@ async function runSetupSteps(config: Config): Promise<void> {
     const body = step.body ? JSON.stringify(interpolateObject(step.body)) : undefined;
     const method = step.method ?? "POST";
 
+    if (showDebug) {
+      console.log(`\n🔍 SETUP STEP DEBUG: ${label}`);
+      console.log(`  URL: ${method} ${url}`);
+      console.log(`  Headers: ${JSON.stringify(headers, null, 2)}`);
+      if (body) {
+        console.log(`  Body: ${body}`);
+      }
+    }
+
     try {
       const res = await fetch(url, { method, headers, body });
       if (!res.ok) {
@@ -100,6 +110,11 @@ async function runSetupSteps(config: Config): Promise<void> {
       }
 
       const data = await res.json();
+
+      if (showDebug) {
+        console.log(`  Response: ${res.status} ${res.statusText}`);
+        console.log(`  Response Body: ${JSON.stringify(data, null, 2)}`);
+      }
 
       if (step.extract) {
         for (const [varName, jsonPath] of Object.entries(step.extract)) {
