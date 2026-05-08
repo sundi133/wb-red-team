@@ -12,6 +12,21 @@ const tokenCache = new Map<string, string>();
 
 // Session variables from preAuthCommand + setupSteps — used as {{var:name}} in templates
 const sessionVars = new Map<string, string>();
+let targetTlsOverrideApplied = false;
+
+function applyTargetTlsOverrides(): void {
+  if (targetTlsOverrideApplied) return;
+  if (
+    process.env.TARGET_SKIP_TLS_VERIFY === "true" ||
+    process.env.TARGET_SKIP_TLS_VERIFY === "1"
+  ) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    targetTlsOverrideApplied = true;
+    console.warn(
+      "  [WARN] TARGET_SKIP_TLS_VERIFY enabled — TLS certificate verification is disabled for target requests.",
+    );
+  }
+}
 
 /**
  * Replace {{uuid}} and {{var:name}} placeholders in a string.
@@ -72,6 +87,7 @@ async function runSetupSteps(config: Config): Promise<void> {
   const steps = config.target.setupSteps;
   if (!steps || steps.length === 0) return;
 
+  applyTargetTlsOverrides();
   console.log("  Running setup steps...");
   const showDebug = process.env.DEBUG_ATTACKS === "true";
   for (let i = 0; i < steps.length; i++) {
@@ -307,6 +323,7 @@ export async function executeAttack(
     return executeWebSocketAttack(config, attack);
   }
 
+  applyTargetTlsOverrides();
   // Use custom API template if provided
   const apiTemplate = config.target.customApiTemplate;
   const url = interpolateVars(`${config.target.baseUrl}${config.target.agentEndpoint}`);
