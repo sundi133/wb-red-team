@@ -68,13 +68,22 @@ function runPreAuthCommand(config: Config): void {
   if (!cmd) return;
 
   console.log(`  Running pre-auth command: ${cmd.command}`);
+  const showDebug = process.env.DEBUG_ATTACKS === "true";
   try {
-    const output = execSync(cmd.command, {
+    const rawOutput = execSync(cmd.command, {
       encoding: "utf-8",
       timeout: 30000,
       env: { ...process.env },
       shell: "/bin/bash",
-    }).trim();
+    });
+    const output = rawOutput.trim();
+    if (showDebug) {
+      console.log(`\n🔍 PRE-AUTH DEBUG: ${cmd.outputVar}`);
+      console.log(`  Raw stdout length: ${rawOutput.length}`);
+      console.log(`  Trimmed length: ${output.length}`);
+      console.log(`  Raw stdout JSON: ${JSON.stringify(rawOutput)}`);
+      console.log(`  Trimmed JSON: ${JSON.stringify(output)}`);
+    }
     sessionVars.set(cmd.outputVar, output);
     console.log(`    [OK] ${cmd.outputVar} = ${output.substring(0, 60)}${output.length > 60 ? "..." : ""}`);
   } catch (err) {
