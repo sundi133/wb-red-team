@@ -200,12 +200,61 @@ def write_detailed(results: list[dict], meta: dict, output_path: Path) -> None:
         else:
             stats["tie"] += 1
 
-    lines.append("SUMMARY")
+    # Compute latency stats
+    bad_lat_without = [p["without_guardrails"]["latency_ms"] for p in results if p["without_guardrails"]["category"] == "bad"]
+    bad_lat_with = [p["with_guardrails"]["latency_ms"] for p in results if p["with_guardrails"]["category"] == "bad"]
+    good_lat_without = [p["without_guardrails"]["latency_ms"] for p in results if p["without_guardrails"]["category"] == "good"]
+    good_lat_with = [p["with_guardrails"]["latency_ms"] for p in results if p["with_guardrails"]["category"] == "good"]
+
+    def avg(lst: list) -> int:
+        return int(sum(lst) / len(lst)) if lst else 0
+
+    def med(lst: list) -> int:
+        if not lst:
+            return 0
+        s = sorted(lst)
+        mid = len(s) // 2
+        return s[mid] if len(s) % 2 else int((s[mid - 1] + s[mid]) / 2)
+
+    def p95(lst: list) -> int:
+        if not lst:
+            return 0
+        s = sorted(lst)
+        idx = int(len(s) * 0.95)
+        return s[min(idx, len(s) - 1)]
+
+    lines.append("VERDICT SUMMARY")
     lines.append(subsep)
     lines.append(f"  Guardrails won:        {stats['guardrails_won']}")
     lines.append(f"  Without won:           {stats['without_won']}")
     lines.append(f"  Tie:                   {stats['tie']}")
     lines.append(f"  Neither (both failed): {stats['neither']}")
+    lines.append("")
+
+    lines.append("LATENCY SUMMARY")
+    lines.append(subsep)
+    lines.append(f"  {'':30s} {'Without Guardrails':>20s}  {'With Guardrails':>20s}  {'Speedup':>10s}")
+    lines.append(f"  {'':30s} {'─' * 20}  {'─' * 20}  {'─' * 10}")
+
+    if bad_lat_without and bad_lat_with:
+        speedup_avg = f"{avg(bad_lat_without) / avg(bad_lat_with):.1f}x" if avg(bad_lat_with) > 0 else "N/A"
+        speedup_med = f"{med(bad_lat_without) / med(bad_lat_with):.1f}x" if med(bad_lat_with) > 0 else "N/A"
+        lines.append(f"  {'Bad prompts (avg)':30s} {avg(bad_lat_without):>17d} ms  {avg(bad_lat_with):>17d} ms  {speedup_avg:>10s}")
+        lines.append(f"  {'Bad prompts (median)':30s} {med(bad_lat_without):>17d} ms  {med(bad_lat_with):>17d} ms  {speedup_med:>10s}")
+        lines.append(f"  {'Bad prompts (p95)':30s} {p95(bad_lat_without):>17d} ms  {p95(bad_lat_with):>17d} ms")
+        lines.append(f"  {'Bad prompts (min)':30s} {min(bad_lat_without):>17d} ms  {min(bad_lat_with):>17d} ms")
+        lines.append(f"  {'Bad prompts (max)':30s} {max(bad_lat_without):>17d} ms  {max(bad_lat_with):>17d} ms")
+
+    if good_lat_without and good_lat_with:
+        lines.append(f"  {'Good prompts (avg)':30s} {avg(good_lat_without):>17d} ms  {avg(good_lat_with):>17d} ms")
+        lines.append(f"  {'Good prompts (median)':30s} {med(good_lat_without):>17d} ms  {med(good_lat_with):>17d} ms")
+
+    if bad_lat_with:
+        lines.append("")
+        lines.append(f"  Guardrails block bad prompts in avg {avg(bad_lat_with)}ms vs model refusal in avg {avg(bad_lat_without)}ms")
+        total_saved = sum(bad_lat_without) - sum(bad_lat_with)
+        lines.append(f"  Total time saved on {len(bad_lat_with)} bad prompts: {total_saved / 1000:.1f}s")
+
     lines.append("")
     lines.append(sep)
     lines.append("")
