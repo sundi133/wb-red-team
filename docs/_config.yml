@@ -1,0 +1,17 @@
+title: Red-Team AI Documentation
+description: White-box red teaming for agentic AI apps. Reads your code, finds bugs specific to your stack.
+theme: jekyll-theme-cayman
+show_downloads: false
+
+# Use relative permalinks so the site works at /wb-red-team/ project path
+permalink: pretty
+
+# Only render files in this docs/ folder
+include:
+  - index.md
+
+exclude:
+  - "*.json"
+  - "*.csv"
+  - node_modules
+  - vendor

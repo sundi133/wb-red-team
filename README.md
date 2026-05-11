@@ -11,6 +11,8 @@ Most LLM red-teaming tools are black-box: they treat your agent as an opaque end
 
 Red-Team AI is built for that gap. It reads your application's source code first, learns your tools, roles, and guardrails, and then generates attacks tailored to *your* implementation.
 
+📖 **Full product documentation:** [docs/index.md](docs/index.md) — comprehensive manual covering configuration, white-box scanning, attack catalog, compliance, deployment, and the extension API.
+
 ---
 
 ## What it finds that black-box tools don't
