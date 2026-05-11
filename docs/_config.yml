@@ -1,17 +1,60 @@
-title: Red-Team AI Documentation
+title: Red-Team AI Docs
 description: White-box red teaming for agentic AI apps. Reads your code, finds bugs specific to your stack.
-theme: jekyll-theme-cayman
-show_downloads: false
+url: https://sundi133.github.io
+baseurl: /wb-red-team
 
-# Use relative permalinks so the site works at /wb-red-team/ project path
-permalink: pretty
+remote_theme: just-the-docs/just-the-docs
 
-# Only render files in this docs/ folder
-include:
-  - index.md
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+# Search
+search_enabled: true
+search:
+  heading_level: 3
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s\-/]+/
+  rel_url: true
+  button: false
+
+# Aux links (top right)
+aux_links:
+  GitHub Repo: https://github.com/sundi133/wb-red-team
+  Issues: https://github.com/sundi133/wb-red-team/issues
+
+aux_links_new_tab: true
+
+# Color scheme
+color_scheme: light
+
+# Heading anchor links
+heading_anchors: true
+
+# Footer
+footer_content: 'Red-Team AI &middot; <a href="https://github.com/sundi133/wb-red-team">GitHub</a> &middot; MIT licensed'
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Callouts
+callouts:
+  warning:
+    title: Warning
+    color: red
+  note:
+    title: Note
+    color: blue
+  tip:
+    title: Tip
+    color: green
 
 exclude:
-  - "*.json"
-  - "*.csv"
+  - Gemfile
+  - Gemfile.lock
   - node_modules
   - vendor
+  - README.md
