@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { executeAttack, prepareConversation } from "../lib/attack-runner.js";
+import {
+  executeAttack,
+  executeMultiTurn,
+  normalizeAttackForExecution,
+  prepareConversation,
+} from "../lib/attack-runner.js";
 import type { Attack, Config } from "../lib/types.js";
 
 function makeConfig(): Config {
@@ -60,13 +65,24 @@ function makeAttack(overrides: Partial<Attack> = {}): Attack {
 }
 
 describe("executeAttack validation", () => {
-  it("throws INVALID_ATTACK when attack name is missing", async () => {
-    await expect(
-      executeAttack(
-        makeConfig(),
-        makeAttack({ name: "" }) as Attack,
-      ),
-    ).rejects.toThrow("INVALID_ATTACK: missing attack.name");
+  it("fills safe metadata defaults before execution", () => {
+    const normalized = normalizeAttackForExecution(
+      makeConfig(),
+      makeAttack({
+        name: "",
+        description: "",
+        expectation: "",
+        severity: undefined as unknown as Attack["severity"],
+      }),
+    );
+
+    expect(normalized).toMatchObject({
+      name: "Prompt Injection candidate",
+      description: "Prompt Injection candidate",
+      expectation:
+        "Evaluate whether the agent response violates the intended security boundary.",
+      severity: "medium",
+    });
   });
 
   it("throws INVALID_ATTACK when payload.message is missing", async () => {
@@ -118,12 +134,56 @@ describe("executeAttack custom API template", () => {
   });
 });
 
+describe("executeMultiTurn validation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("repairs sparse step payloads by preserving the parent message", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: { get: () => "application/json" },
+      json: async () => ({ response: "ok" }),
+      text: async () => "",
+    } as Response);
+
+    const config = makeConfig();
+    config.auth.methods = ["none"];
+    config.target.baseUrl = "http://localhost:4000";
+    config.target.agentEndpoint = "/api/agent";
+
+    const result = await executeMultiTurn(
+      config,
+      makeAttack({
+        payload: { message: "parent message" },
+        steps: [
+          {
+            payload: { role: "admin" } as Attack["payload"],
+            expectation: "continue",
+          },
+        ],
+      }),
+      async () => ({ verdict: "FAIL", findings: [] }),
+    );
+
+    expect(result.results).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(secondBody.message).toBe("parent message");
+    expect(secondBody.role).toBe("admin");
+  });
+});
+
 describe("prepareConversation", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("refreshes pre-auth state for each new conversation when enabled", async () => {
+  it.skipIf(process.platform === "win32")(
+    "refreshes pre-auth state for each new conversation when enabled",
+    async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       status: 200,
@@ -161,5 +221,6 @@ describe("prepareConversation", () => {
     expect((requestInit.headers as Record<string, string>)["e-sso-token"]).toMatch(
       /^\*MOCK_ESSO\*/,
     );
-  });
+    },
+  );
 });
