@@ -7856,8 +7856,12 @@
         });
       }
 
-      document.getElementById("closeRunPanel").addEventListener("click", () => {
+      function closeNewRunPanel() {
         document.getElementById("newRunPanel").style.display = "none";
+      }
+
+      document.getElementById("closeRunPanel").addEventListener("click", () => {
+        closeNewRunPanel();
       });
 
       document.getElementById("startRunBtn").addEventListener("click", async () => {
@@ -7887,6 +7891,8 @@
             errEl.textContent = data.error || "Failed to start run";
             return;
           }
+          closeNewRunPanel();
+          switchTab("runs");
           pollRun(data.runId);
           refreshActiveRuns();
         } catch (e) {
