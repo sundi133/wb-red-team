@@ -2,7 +2,6 @@
  * Extracted red-team run logic — importable by both CLI (red-team.ts) and API server (dashboard/server.ts).
  */
 
-import { loadConfigFromObject } from "./config-loader.js";
 import { describeTarget, getTargetAdapter } from "./target-adapter.js";
 import { analyzeCodebase } from "./codebase-analyzer.js";
 import { planAttacks, refinePartialAttacks } from "./attack-planner.js";
@@ -30,8 +29,13 @@ import {
 } from "./custom-attacks-loader.js";
 import { generateAppTailoredCustomAttacks } from "./app-tailored-custom-prompts.js";
 import {
+  buildTargetGroundingProfile,
+  toTargetGroundingSnapshot,
+} from "./target-grounding.js";
+import {
   runDiscoveryRound,
   applyDiscoveryIntel,
+  type DiscoveryIntel,
 } from "./discovery-round.js";
 import type {
   AttackModule,
@@ -322,6 +326,142 @@ export async function enrichAnalysisWithTargetSurface(
   }
 }
 
+function normalizeDiscoveryString(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (value == null) return "";
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  if (typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+    for (const key of ["name", "type", "capability", "description", "evidence"]) {
+      const nested = candidate[key];
+      if (typeof nested === "string" && nested.trim()) return nested.trim();
+    }
+  }
+  return "";
+}
+
+function addUniqueStrings(target: string[], values: unknown[]): void {
+  const existing = new Set(
+    target
+      .map((value) => normalizeDiscoveryString(value).toLowerCase())
+      .filter(Boolean),
+  );
+  for (const value of values) {
+    const trimmed = normalizeDiscoveryString(value);
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (existing.has(key)) continue;
+    target.push(trimmed);
+    existing.add(key);
+  }
+}
+
+function hasMcpSurfaceEvidence(config: Config, analysis: CodebaseAnalysis): boolean {
+  return (
+    (config.target.type ?? "http_agent") === "mcp" ||
+    Boolean(
+      analysis.mcpSurface &&
+        ((analysis.mcpSurface.capabilities?.length ?? 0) > 0 ||
+          (analysis.mcpSurface.resources?.length ?? 0) > 0 ||
+          (analysis.mcpSurface.prompts?.length ?? 0) > 0),
+    )
+  );
+}
+
+function shouldMergeDiscoveryCapability(
+  config: Config,
+  analysis: CodebaseAnalysis,
+  item: DiscoveryIntel["capabilityEvidence"][number],
+): boolean {
+  if (item.status !== "demonstrated") return false;
+  if (item.capability === "natural_language_chat") return false;
+  if (item.capability === "mcp_tool_call") {
+    return hasMcpSurfaceEvidence(config, analysis);
+  }
+  return true;
+}
+
+export function mergeDiscoveryIntelIntoAnalysis(
+  config: Config,
+  analysis: CodebaseAnalysis,
+  intel: DiscoveryIntel,
+): void {
+  const demonstratedCapabilities = intel.capabilityEvidence.filter((item) =>
+    shouldMergeDiscoveryCapability(config, analysis, item),
+  );
+  for (const item of demonstratedCapabilities) {
+    mergeUniqueTool(analysis.tools, {
+      name: `discovery_${item.capability}`,
+      description: "Demonstrated during black-box target reconnaissance",
+      parameters: "unknown",
+      capabilities: [item.capability],
+      evidence: item.evidence.length
+        ? item.evidence
+        : [`discovery ${item.status} capability`],
+    });
+  }
+
+  for (const dataStore of intel.discoveredDataStores) {
+    analysis.sensitiveData.push({
+      type: "data_store",
+      location: dataStore,
+      example: "",
+    });
+  }
+  for (const dataClass of intel.sensitiveDataClasses) {
+    analysis.sensitiveData.push({
+      type: dataClass,
+      location: "discovery",
+      example: "",
+    });
+  }
+
+  addUniqueStrings(analysis.authMechanisms, intel.authMechanisms);
+  addUniqueStrings(analysis.knownWeaknesses, [
+    ...intel.guardrailProfile,
+    ...intel.weaknesses,
+    ...intel.privilegeBoundaries,
+    ...intel.dataFlows,
+    ...intel.fileHandlingSurfaces,
+    ...intel.inputParsers,
+    ...intel.configSources,
+    ...intel.secretHandlingLocations,
+    ...intel.detectionGaps,
+    ...intel.defaultAssumptions,
+    ...intel.targetSurfaces,
+    ...intel.attackObjectives,
+    ...intel.promptManipulationSurfaces,
+    ...intel.jailbreakRiskCategories,
+    ...intel.retrievalAttackSurfaces,
+    ...intel.memoryAttackSurfaces,
+    ...intel.toolUseAttackSurfaces,
+    ...intel.agenticFailureModes,
+    ...intel.privacyAndLeakageRisks,
+    ...intel.unsafeCapabilityAreas,
+    ...intel.deceptionAndManipulationRisks,
+    ...intel.boundaryConditions,
+    ...intel.multimodalRiskSurfaces,
+    ...intel.claimedCapabilities
+      .map((cap) => normalizeDiscoveryString(cap))
+      .filter(Boolean)
+      .map((cap) => `Claimed capability: ${cap}`),
+    ...intel.refusedCapabilities
+      .map((cap) => normalizeDiscoveryString(cap))
+      .filter(Boolean)
+      .map((cap) => `Refused capability: ${cap}`),
+    ...intel.mentionedCapabilities
+      .map((cap) => normalizeDiscoveryString(cap))
+      .filter(Boolean)
+      .map((cap) => `Mentioned capability: ${cap}`),
+  ]);
+  addUniqueStrings(
+    analysis.systemPromptHints,
+    intel.systemPromptExposureSignals,
+  );
+}
+
 async function maybeGenerateIdealResponse(
   config: Config,
   result: AttackResult,
@@ -406,6 +546,7 @@ interface Checkpoint {
   configHash: string;
   completedRounds: RoundResult[];
   lastCompletedRound: number;
+  discoveryIntel?: DiscoveryIntel;
 }
 
 function checkpointPath(configHash: string): string {
@@ -426,13 +567,19 @@ function configToHash(config: Config): string {
   return Math.abs(hash).toString(36);
 }
 
-function saveCheckpoint(config: Config, rounds: RoundResult[], round: number): void {
+function saveCheckpoint(
+  config: Config,
+  rounds: RoundResult[],
+  round: number,
+  discoveryIntel?: DiscoveryIntel,
+): void {
   mkdirSync(CHECKPOINT_DIR, { recursive: true });
   const cp: Checkpoint = {
     timestamp: new Date().toISOString(),
     configHash: configToHash(config),
     completedRounds: rounds,
     lastCompletedRound: round,
+    discoveryIntel,
   };
   writeFileSync(checkpointPath(cp.configHash), JSON.stringify(cp), "utf-8");
 }
@@ -555,15 +702,6 @@ export async function runRedTeam(
   await enrichAnalysisWithTargetSurface(config, analysis, (msg) => log("analyze", msg));
   log("analyze", `Found ${analysis.tools.length} tools, ${analysis.roles.length} roles`);
 
-  if (Math.max(0, config.attackConfig.appTailoredCustomPromptCount ?? 0) > 0) {
-    log("analyze", "Generating app-tailored custom prompts from analysis...");
-    const generated = await generateAppTailoredCustomAttacks(config, analysis);
-    if (generated.length > 0) {
-      log("analyze", `App-tailored custom cases: ${generated.length}`);
-      customAttacks = [...customAttacks, ...generated];
-    }
-  }
-
   // Category applicability gating
   const skipIrrelevant =
     (config.target.type ?? "http_agent") === "mcp"
@@ -600,6 +738,9 @@ export async function runRedTeam(
     log("static", `Checked ${staticResult.checkedFiles} files, found ${staticResult.findings.length} issues (score: ${staticResult.score}/100)`);
   }
 
+  const checkpoint = loadCheckpoint(config);
+  let cachedDiscoveryIntel = checkpoint?.discoveryIntel;
+
   // 3. Pre-authenticate
   checkAbort();
   log("auth", "Pre-authenticating...");
@@ -608,11 +749,28 @@ export async function runRedTeam(
   // 3.5. Discovery round
   let discoveryIntel: Report["discovery"] | undefined;
   if (config.attackConfig.enableDiscovery) {
-    log("discovery", "Running discovery round...");
-    const intel = await runDiscoveryRound(config);
+    let intel = cachedDiscoveryIntel;
+    if (intel) {
+      log("discovery", "Restoring discovery round from checkpoint...");
+    } else {
+      log("discovery", "Running discovery round...");
+      intel = await runDiscoveryRound(config);
+      cachedDiscoveryIntel = intel;
+      saveCheckpoint(
+        config,
+        checkpoint?.completedRounds ?? [],
+        checkpoint?.lastCompletedRound ?? 0,
+        cachedDiscoveryIntel,
+      );
+    }
     applyDiscoveryIntel(config, intel);
+    mergeDiscoveryIntelIntoAnalysis(config, analysis, intel);
     discoveryIntel = {
       discoveredTools: intel.discoveredTools,
+      capabilityEvidence: intel.capabilityEvidence,
+      claimedCapabilities: intel.claimedCapabilities,
+      refusedCapabilities: intel.refusedCapabilities,
+      mentionedCapabilities: intel.mentionedCapabilities,
       discoveredDataStores: intel.discoveredDataStores,
       discoveredPatterns: intel.discoveredPatterns,
       architectureHints: intel.architectureHints,
@@ -652,12 +810,20 @@ export async function runRedTeam(
     log("discovery", `Discovery complete: ${intel.discoveredTools.length} tools, ${intel.discoveredDataStores.length} data stores, ${intel.weaknesses.length} weaknesses`);
   }
 
+  if (Math.max(0, config.attackConfig.appTailoredCustomPromptCount ?? 0) > 0) {
+    log("analyze", "Generating app-tailored custom prompts from target grounding...");
+    const generated = await generateAppTailoredCustomAttacks(config, analysis);
+    if (generated.length > 0) {
+      log("analyze", `App-tailored custom cases: ${generated.length}`);
+      customAttacks = [...customAttacks, ...generated];
+    }
+  }
+
   // 4. Run adaptive attack rounds
   checkAbort();
   log("attacks", "Running attacks...");
 
   // Resume from checkpoint if available
-  const checkpoint = loadCheckpoint(config);
   const rounds: RoundResult[] = checkpoint ? [...checkpoint.completedRounds] : [];
   let allPreviousResults: AttackResult[] = rounds.flatMap((r) => r.results);
   let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
@@ -760,7 +926,6 @@ export async function runRedTeam(
               return { verdict: r.verdict, findings: r.findings };
             },
           );
-
           const lastStep = stepResults[stepResults.length - 1];
           const result = await analyzeResponse(
             config, attack, lastStep.statusCode, lastStep.body,
@@ -768,15 +933,19 @@ export async function runRedTeam(
           );
           result.stepIndex = lastStep.stepIndex;
           result.totalSteps = stepResults.length;
-          result.conversation = stepResults.map((sr) => ({
-            stepIndex: sr.stepIndex,
-            payload: sr.stepIndex === 0
-              ? attack.payload
-              : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
-            statusCode: sr.statusCode,
-            responseBody: sr.body,
-            responseTimeMs: sr.timeMs,
-          }));
+          result.conversation = stepResults.map((stepResult) => {
+            const stepPayload =
+              stepResult.stepIndex === 0
+                ? attack.payload
+                : attack.steps?.[stepResult.stepIndex - 1]?.payload;
+            return {
+              stepIndex: stepResult.stepIndex,
+              payload: stepPayload ?? attack.payload,
+              statusCode: stepResult.statusCode,
+              responseBody: stepResult.body,
+              responseTimeMs: stepResult.timeMs,
+            };
+          });
 
           log("attacks", `[${i + 1}/${attacks.length}] ${attack.name} → ${getVerdictLabel(result.verdict)} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${stoppedEarly ? ` (stopped early)` : ""}`, progressExtra);
           await maybeGenerateIdealResponse(config, result);
@@ -872,7 +1041,7 @@ export async function runRedTeam(
 
           try {
             if (attack.steps && attack.steps.length > 0) {
-              const { results: stepResults, stoppedEarly } = await executeMultiTurn(
+              await executeMultiTurn(
                 config, attack,
                 async (cfg, atk, sc, b, t) => {
                   const r = await analyzeResponse(cfg, atk, sc, b, t, appContext);
@@ -883,10 +1052,8 @@ export async function runRedTeam(
               config.attackConfig.enableAdaptiveMultiTurn &&
               config.attackConfig.enableMultiTurnGeneration
             ) {
-              const maxTurns = config.attackConfig.maxAdaptiveTurns ?? 15;
               const {
                 results: stepResults,
-                stoppedEarly,
                 conversationHistory,
               } = await executeAdaptiveMultiTurn(
                 config, attack,
@@ -968,7 +1135,7 @@ export async function runRedTeam(
 
     // Save checkpoint after each completed round
     try {
-      saveCheckpoint(config, rounds, round);
+      saveCheckpoint(config, rounds, round, cachedDiscoveryIntel);
       log("checkpoint", `Round ${round} checkpoint saved (${allPreviousResults.length} total results)`);
     } catch (cpErr) {
       log("checkpoint", `Warning: failed to save checkpoint: ${cpErr instanceof Error ? cpErr.message : String(cpErr)}`);
@@ -1011,6 +1178,7 @@ export async function runRedTeam(
       llmProvider:
         config.target.infra?.aiModel?.provider ?? config.attackConfig.llmProvider,
     },
+    toTargetGroundingSnapshot(buildTargetGroundingProfile(config, analysis)),
   );
   // Skip file write when DB is configured (server stores to DB instead)
   let jsonPath = "";

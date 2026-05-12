@@ -109,13 +109,19 @@ import {
 } from "./lib/custom-attacks-loader.js";
 import { generateAppTailoredCustomAttacks } from "./lib/app-tailored-custom-prompts.js";
 import {
+  buildTargetGroundingProfile,
+  toTargetGroundingSnapshot,
+} from "./lib/target-grounding.js";
+import {
   runDiscoveryRound,
   applyDiscoveryIntel,
+  type DiscoveryIntel,
 } from "./lib/discovery-round.js";
 import {
   ALL_MODULES,
   MCP_MODULES,
   enrichAnalysisWithTargetSurface,
+  mergeDiscoveryIntelIntoAnalysis,
 } from "./lib/run.js";
 import type {
   Attack,
@@ -387,18 +393,26 @@ async function main() {
     console.log(`  Static score: ${staticResult.score}/100`);
   }
 
-  // 3. Pre-authenticate
-  console.log("\n[3/5] Pre-authenticating...");
-  await preAuthenticate(config);
+  // -- Checkpoint helpers (CLI) --
+  const CHECKPOINT_DIR = resolve("report", ".checkpoints");
+  const cpConfigKey = JSON.stringify({
+    url: config.target.baseUrl || config.target.agentEndpoint || "",
+    model: config.attackConfig.llmModel,
+    rounds: config.attackConfig.adaptiveRounds,
+  });
+  let cpHash = 0;
+  for (let i = 0; i < cpConfigKey.length; i++) {
+    cpHash = ((cpHash << 5) - cpHash + cpConfigKey.charCodeAt(i)) | 0;
+  }
+  const cpFile = resolve(CHECKPOINT_DIR, `checkpoint-${Math.abs(cpHash).toString(36)}.json`);
 
-  // 3.5. Discovery round (optional — probes target to enrich sensitivePatterns and applicationDetails)
-  let discoveryIntel: Report["discovery"] | undefined;
-  if (config.attackConfig.enableDiscovery) {
-    console.log("\n[3.5/5] Running discovery round...");
-    const intel = await runDiscoveryRound(config);
-    applyDiscoveryIntel(config, intel);
-    discoveryIntel = {
+  function discoveryToReport(intel: DiscoveryIntel): NonNullable<Report["discovery"]> {
+    return {
       discoveredTools: intel.discoveredTools,
+      capabilityEvidence: intel.capabilityEvidence,
+      claimedCapabilities: intel.claimedCapabilities,
+      refusedCapabilities: intel.refusedCapabilities,
+      mentionedCapabilities: intel.mentionedCapabilities,
       discoveredDataStores: intel.discoveredDataStores,
       discoveredPatterns: intel.discoveredPatterns,
       architectureHints: intel.architectureHints,
@@ -435,26 +449,23 @@ async function main() {
       summary: intel.summary,
       probeCount: intel.probeResults.length,
     };
-    console.log(
-      `  Discovery complete: ${intel.discoveredTools.length} tools, ${intel.discoveredDataStores.length} data stores, ${intel.discoveredPatterns.length} patterns, ${intel.weaknesses.length} weaknesses`,
-    );
   }
 
-  // 4. Run adaptive attack rounds
-  console.log("\n[4/5] Running attacks...");
-
-  // -- Checkpoint helpers (CLI) --
-  const CHECKPOINT_DIR = resolve("report", ".checkpoints");
-  const cpConfigKey = JSON.stringify({
-    url: config.target.baseUrl || config.target.agentEndpoint || "",
-    model: config.attackConfig.llmModel,
-    rounds: config.attackConfig.adaptiveRounds,
-  });
-  let cpHash = 0;
-  for (let i = 0; i < cpConfigKey.length; i++) {
-    cpHash = ((cpHash << 5) - cpHash + cpConfigKey.charCodeAt(i)) | 0;
+  function loadCliCheckpoint(): {
+    completedRounds: RoundResult[];
+    lastCompletedRound: number;
+    partialRoundResults?: AttackResult[];
+    completedCategories?: string[];
+    discoveryIntel?: DiscoveryIntel;
+  } | null {
+    if (!existsSync(cpFile)) return null;
+    try {
+      return JSON.parse(readFileSync(cpFile, "utf-8"));
+    } catch { return null; }
   }
-  const cpFile = resolve(CHECKPOINT_DIR, `checkpoint-${Math.abs(cpHash).toString(36)}.json`);
+
+  const checkpoint = loadCliCheckpoint();
+  let cachedDiscoveryIntel = checkpoint?.discoveryIntel;
 
   function saveCliCheckpoint(
     completedRounds: RoundResult[],
@@ -469,19 +480,8 @@ async function main() {
       lastCompletedRound: lastRound,
       partialRoundResults: partialResults || [],
       completedCategories: completedCategories || [],
+      discoveryIntel: cachedDiscoveryIntel,
     }), "utf-8");
-  }
-
-  function loadCliCheckpoint(): {
-    completedRounds: RoundResult[];
-    lastCompletedRound: number;
-    partialRoundResults?: AttackResult[];
-    completedCategories?: string[];
-  } | null {
-    if (!existsSync(cpFile)) return null;
-    try {
-      return JSON.parse(readFileSync(cpFile, "utf-8"));
-    } catch { return null; }
   }
 
   function clearCliCheckpoint(): void {
@@ -490,8 +490,39 @@ async function main() {
     }
   }
 
+  // 3. Pre-authenticate
+  console.log("\n[3/5] Pre-authenticating...");
+  await preAuthenticate(config);
+
+  // 3.5. Discovery round (optional — probes target to enrich sensitivePatterns and applicationDetails)
+  let discoveryIntel: Report["discovery"] | undefined;
+  if (config.attackConfig.enableDiscovery) {
+    let intel = cachedDiscoveryIntel;
+    if (intel) {
+      console.log("\n[3.5/5] Restoring discovery round from checkpoint...");
+    } else {
+      console.log("\n[3.5/5] Running discovery round...");
+      intel = await runDiscoveryRound(config);
+      cachedDiscoveryIntel = intel;
+      saveCliCheckpoint(
+        checkpoint?.completedRounds ?? [],
+        checkpoint?.lastCompletedRound ?? 0,
+        checkpoint?.partialRoundResults,
+        checkpoint?.completedCategories,
+      );
+    }
+    applyDiscoveryIntel(config, intel);
+    mergeDiscoveryIntelIntoAnalysis(config, analysis, intel);
+    discoveryIntel = discoveryToReport(intel);
+    console.log(
+      `  Discovery complete: ${intel.discoveredTools.length} tools, ${intel.discoveredDataStores.length} data stores, ${intel.discoveredPatterns.length} patterns, ${intel.weaknesses.length} weaknesses`,
+    );
+  }
+
+  // 4. Run adaptive attack rounds
+  console.log("\n[4/5] Running attacks...");
+
   // Resume from checkpoint if available
-  const checkpoint = loadCliCheckpoint();
   const rounds: RoundResult[] = checkpoint ? [...checkpoint.completedRounds] : [];
   let allPreviousResults: AttackResult[] = rounds.flatMap((r) => r.results);
   let defenseProfiles: Map<AttackCategory, CategoryDefenseProfile> | undefined;
@@ -682,6 +713,39 @@ async function main() {
               return { verdict: r.verdict, findings: r.findings };
             },
           );
+          const lastStep = stepResults[stepResults.length - 1];
+          const result = await analyzeResponse(
+            config,
+            attack,
+            lastStep.statusCode,
+            lastStep.body,
+            lastStep.timeMs,
+            appContext,
+            lastStep.executionTrace,
+          );
+          result.stepIndex = lastStep.stepIndex;
+          result.totalSteps = stepResults.length;
+          result.conversation = stepResults.map((stepResult) => {
+            const stepPayload =
+              stepResult.stepIndex === 0
+                ? attack.payload
+                : attack.steps?.[stepResult.stepIndex - 1]?.payload;
+            return {
+              stepIndex: stepResult.stepIndex,
+              payload: stepPayload ?? attack.payload,
+              statusCode: stepResult.statusCode,
+              responseBody: stepResult.body,
+              responseTimeMs: stepResult.timeMs,
+            };
+          });
+
+          const icon = getColoredIcon(result.verdict);
+          console.log(
+            ` ${icon}${result.verdict} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${stoppedEarly ? ` (stopped at step ${lastStep.stepIndex + 1})` : ""}`,
+          );
+          logFindings(result);
+          await maybeGenerateIdealResponse(config, result);
+          roundResults.push(result);
         } else if (
           config.attackConfig.enableAdaptiveMultiTurn &&
           config.attackConfig.enableMultiTurnGeneration
@@ -1047,6 +1111,8 @@ async function main() {
     staticResult,
     analysis.affectedFiles,
     discoveryIntel,
+    undefined,
+    toTargetGroundingSnapshot(buildTargetGroundingProfile(config, analysis)),
   );
   const { jsonPath, mdPath } = writeReport(report);
   console.log(`  JSON: ${jsonPath}`);

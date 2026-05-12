@@ -9,6 +9,7 @@ import type {
   ReportTargetDescriptor,
   StaticAnalysisResult,
   ComplianceResult,
+  TargetGroundingSnapshot,
 } from "./types.js";
 import { ALL_FRAMEWORKS } from "./compliance-mappings.js";
 
@@ -165,6 +166,7 @@ export function generateReport(
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>,
   discoveryIntel?: Report["discovery"],
   target?: ReportTargetDescriptor,
+  targetGroundingProfile?: TargetGroundingSnapshot,
 ): Report {
   const allResults = rounds.flatMap((r) => r.results);
 
@@ -234,6 +236,7 @@ export function generateReport(
     findings,
     staticAnalysis,
     compliance,
+    targetGroundingProfile,
     affectedFiles,
     discovery: discoveryIntel,
   };
@@ -313,6 +316,7 @@ export function writeReport(report: Report): {
           payload: r.attack.payload,
           strategyId: r.attack.strategyId,
           strategyName: r.attack.strategyName,
+          payloadQuality: r.attack.payloadQuality,
         },
         affectedFiles: report.affectedFiles?.[r.attack.category],
         verdict: r.verdict,
@@ -397,6 +401,20 @@ function buildMarkdown(
     };
 
     renderSection("Discovered Tools", d.discoveredTools);
+    if (d.capabilityEvidence.length > 0) {
+      lines.push("### Discovery Capability Evidence");
+      lines.push("| Capability | Status | Confidence | Evidence |");
+      lines.push("|------------|--------|------------|----------|");
+      for (const item of d.capabilityEvidence) {
+        lines.push(
+          `| ${item.capability} | ${item.status} | ${item.confidence} | ${item.evidence.join("; ")} |`,
+        );
+      }
+      lines.push("");
+    }
+    renderSection("Claimed Capabilities", d.claimedCapabilities);
+    renderSection("Refused Capabilities", d.refusedCapabilities);
+    renderSection("Mentioned Capabilities", d.mentionedCapabilities);
     renderSection("Discovered Data Stores", d.discoveredDataStores);
     renderSection("Architecture", d.architectureHints);
     renderSection("Guardrail Profile", d.guardrailProfile);
@@ -443,6 +461,26 @@ function buildMarkdown(
       lines.push("```");
       lines.push("");
     }
+  }
+
+  if (report.targetGroundingProfile) {
+    const p = report.targetGroundingProfile;
+    lines.push("## Target Grounding Profile");
+    lines.push("");
+    lines.push(`**Sources:** ${p.groundingSources.join(", ") || "none"}`);
+    lines.push(`**Allowed Capabilities:** ${p.allowedCapabilities.join(", ") || "none"}`);
+    lines.push(`**Absent Capabilities:** ${p.absentCapabilities.join(", ") || "none"}`);
+    if (p.capabilityEvidence.length > 0) {
+      lines.push("");
+      lines.push("| Capability | Confidence | Evidence |");
+      lines.push("|------------|------------|----------|");
+      for (const item of p.capabilityEvidence) {
+        lines.push(
+          `| ${item.capability} | ${item.confidence} | ${item.evidence.join("; ")} |`,
+        );
+      }
+    }
+    lines.push("");
   }
 
   lines.push("## Summary");
@@ -542,6 +580,19 @@ function buildMarkdown(
         lines.push(
           `- **Strategy:** ${r.attack.strategyName}${r.attack.strategyId != null ? ` (ID: ${r.attack.strategyId})` : ""}`,
         );
+      }
+      if (r.attack.payloadQuality) {
+        const q = r.attack.payloadQuality;
+        lines.push(`- **Payload Relevance:** ${q.relevanceScore}/100`);
+        lines.push(
+          `- **Quality Scores:** domain ${q.domainFitScore}/100 | capability ${q.capabilityFitScore}/100 | realism ${q.realismScore}/100 | category ${q.categoryFitScore}/100`,
+        );
+        if (q.offDomainTerms.length > 0) {
+          lines.push(`- **Off-Target Signals:** ${q.offDomainTerms.join(", ")}`);
+        }
+        if (q.relevanceNotes.length > 0) {
+          lines.push(`- **Quality Notes:** ${q.relevanceNotes.join("; ")}`);
+        }
       }
       if (r.findings.length > 0) {
         lines.push(`- **Findings:** ${r.findings.join("; ")}`);

@@ -505,6 +505,20 @@ function emptyAnalysis(): CodebaseAnalysis {
 
 function normalizeAnalysis(analysis: CodebaseAnalysis): void {
   if (!Array.isArray(analysis.tools)) analysis.tools = [];
+  analysis.tools = analysis.tools.map((tool) => ({
+    name: String(tool.name ?? "").trim(),
+    description: String(tool.description ?? "").trim(),
+    parameters: String(tool.parameters ?? "").trim(),
+    capabilities: Array.isArray(tool.capabilities)
+      ? tool.capabilities.map(String).filter(Boolean)
+      : undefined,
+    domainObjects: Array.isArray(tool.domainObjects)
+      ? tool.domainObjects.map(String).filter(Boolean)
+      : undefined,
+    evidence: Array.isArray(tool.evidence)
+      ? tool.evidence.map(String).filter(Boolean)
+      : undefined,
+  })).filter((tool) => tool.name);
   if (!Array.isArray(analysis.roles)) analysis.roles = [];
   if (!Array.isArray(analysis.guardrailPatterns))
     analysis.guardrailPatterns = [];
@@ -566,7 +580,11 @@ function mergeAnalyses(
 const FULL_ANALYSIS_PROMPT = `You are a security analyst. Analyze the following source code for an agentic AI application. Extract structured information about its security surface.
 
 Return a JSON object with these fields:
-- tools: array of { name, description, parameters } for each tool the agent can invoke
+- tools: array of { name, description, parameters, capabilities, domainObjects, evidence } for each tool the agent can invoke.
+  - capabilities must use only domain-neutral labels when supported by code evidence: natural_language_chat, data_record_lookup, file_read, file_write, shell_command, database_query, external_message_send, internal_message_send, email_drafting, api_documentation, mcp_tool_call.
+  - Use database_query only for raw/arbitrary database query execution, SQL statement execution, or direct database query tools. App-level tools that search/fetch/list domain records (for example customer/order/ticket/claim lookup tools) are data_record_lookup, even if backed by a database internally.
+  - domainObjects are app-specific business/data nouns the tool can access or modify, inferred from names, schemas, parameters, routes, prompts, and types. Examples by shape only: invoice, subscription, ticket, patient, order, repository, workspace. Do not use generic words such as record, item, data, user, file, page, result, response.
+  - evidence is a short array naming the code clues for the capability assignment, such as function names, route names, schema names, parameter names, or comments.
 - roles: array of { name, permissions[] } for each user role
 - guardrailPatterns: array of { type ("input"|"output"), patterns[] } for regex/string patterns used in guardrails
 - sensitiveData: array of { type, location, example } for secrets, PII, or confidential data found in source
@@ -589,6 +607,8 @@ ${JSON.stringify(alreadyFound, null, 2)}
 
 Extract ONLY NEW findings from the source code below. Return a JSON object with the same fields:
 - tools, roles, guardrailPatterns, sensitiveData, authMechanisms, knownWeaknesses, systemPromptHints
+
+For tools, keep the same enriched shape: { name, description, parameters, capabilities, domainObjects, evidence }.
 
 Only include items NOT already found above. If nothing new is found, return empty arrays.
 Respond with ONLY the JSON object, no markdown fences.`;
