@@ -564,7 +564,7 @@ The attack goal should be INVISIBLE to a casual reader — buried inside a plaus
     mod,
     adaptiveContext,
   );
-  const attacksToGenerate = Math.min(5, config.attackConfig.maxAttacksPerCategory);
+  const attacksToGenerate = Math.min(10, config.attackConfig.maxAttacksPerCategory);
 
   const prompt = `${header}${strategyBlock}
 
