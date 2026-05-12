@@ -38,7 +38,7 @@ spec:
       # namespace's allocated range via the restricted-v2 SCC.
       containers:
         - name: dashboard
-          image: docker.io/sundi133/wb-red-team:v4
+          image: docker.io/sundi133/wb-red-team:v5
           imagePullPolicy: Always
           ports:
             - containerPort: 4200
