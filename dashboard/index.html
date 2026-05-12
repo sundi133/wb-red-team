@@ -6697,6 +6697,23 @@
         </div>`;
       }
 
+      function formatRemediationPlan(result) {
+        if (!result?.remediation) return "";
+        const rp = result.remediation;
+        const fixes = Array.isArray(rp.suggestedFixes) ? rp.suggestedFixes : [];
+        const files = Array.isArray(rp.affectedFiles) ? rp.affectedFiles : [];
+        return `<div style="margin-top:12px">
+          <div class="detail-label">Remediation Plan</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:12px;margin-bottom:8px">
+            <span><strong>Confidence:</strong> ${esc(rp.confidence || "medium")}</span>
+            ${files.length ? `<span><strong>Files:</strong> ${files.map((f) => esc(f)).join(", ")}</span>` : ""}
+          </div>
+          <pre class="detail-pre">${esc(rp.rootCause || "")}</pre>
+          ${fixes.length ? `<ol class="ideal-response-hints">${fixes.slice(0, 4).map((fix) => `<li><strong>${esc(fix.title || fix.type || "Fix")}</strong>: ${esc(fix.rationale || "")}</li>`).join("")}</ol>` : ""}
+          ${rp.regressionTestPrompt ? `<div style="margin-top:8px"><div class="detail-label">Regression Prompt</div><pre class="detail-pre">${esc(rp.regressionTestPrompt)}</pre></div>` : ""}
+        </div>`;
+      }
+
       function toggleIdealResponse(header) {
         const body = header.nextElementSibling;
         const expand = header.querySelector("span");
@@ -6773,6 +6790,7 @@
           );
           const threatAssessmentHtml = formatThreatAssessment(result);
           const idealResponseHtml = formatIdealResponse(result);
+          const remediationPlanHtml = formatRemediationPlan(result);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -6815,6 +6833,7 @@
       </div>`
       }
       ${idealResponseHtml}
+      ${remediationPlanHtml}
       ${threatAssessmentHtml}
       ${result?.findings?.length ? `<div style="margin-top:12px"><div class="detail-label">Verdict Details</div><div>${result.findings.map((fd) => `<span class="finding-tag">${esc(fd)}</span>`).join("")}</div></div>` : ""}
       ${affectedFilesHtml ? `<div style="margin-top:12px"><div class="detail-label">Affected Files</div><div>${affectedFilesHtml}</div></div>` : ""}
@@ -7342,12 +7361,14 @@
           );
           const roundThreatAssessmentHtml = formatThreatAssessment(r);
           const roundIdealResponseHtml = formatIdealResponse(r);
+          const roundRemediationPlanHtml = formatRemediationPlan(r);
           const roundPathUid = `round-${i}`;
           const roundAttackPathHtml = buildAttackPathHtml(roundPathUid);
           detailTr.innerHTML = `<td colspan="7"><div class="detail-content">
       ${roundAttackPathHtml}
       ${r.conversation ? renderConversation(r) : renderSingleTurn(r)}
       ${roundIdealResponseHtml}
+      ${roundRemediationPlanHtml}
       ${r.findings.length ? `<div style="margin-top:12px;margin-bottom:8px"><strong>Findings:</strong><br>${r.findings.map((f) => `<span class="finding-tag">${esc(f)}</span>`).join("")}</div>` : ""}
       ${roundAffectedFilesHtml ? `<div style="margin-bottom:8px"><strong>Affected Files:</strong><br>${roundAffectedFilesHtml}</div>` : ""}
       ${roundThreatAssessmentHtml}
