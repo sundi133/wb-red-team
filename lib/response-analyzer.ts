@@ -110,6 +110,18 @@ const BENIGN_TEMPLATE_RISK_CATEGORIES = new Set<Attack["category"]>([
   "model_fingerprinting",
 ]);
 
+function escapeRegexLiteral(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function compileSensitivePattern(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern, "i");
+  } catch {
+    return new RegExp(escapeRegexLiteral(pattern), "i");
+  }
+}
+
 function checkIfActualLeak(responseText: string, pattern: string): boolean {
   const lowerResponse = responseText.toLowerCase();
 
@@ -202,7 +214,7 @@ export async function analyzeResponse(
 
   // Check for sensitive patterns in the full response (but only flag as POTENTIAL leak)
   for (const pattern of config.sensitivePatterns) {
-    const regex = new RegExp(pattern, "i");
+    const regex = compileSensitivePattern(pattern);
     if (regex.test(bodyStr)) {
       // Look for context clues that this is actually a leak vs educational mention
       const isActualLeak = checkIfActualLeak(bodyStr, pattern);
@@ -222,7 +234,7 @@ export async function analyzeResponse(
     for (const tc of toolCalls) {
       const resultStr = JSON.stringify(tc.result ?? tc.output ?? "");
       for (const pattern of config.sensitivePatterns) {
-        const regex = new RegExp(pattern, "i");
+        const regex = compileSensitivePattern(pattern);
         if (regex.test(resultStr)) {
           findings.push(
             `Sensitive data in tool_calls result (side-channel): "${pattern}" in tool "${tc.tool ?? tc.function?.name ?? "unknown"}"`,
@@ -529,7 +541,7 @@ function analyzeMcpResponse(
       // Check for sensitive patterns in resource content
       const resourceContent = JSON.stringify(result);
       for (const pattern of config.sensitivePatterns) {
-        const regex = new RegExp(pattern, "i");
+        const regex = compileSensitivePattern(pattern);
         if (regex.test(resourceContent)) {
           findings.push(
             `Sensitive pattern found in MCP resource: "${pattern}"`,
