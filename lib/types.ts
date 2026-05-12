@@ -574,6 +574,11 @@ export interface Config {
      * Format: [{ slug, name, promptModifier, level?, levelName? }]
      */
     customStrategiesFile?: string;
+    /**
+     * Number of attacks to generate per strategy per category in full-pool mode. Default: 1.
+     * Increasing this multiplies LLM-generated attacks: attacksPerStrategy × strategies × categories.
+     */
+    attacksPerStrategy?: number;
   };
 }
 

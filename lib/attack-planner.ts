@@ -497,8 +497,9 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
         )
       : strategyPool;
 
+    const attacksPerStrategy = Math.max(1, config.attackConfig.attacksPerStrategy ?? 1);
     console.log(
-      `      📋 Full-pool mode: iterating ${orderedStrategies.length} strategies one-by-one`,
+      `      📋 Full-pool mode: iterating ${orderedStrategies.length} strategies × ${attacksPerStrategy} attacks each`,
     );
 
     const llm = getLlmProvider(config);
@@ -506,23 +507,25 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
 
     for (let i = 0; i < orderedStrategies.length; i++) {
       const strategy = orderedStrategies[i];
-      console.log(
-        `      [${i + 1}/${orderedStrategies.length}] Strategy: ${strategy.name}`,
-      );
-      const attack = await generateAttackForStrategy(
-        config,
-        analysis,
-        mod,
-        strategy,
-        round,
-        adaptiveContext,
-        llm,
-      );
-      if (attack) results.push(attack);
+      for (let j = 0; j < attacksPerStrategy; j++) {
+        console.log(
+          `      [${i + 1}/${orderedStrategies.length}] Strategy: ${strategy.name}${attacksPerStrategy > 1 ? ` (variant ${j + 1}/${attacksPerStrategy})` : ""}`,
+        );
+        const attack = await generateAttackForStrategy(
+          config,
+          analysis,
+          mod,
+          strategy,
+          round,
+          adaptiveContext,
+          llm,
+        );
+        if (attack) results.push(attack);
+      }
     }
 
     console.log(
-      `      ✅ Generated ${results.length}/${orderedStrategies.length} attacks`,
+      `      ✅ Generated ${results.length}/${orderedStrategies.length * attacksPerStrategy} attacks`,
     );
     return results;
   }
