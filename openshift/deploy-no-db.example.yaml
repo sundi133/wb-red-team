@@ -1,0 +1,139 @@
+# Red Team AI — OpenShift deployment (no Postgres, simple auth)
+#
+# Usage:
+#   1. Copy this file: cp deploy-no-db.example.yaml deploy-no-db.yaml
+#   2. Fill in your real API keys and password in deploy-no-db.yaml
+#   3. oc apply -f openshift/deploy-no-db.yaml
+#
+# deploy-no-db.yaml is gitignored — your secrets stay local.
+
+# Secret: API keys and auth config
+apiVersion: v1
+kind: Secret
+metadata:
+  name: red-team-secrets
+  namespace: YOUR_NAMESPACE
+  labels:
+    app.kubernetes.io/part-of: red-team-ai
+type: Opaque
+stringData:
+  ANTHROPIC_API_KEY: ""
+  OPENAI_API_KEY: ""
+  SIMPLE_AUTH_SESSION_SECRET: "replace-with-random-string"
+  SIMPLE_AUTH_PASSWORD: "changeme"
+---
+# Red Team Dashboard (no Postgres, emptyDir volumes)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: red-team-dashboard
+  namespace: YOUR_NAMESPACE
+  labels:
+    app: red-team-dashboard
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: red-team-dashboard
+  template:
+    metadata:
+      labels:
+        app: red-team-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: docker.io/sundi133/wb-red-team:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4200
+              name: http
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: AUTH_MODE
+              value: "simple"
+            - name: SIMPLE_AUTH_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: SIMPLE_AUTH_SESSION_SECRET
+            - name: SIMPLE_AUTH_SESSION_TTL_HOURS
+              value: "12"
+            - name: SIMPLE_AUTH_USERNAME
+              value: "admin"
+            - name: SIMPLE_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: SIMPLE_AUTH_PASSWORD
+            - name: SIMPLE_AUTH_ROLE
+              value: "admin"
+            - name: SIMPLE_AUTH_NAME
+              value: "Admin User"
+          volumeMounts:
+            - name: reports
+              mountPath: /app/report
+            - name: guardrail-reports
+              mountPath: /app/reports
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4200
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4200
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: reports
+          emptyDir: {}
+        - name: guardrail-reports
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: red-team-dashboard
+  namespace: YOUR_NAMESPACE
+spec:
+  selector:
+    app: red-team-dashboard
+  ports:
+    - port: 4200
+      targetPort: 4200
+      name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: red-team-dashboard
+  namespace: YOUR_NAMESPACE
+spec:
+  to:
+    kind: Service
+    name: red-team-dashboard
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

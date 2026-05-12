@@ -34,3 +34,7 @@ npm-debug.log*
 
 # Coverage
 coverage/
+
+# OpenShift deploy with real secrets
+openshift/deploy-no-db.yaml
+openshift/deploy.yaml
