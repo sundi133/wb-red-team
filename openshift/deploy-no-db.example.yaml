@@ -73,6 +73,10 @@ spec:
               value: "admin"
             - name: SIMPLE_AUTH_NAME
               value: "Admin User"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
           volumeMounts:
             - name: reports
               mountPath: /app/report
