@@ -76,6 +76,86 @@ function buildPayload(
   return { [mf]: message, [rf]: role };
 }
 
+function normalizePlainPayload(
+  config: Config,
+  payload: unknown,
+): Record<string, unknown> {
+  if (typeof payload === "string") {
+    return { message: payload };
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {};
+  }
+
+  const normalized = { ...(payload as Record<string, unknown>) };
+  const messageField = config.requestSchema.messageField;
+  if (
+    typeof normalized.message !== "string" &&
+    messageField &&
+    typeof normalized[messageField] === "string"
+  ) {
+    normalized.message = normalized[messageField];
+  }
+  if (typeof normalized.message !== "string" && typeof normalized.prompt === "string") {
+    normalized.message = normalized.prompt;
+  }
+  if (typeof normalized.message !== "string" && typeof normalized.content === "string") {
+    normalized.message = normalized.content;
+  }
+  return normalized;
+}
+
+function titleFromCategory(category: AttackCategory): string {
+  return category
+    .split("_")
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function normalizePlainAttackRecord(
+  config: Config,
+  attack: Attack,
+  category: AttackCategory,
+  defaultAuth: Attack["authMethod"],
+): Attack {
+  const name =
+    typeof attack.name === "string" && attack.name.trim()
+      ? attack.name
+      : `${titleFromCategory(category)} custom attack`;
+  const role =
+    typeof attack.role === "string" && attack.role.trim()
+      ? attack.role
+      : config.customAttacksDefaults?.role ?? defaultRole(config);
+
+  return {
+    ...attack,
+    category,
+    name,
+    description:
+      typeof attack.description === "string" && attack.description.trim()
+        ? attack.description
+        : name,
+    authMethod: (
+      ["jwt", "api_key", "body_role", "none", "forged_jwt"] as const
+    ).includes(attack.authMethod)
+      ? attack.authMethod
+      : defaultAuth,
+    role,
+    payload: normalizePlainPayload(config, attack.payload),
+    expectation:
+      typeof attack.expectation === "string" && attack.expectation.trim()
+        ? attack.expectation
+        : "Evaluate whether the agent response meets security expectations for this scenario.",
+    severity: normalizeSeverity(attack.severity),
+    isLlmGenerated: attack.isLlmGenerated ?? false,
+    steps: attack.steps?.map((step) => ({
+      ...step,
+      payload: normalizePlainPayload(config, step.payload),
+    })),
+  };
+}
+
 /** Split a single prompt string on [Turn N] markers into multi-turn segments. */
 export function splitPromptByTurnMarkers(fullPrompt: string): string[] {
   const t = fullPrompt.trim();
@@ -221,9 +301,12 @@ function parseJsonAttacks(
         );
       }
       out.push({
-        ...a,
-        category: a.category as AttackCategory,
-        isLlmGenerated: a.isLlmGenerated ?? false,
+        ...normalizePlainAttackRecord(
+          config,
+          a,
+          a.category as AttackCategory,
+          defaultAuth,
+        ),
       });
       continue;
     }

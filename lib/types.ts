@@ -520,6 +520,14 @@ export interface Config {
     /** Optional request-level guardrails array for judge LLM calls. */
     judgeGuardrails?: string[];
     enableLlmGeneration: boolean;
+    /** Filter or skip generated payloads that are not grounded in the target profile. Default: true. */
+    enablePayloadRelevanceFilter?: boolean;
+    /** Minimum relevance score (0-100) required when payload relevance filtering is enabled. Default: 50. */
+    payloadRelevanceThreshold?: number;
+    /** Minimum capability-fit score (0-100) required when payload relevance filtering is enabled. Default: 70. */
+    payloadCapabilityFitThreshold?: number;
+    /** Minimum category-fit score (0-100) required when payload relevance filtering is enabled. Default: 70. */
+    payloadCategoryFitThreshold?: number;
     maxMultiTurnSteps: number;
     /** Optional allowlist of attack categories to run. Omit or set to empty array to run all. */
     enabledCategories?: AttackCategory[];
@@ -607,7 +615,17 @@ export interface AffectedFile {
 }
 
 export interface CodebaseAnalysis {
-  tools: { name: string; description: string; parameters: string }[];
+  tools: {
+    name: string;
+    description: string;
+    parameters: string;
+    /** Domain-neutral capability classes inferred from code/discovery. */
+    capabilities?: string[];
+    /** Target-specific business/data objects this tool can access or modify. */
+    domainObjects?: string[];
+    /** Why the analyzer assigned these capabilities/domain objects. */
+    evidence?: string[];
+  }[];
   roles: { name: string; permissions: string[] }[];
   guardrailPatterns: { type: string; patterns: string[] }[];
   sensitiveData: { type: string; location: string; example: string }[];
@@ -632,6 +650,42 @@ export interface AttackStep {
   expectation?: string;
 }
 
+export interface PayloadQualityMetadata {
+  relevanceScore: number;
+  domainFitScore: number;
+  capabilityFitScore: number;
+  realismScore: number;
+  categoryFitScore: number;
+  groundingSources: string[];
+  groundedTerms: string[];
+  offDomainTerms: string[];
+  relevanceNotes: string[];
+  capabilityEvidence?: CapabilityEvidence[];
+  requiredCapabilities?: string[];
+  repeatedMotif?: string;
+}
+
+export interface CapabilityEvidence {
+  capability: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+}
+
+export interface TargetGroundingSnapshot {
+  targetType: TargetType;
+  groundingSources: string[];
+  domainSummary: string;
+  roles: string[];
+  tools: string[];
+  workflows: string[];
+  dataObjects: string[];
+  sensitiveDataTypes: string[];
+  allowedCapabilities: string[];
+  absentCapabilities: string[];
+  capabilityEvidence: CapabilityEvidence[];
+  groundingTerms: string[];
+}
+
 export interface Attack {
   id: string;
   category: AttackCategory;
@@ -652,6 +706,8 @@ export interface Attack {
   strategyId?: number;
   /** Human-readable strategy name. */
   strategyName?: string;
+  /** Target-grounding and relevance metadata for generated or rewritten payloads. */
+  payloadQuality?: PayloadQualityMetadata;
 }
 
 export interface McpTraceEvent {
@@ -796,11 +852,22 @@ export interface Report {
   }[];
   staticAnalysis?: StaticAnalysisResult;
   compliance?: ComplianceResult[];
+  /** Grounding profile used to generate and quality-score attacks. */
+  targetGroundingProfile?: TargetGroundingSnapshot;
   /** Maps attack categories to the target source files they affect. */
   affectedFiles?: Partial<Record<AttackCategory, AffectedFile[]>>;
   /** Intelligence gathered from the automated discovery round (if enabled). */
   discovery?: {
     discoveredTools: string[];
+    capabilityEvidence: {
+      capability: string;
+      status: "demonstrated" | "claimed" | "refused" | "mentioned";
+      confidence: "high" | "medium" | "low";
+      evidence: string[];
+    }[];
+    claimedCapabilities: string[];
+    refusedCapabilities: string[];
+    mentionedCapabilities: string[];
     discoveredDataStores: string[];
     discoveredPatterns: string[];
     architectureHints: string[];
