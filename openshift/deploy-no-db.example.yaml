@@ -5,7 +5,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: red-team-secrets
-  namespace: sundi133-dev
   labels:
     app.kubernetes.io/part-of: red-team-ai
 type: Opaque
@@ -20,7 +19,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: red-team-dashboard
-  namespace: sundi133-dev
   labels:
     app: red-team-dashboard
     app.kubernetes.io/part-of: red-team-ai
@@ -94,11 +92,11 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "4"
+              memory: 8Gi
             limits:
-              cpu: "2"
-              memory: 4Gi
+              cpu: "8"
+              memory: 8Gi
       volumes:
         - name: reports
           emptyDir:
@@ -111,7 +109,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: red-team-dashboard
-  namespace: sundi133-dev
 spec:
   selector:
     app: red-team-dashboard
@@ -124,7 +121,6 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: red-team-dashboard
-  namespace: sundi133-dev
 spec:
   to:
     kind: Service
