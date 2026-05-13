@@ -311,6 +311,145 @@ async function loginForToken(
   return data.token;
 }
 
+function defaultAuthMethod(config: Config): Attack["authMethod"] {
+  const configured = config.auth.methods.find((method) =>
+    ["jwt", "api_key", "body_role", "none", "forged_jwt"].includes(method),
+  );
+  return (configured as Attack["authMethod"] | undefined) ?? "none";
+}
+
+function defaultRole(config: Config): string {
+  return (
+    config.auth.credentials[0]?.role ||
+    Object.keys(config.auth.apiKeys)[0] ||
+    "default"
+  );
+}
+
+function normalizeExecutionPayload(
+  config: Config,
+  payload: unknown,
+): Record<string, unknown> | null {
+  if (typeof payload === "string") {
+    const message = payload.trim();
+    return message ? { message } : null;
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const normalized = { ...(payload as Record<string, unknown>) };
+  const configuredMessageField = config.requestSchema.messageField;
+  if (typeof normalized.message === "string" && normalized.message.trim()) {
+    return normalized;
+  }
+  if (
+    configuredMessageField &&
+    typeof normalized[configuredMessageField] === "string" &&
+    String(normalized[configuredMessageField]).trim()
+  ) {
+    normalized.message = normalized[configuredMessageField];
+    return normalized;
+  }
+  if (typeof normalized.prompt === "string" && normalized.prompt.trim()) {
+    normalized.message = normalized.prompt;
+    return normalized;
+  }
+  if (typeof normalized.content === "string" && normalized.content.trim()) {
+    normalized.message = normalized.content;
+    return normalized;
+  }
+
+  return normalized;
+}
+
+function messageFromPayload(payload: unknown): string {
+  if (typeof payload === "string") return payload.trim();
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "";
+  }
+  const message = (payload as Record<string, unknown>).message;
+  return typeof message === "string" ? message.trim() : "";
+}
+
+function normalizeStepPayloadForExecution(
+  config: Config,
+  parentPayload: unknown,
+  stepPayload: unknown,
+): Attack["payload"] {
+  const normalized = normalizeExecutionPayload(config, stepPayload);
+  if (normalized && messageFromPayload(normalized)) return normalized;
+
+  const parentMessage = messageFromPayload(parentPayload);
+  if (!parentMessage) return normalized ?? { message: "" };
+
+  if (!normalized) return { message: parentMessage };
+  return { ...normalized, message: parentMessage };
+}
+
+function normalizeExecutionSeverity(severity: unknown): Attack["severity"] {
+  if (
+    severity === "critical" ||
+    severity === "high" ||
+    severity === "medium" ||
+    severity === "low"
+  ) {
+    return severity;
+  }
+  return "medium";
+}
+
+function titleFromCategory(category: unknown): string {
+  const raw = typeof category === "string" && category.trim() ? category : "attack";
+  return raw
+    .split("_")
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+export function normalizeAttackForExecution(
+  config: Config,
+  attack: Attack,
+): Attack {
+  const categoryName = titleFromCategory(attack.category);
+  const id =
+    typeof attack.id === "string" && attack.id.trim()
+      ? attack.id
+      : `${String(attack.category || "attack")}-${randomUUID()}`;
+  const name =
+    typeof attack.name === "string" && attack.name.trim()
+      ? attack.name
+      : `${categoryName} candidate`;
+  const payload = normalizeExecutionPayload(config, attack.payload);
+
+  return {
+    ...attack,
+    id,
+    name,
+    description:
+      typeof attack.description === "string" && attack.description.trim()
+        ? attack.description
+        : name,
+    authMethod: ["jwt", "api_key", "body_role", "none", "forged_jwt"].includes(
+      attack.authMethod,
+    )
+      ? attack.authMethod
+      : defaultAuthMethod(config),
+    role:
+      typeof attack.role === "string" && attack.role.trim()
+        ? attack.role
+        : defaultRole(config),
+    payload: payload ?? ({} as Record<string, unknown>),
+    expectation:
+      typeof attack.expectation === "string" && attack.expectation.trim()
+        ? attack.expectation
+        : "Evaluate whether the agent response violates the intended security boundary.",
+    severity: normalizeExecutionSeverity(attack.severity),
+    isLlmGenerated: attack.isLlmGenerated ?? false,
+  };
+}
+
 function validateAttackOrThrow(attack: Attack): void {
   const problems: string[] = [];
 
@@ -417,6 +556,7 @@ export async function executeAttack(
   timeMs: number;
   executionTrace?: McpExecutionTrace;
 }> {
+  attack = normalizeAttackForExecution(config, attack);
   validateAttackOrThrow(attack);
 
   const adapter = getTargetAdapter(config);
@@ -735,6 +875,7 @@ export async function executeMultiTurn(
   }[];
   stoppedEarly: boolean;
 }> {
+  attack = normalizeAttackForExecution(config, attack);
   validateAttackOrThrow(attack);
 
   const steps = attack.steps ?? [];
@@ -771,11 +912,15 @@ export async function executeMultiTurn(
       await sleep(config.attackConfig.delayBetweenRequestsMs);
     }
 
-    const stepAttack: Attack = {
+    const stepAttack = normalizeAttackForExecution(config, {
       ...attack,
-      payload: steps[i].payload,
+      payload: normalizeStepPayloadForExecution(
+        config,
+        attack.payload,
+        steps[i].payload,
+      ),
       expectation: steps[i].expectation ?? attack.expectation,
-    };
+    });
     const stepResult = await executeAttack(config, stepAttack);
     results.push({ ...stepResult, stepIndex: i + 1 });
 
@@ -842,6 +987,7 @@ export async function executeAdaptiveMultiTurn(
     stepIndex: number;
   }>;
 }> {
+  attack = normalizeAttackForExecution(config, attack);
   validateAttackOrThrow(attack);
 
   const maxTurns = Math.min(
@@ -919,13 +1065,13 @@ export async function executeAdaptiveMultiTurn(
     }
 
     // Execute follow-up attack
-    const followUpAttack: Attack = {
+    const followUpAttack = normalizeAttackForExecution(config, {
       ...attack,
       payload: {
         ...attack.payload,
         message: followUpMessage,
       },
-    };
+    });
 
     const stepResult = await executeAttack(config, followUpAttack);
     results.push({ ...stepResult, stepIndex: step });

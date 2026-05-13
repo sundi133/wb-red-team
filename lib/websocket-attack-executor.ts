@@ -44,10 +44,14 @@ export async function executeWebSocketAttack(
   const messageField = config.requestSchema.messageField;
   const payload = { ...attack.payload };
   delete payload._jwtClaims;
+  const configuredMessageValue = payload[messageField];
+  const normalizedMessageValue = payload.message;
+  const selectedMessageValue =
+    configuredMessageValue ?? normalizedMessageValue ?? "";
   const messageText =
-    typeof payload[messageField] === "string"
-      ? (payload[messageField] as string)
-      : JSON.stringify(payload[messageField] ?? "");
+    typeof selectedMessageValue === "string"
+      ? selectedMessageValue
+      : JSON.stringify(selectedMessageValue);
 
   const base = new URL(baseUrl);
   const wsProto = base.protocol === "https:" ? "wss:" : "ws:";
