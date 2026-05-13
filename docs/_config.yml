@@ -1,7 +1,7 @@
 title: Red-Team AI Docs
 description: White-box red teaming for agentic AI apps. Reads your code, finds bugs specific to your stack.
-url: https://sundi133.github.io
-baseurl: /wb-red-team
+url: https://docs.cart.votal.ai
+baseurl: ""
 
 remote_theme: just-the-docs/just-the-docs
 
