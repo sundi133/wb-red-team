@@ -9,7 +9,17 @@ import type {
   CategoryDefenseProfile,
 } from "./types.js";
 import { ALL_STRATEGIES, sampleStrategies, getAllStrategies } from "./attack-strategies.js";
-import { selectStrategiesForCategory } from "./strategy-selector.js";
+import {
+  orderStrategiesForCategory,
+  selectStrategiesForCategory,
+  selectStrategiesForCategoryIntelligently,
+} from "./strategy-selector.js";
+import {
+  describeStrategiesWithAffinity,
+  formatStrategyAffinityLabel,
+  getStrategyAffinityLookup,
+  getStrategyAffinityScore,
+} from "./strategy-affinity.js";
 import { parseJsonArrayFromLlmResponse } from "./parse-llm-json-array.js";
 import { formatErrorDetails } from "./error-utils.js";
 
@@ -476,7 +486,16 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
         config.attackConfig.enabledStrategies!.includes(s.slug),
       )
     : allStrats;
+  const affinityLookup = getStrategyAffinityLookup(
+    config.attackConfig.strategyCategoryAffinityFile,
+  );
   const poolLen = strategyPool.length;
+  const affinityEnabled =
+    strategyPool.some(
+      (strategy) =>
+        getStrategyAffinityScore(mod.category, strategy.slug, affinityLookup) !=
+        null,
+    );
 
   // Full-pool mode: when strategiesPerRound >= 100 or >= the pool size,
   // iterate through every eligible strategy with a dedicated LLM call each.
@@ -494,12 +513,25 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
           allStrats,
           config.attackConfig.enabledStrategies,
           poolLen,
+          affinityLookup,
         )
-      : strategyPool;
+      : orderStrategiesForCategory(
+          mod.category,
+          allStrats,
+          config.attackConfig.enabledStrategies,
+          affinityLookup,
+        );
 
     const attacksPerStrategy = Math.max(1, config.attackConfig.attacksPerStrategy ?? 1);
     console.log(
       `      📋 Full-pool mode: iterating ${orderedStrategies.length} strategies × ${attacksPerStrategy} attacks each`,
+    );
+    console.log(
+      `      🧭 Category ${mod.category}: ${affinityEnabled ? "affinity-ranked" : "default ordering"} strategy order -> ${describeStrategiesWithAffinity(
+        mod.category,
+        orderedStrategies,
+        affinityLookup,
+      )}`,
     );
 
     const llm = getLlmProvider(config);
@@ -507,9 +539,12 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
 
     for (let i = 0; i < orderedStrategies.length; i++) {
       const strategy = orderedStrategies[i];
+      const scoreLabel = formatStrategyAffinityLabel(
+        getStrategyAffinityScore(mod.category, strategy.slug, affinityLookup),
+      );
       for (let j = 0; j < attacksPerStrategy; j++) {
         console.log(
-          `      [${i + 1}/${orderedStrategies.length}] Strategy: ${strategy.name}${attacksPerStrategy > 1 ? ` (variant ${j + 1}/${attacksPerStrategy})` : ""}`,
+          `      [${i + 1}/${orderedStrategies.length}] Category=${mod.category} Strategy=${strategy.slug} (${strategy.name}, ${scoreLabel})${attacksPerStrategy > 1 ? ` (variant ${j + 1}/${attacksPerStrategy})` : ""}`,
         );
         const attack = await generateAttackForStrategy(
           config,
@@ -538,12 +573,23 @@ TACTICAL GUIDANCE: The target's primary defense for this category is "${profile.
         allStrats,
         config.attackConfig.enabledStrategies,
         effectiveCount,
+        affinityLookup,
       )
-    : sampleStrategies(allStrats, config.attackConfig.enabledStrategies, effectiveCount);
+    : selectStrategiesForCategoryIntelligently(
+        mod.category,
+        allStrats,
+        config.attackConfig.enabledStrategies,
+        effectiveCount,
+        affinityLookup,
+      );
 
   if (sampledStrategies.length > 0) {
     console.log(
-      `      📋 Selected strategies: ${sampledStrategies.map((s) => s.name).join(", ")}`,
+      `      🧭 Category ${mod.category}: ${affinityEnabled ? "affinity-ranked" : "default selection"} strategies -> ${describeStrategiesWithAffinity(
+        mod.category,
+        sampledStrategies,
+        affinityLookup,
+      )}`,
     );
   }
 

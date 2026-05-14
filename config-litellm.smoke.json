@@ -61,6 +61,7 @@
     "enableLlmGeneration": true,
     "maxMultiTurnSteps": 2,
     "strategiesPerRound": 2,
+    "strategyCategoryAffinityFile": "data/strategy-category-affinity.csv",
     "enableMultiTurnGeneration": true,
     "multiTurnGenerationRate": 0.6,
     "enableAdaptiveMultiTurn": true,

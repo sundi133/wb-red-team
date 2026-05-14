@@ -6,6 +6,7 @@ dist/
 
 # Reports (generated output)
 report/
+reports/
 
 # Config with real secrets
 config.json

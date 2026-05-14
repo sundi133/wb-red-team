@@ -92,6 +92,7 @@
     "requireReviewConfirmation": true,
     "enableIdealResponses": true,
     "strategiesPerRound": 5,
+    "strategyCategoryAffinityFile": "data/strategy-category-affinity.csv",
     "contextBudgetChars": 100000,
     "maxAnalysisBatches": 3,
     "customAttacksOnly": false,

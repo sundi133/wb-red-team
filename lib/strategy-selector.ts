@@ -1,6 +1,11 @@
 import type { AttackStrategy } from "./attack-strategies.js";
 import { sampleStrategies } from "./attack-strategies.js";
-import type { DefenseType, CategoryDefenseProfile } from "./types.js";
+import type {
+  AttackCategory,
+  DefenseType,
+  CategoryDefenseProfile,
+} from "./types.js";
+import type { StrategyAffinityLookup } from "./strategy-affinity.js";
 
 /**
  * Maps each defense type to strategy slugs that are specifically
@@ -208,6 +213,7 @@ export function selectStrategiesForCategory(
   allStrategies: AttackStrategy[],
   enabledSlugs: string[] | undefined,
   count: number,
+  affinityLookup?: StrategyAffinityLookup,
 ): AttackStrategy[] {
   const pool = enabledSlugs?.length
     ? allStrategies.filter((s) => enabledSlugs.includes(s.slug))
@@ -254,6 +260,9 @@ export function selectStrategiesForCategory(
 
   const shuffle = <T>(arr: T[]): T[] =>
     [...arr].sort(() => Math.random() - 0.5);
+  const prioritize = (arr: AttackStrategy[]): AttackStrategy[] =>
+    rankStrategiesByAffinity(profile.category, arr, affinityLookup) ??
+    shuffle(arr);
 
   const selected: AttackStrategy[] = [];
   const add = (candidates: AttackStrategy[]) => {
@@ -265,22 +274,88 @@ export function selectStrategiesForCategory(
 
   // Priority order:
   // 1. Counter-strategies that haven't failed yet (best bet)
-  add(shuffle(counterNotFailed));
+  add(prioritize(counterNotFailed));
   // 2. Strategies from same family as ones that passed (proven effective)
-  add(shuffle(passedBefore));
+  add(prioritize(passedBefore));
   // 3. Untried non-counter strategies (fresh approaches)
-  add(shuffle(untriedNonCounter));
+  add(prioritize(untriedNonCounter));
   // 4. Last resort: failed counter-strategies (at least they target the right defense)
-  add(shuffle(failedCounter));
+  add(prioritize(failedCounter));
 
   if (selected.length < count) {
     const remaining = pool.filter(
       (s) => !selected.some((sel) => sel.id === s.id),
     );
-    add(shuffle(remaining));
+    add(prioritize(remaining));
   }
 
   return selected.slice(0, count);
+}
+
+function rankStrategiesByAffinity(
+  category: AttackCategory,
+  strategies: AttackStrategy[],
+  affinityLookup?: StrategyAffinityLookup,
+): AttackStrategy[] | undefined {
+  if (!affinityLookup || strategies.length === 0) return undefined;
+
+  const buckets = new Map<number, AttackStrategy[]>();
+  const unscored: AttackStrategy[] = [];
+
+  for (const strategy of strategies) {
+    const score = affinityLookup(category, strategy.slug);
+    if (score == null) {
+      unscored.push(strategy);
+      continue;
+    }
+    const bucket = buckets.get(score) ?? [];
+    bucket.push(strategy);
+    buckets.set(score, bucket);
+  }
+
+  if (buckets.size === 0) return undefined;
+
+  const ranked: AttackStrategy[] = [];
+  const scores = [...buckets.keys()].sort((a, b) => b - a);
+  for (const score of scores) {
+    const bucket = buckets.get(score) ?? [];
+    const shuffledBucket = [...bucket].sort(() => Math.random() - 0.5);
+    ranked.push(...shuffledBucket);
+  }
+
+  return [...ranked, ...unscored];
+}
+
+export function selectStrategiesForCategoryIntelligently(
+  category: AttackCategory,
+  allStrategies: AttackStrategy[],
+  enabledSlugs: string[] | undefined,
+  count: number,
+  affinityLookup?: StrategyAffinityLookup,
+): AttackStrategy[] {
+  const pool = enabledSlugs?.length
+    ? allStrategies.filter((strategy) => enabledSlugs.includes(strategy.slug))
+    : [...allStrategies];
+
+  const ranked = rankStrategiesByAffinity(category, pool, affinityLookup);
+  if (!ranked) {
+    return sampleStrategies(allStrategies, enabledSlugs, count);
+  }
+
+  return ranked.slice(0, count);
+}
+
+export function orderStrategiesForCategory(
+  category: AttackCategory,
+  allStrategies: AttackStrategy[],
+  enabledSlugs: string[] | undefined,
+  affinityLookup?: StrategyAffinityLookup,
+): AttackStrategy[] {
+  const pool = enabledSlugs?.length
+    ? allStrategies.filter((strategy) => enabledSlugs.includes(strategy.slug))
+    : [...allStrategies];
+
+  return rankStrategiesByAffinity(category, pool, affinityLookup) ?? pool;
 }
 
 export { sampleStrategies } from "./attack-strategies.js";

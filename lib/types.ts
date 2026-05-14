@@ -575,6 +575,12 @@ export interface Config {
      */
     customStrategiesFile?: string;
     /**
+     * Optional CSV file with category-aware strategy rankings.
+     * Format: category,strategy,affinity_score with higher scores ranked first.
+     * When omitted, the framework auto-uses data/strategy-category-affinity.csv if it exists.
+     */
+    strategyCategoryAffinityFile?: string;
+    /**
      * Number of attacks to generate per strategy per category in full-pool mode. Default: 1.
      * Increasing this multiplies LLM-generated attacks: attacksPerStrategy × strategies × categories.
      */

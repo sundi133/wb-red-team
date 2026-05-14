@@ -29,6 +29,7 @@ import socket
 import sys
 import time
 import zlib
+import ssl
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path

@@ -82,12 +82,19 @@ describe("loadConfig", () => {
     const path = writeTestConfig(
       tmpDir,
       makeValidConfig({
-        attackConfig: { adaptiveRounds: 5, llmModel: "gpt-4o-mini" },
+        attackConfig: {
+          adaptiveRounds: 5,
+          llmModel: "gpt-4o-mini",
+          strategyCategoryAffinityFile: "data/strategy-category-affinity.csv",
+        },
       }),
     );
     const config = loadConfig(path);
     expect(config.attackConfig.adaptiveRounds).toBe(5);
     expect(config.attackConfig.llmModel).toBe("gpt-4o-mini");
+    expect(config.attackConfig.strategyCategoryAffinityFile).toBe(
+      "data/strategy-category-affinity.csv",
+    );
     // Non-overridden fields get defaults
     expect(config.attackConfig.concurrency).toBe(3);
   });
