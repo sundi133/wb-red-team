@@ -77,7 +77,6 @@
     "enabledStrategies": [
       "life_or_death_emergency",
       "template_variable_injection",
-      "life_or_death_emergency",
       "critical_deadline_pressure",
       "personal_distress_moral_dilemma",
       "child_family_emergency",
@@ -107,7 +106,7 @@
       "creative_writing_framing",
       "multi_language_obfuscation",
       "markdown_html_injection",
-      "base64_context_hint",
+      "base64_context_hint"
     ],
     "enabledCategories": [
       "prompt_injection",
