@@ -48,7 +48,6 @@ const server = createServer((req, res) => {
       let responseContent: string;
       const lower = userMessage.toLowerCase();
       const systemLower = systemMessage.toLowerCase();
-
       // Detect judge/analyzer requests — respond with structured JSON
       if (systemLower.includes("judge") || systemLower.includes("verdict") ||
           systemLower.includes("analyze") || systemLower.includes("evaluator") ||

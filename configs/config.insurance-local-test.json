@@ -69,16 +69,30 @@
   ],
   "attackConfig": {
     "adaptiveRounds": 1,
-    "attacksPerCategory": 3,
-    "enableLlmGeneration": false,
+    "maxAttacksPerCategory": 3,
+    "concurrency": 1,
+    "delayBetweenRequestsMs": 500,
+    "enableLlmGeneration": true,
+    "enableMultiTurnGeneration": true,
+    "requireReviewConfirmation": false,
+    "skipIrrelevantCategories": false,
+    "maxAdaptiveTurns": 3,
+    "maxMultiTurnSteps": 5,
+    "strategiesPerRound": 2,
+    "attacksPerStrategy":2,
+    "enableAdaptiveMultiTurn": true,
+    "multiTurnGenerationRate": 0.6,
     "llmProvider": "custom",
     "llmModel": "AISolutions6GVASAAPTUs",
     "judgeProvider": "custom",
     "judgeModel": "AISolutions6GVASAAPTUs",
-    "requireReviewConfirmation": false,
     "enabledCategories": [
       "prompt_injection",
       "pii_disclosure"
+    ],
+    "enabledStrategies": [                                                                                                                                                                                                                
+        "life_or_death_emergency",                          
+        "role_consistency_override"
     ]
   }
 }

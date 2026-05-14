@@ -769,6 +769,15 @@ ${responseBody.slice(0, 10000)}`;
     }
   }
 
+  // Normalize: if LLM returned verdict string instead of attack_succeeded boolean, convert it
+  if (typeof result.attack_succeeded !== "boolean" && typeof result.verdict === "string") {
+    const v = result.verdict.toUpperCase();
+    result.attack_succeeded = v === "PASS" || v === "YES" || v === "TRUE";
+    if (v === "PARTIAL") {
+      result.partial = true;
+    }
+  }
+
   // Validate required fields
   if (typeof result.attack_succeeded !== "boolean") {
     throw new Error(
@@ -1278,6 +1287,18 @@ function extractJudgmentFromPartialJson(text: string): Record<string, unknown> {
     "Judge response was malformed — verdict extracted via fallback";
   result.evidence_for = strMatch("evidence_for");
   result.evidence_against = strMatch("evidence_against");
+
+  // Fallback: convert verdict string to attack_succeeded boolean
+  if (result.attack_succeeded === undefined) {
+    const verdictStr = strMatch("verdict");
+    if (verdictStr) {
+      const v = verdictStr.toUpperCase();
+      result.attack_succeeded = v === "PASS" || v === "YES" || v === "TRUE";
+      if (v === "PARTIAL") {
+        result.partial = true;
+      }
+    }
+  }
 
   if (result.attack_succeeded === undefined && result.partial === undefined) {
     throw new Error(

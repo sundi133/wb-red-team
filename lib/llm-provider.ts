@@ -373,6 +373,7 @@ class CustomProvider implements LlmProvider {
       baseURL,
     });
     this.requestConfig = requestConfig;
+    console.log(`  [LLM custom] baseURL=${baseURL}`);
   }
 
   async chat(options: ChatOptions): Promise<string> {
