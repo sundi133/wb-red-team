@@ -78,21 +78,24 @@ export function estimatePreRun(
   const attacksPerStrategy = Math.max(1, ac.attacksPerStrategy ?? 1);
   const maxAttacksPerCategory = ac.maxAttacksPerCategory ?? 5;
   const adaptiveRounds = Math.max(1, ac.adaptiveRounds ?? 1);
+  const includeSeeds = ac.includeSeedAttacks ?? true;
+  const seedsPerCategory = includeSeeds ? SEEDS_PER_CATEGORY : 0;
 
   const isFullPool =
     poolLen > 0 &&
     (strategiesPerRound >= FULL_POOL_THRESHOLD || strategiesPerRound >= poolLen);
   const effectiveStrategies = Math.min(strategiesPerRound, poolLen);
 
-  // Round 1 attacks per category = seeds + generated
-  const perCatRound1 = isFullPool
-    ? SEEDS_PER_CATEGORY + effectiveStrategies * attacksPerStrategy
-    : SEEDS_PER_CATEGORY + Math.min(maxAttacksPerCategory, effectiveStrategies);
+  // Both modes now multiply effectiveStrategies × attacksPerStrategy per
+  // category (commit 5927fb8 unified batch-mode with full-pool). Difference
+  // between modes is now WHICH strategies — full-pool runs the whole pool in
+  // affinity order, batch picks the affinity top-N — not HOW MANY attacks.
+  const generatedPerCat = effectiveStrategies * attacksPerStrategy;
 
-  // Rounds 2..N skip seeds, just LLM-generated
-  const perCatLater = isFullPool
-    ? effectiveStrategies * attacksPerStrategy
-    : Math.min(maxAttacksPerCategory, effectiveStrategies);
+  // Round 1 attacks per category = generated + (seeds, if includeSeedAttacks)
+  const perCatRound1 = generatedPerCat + seedsPerCategory;
+  // Rounds 2..N skip seeds entirely (only round 1 calls getSeedAttacks)
+  const perCatLater = generatedPerCat;
 
   const plannedAttacks =
     numCategories * (perCatRound1 + (adaptiveRounds - 1) * perCatLater);
@@ -104,9 +107,9 @@ export function estimatePreRun(
   const adaptiveEnabled =
     !!ac.enableAdaptiveMultiTurn && !!ac.enableMultiTurnGeneration;
 
-  const generatedAttacks = plannedAttacks - numCategories * SEEDS_PER_CATEGORY;
+  const generatedAttacks = plannedAttacks - numCategories * seedsPerCategory;
   const predefinedMt = Math.round(generatedAttacks * mtRate);
-  const remaining = generatedAttacks - predefinedMt + numCategories * SEEDS_PER_CATEGORY;
+  const remaining = generatedAttacks - predefinedMt + numCategories * seedsPerCategory;
   const adaptiveMt = adaptiveEnabled ? remaining : 0;
   const singleTurn = adaptiveEnabled ? 0 : remaining;
 
@@ -123,7 +126,7 @@ export function estimatePreRun(
     effectiveStrategies,
     attacksPerStrategy,
     maxAttacksPerCategory,
-    seedsPerCategory: SEEDS_PER_CATEGORY,
+    seedsPerCategory,
     adaptiveRounds,
     perCategoryRound1: perCatRound1,
   };
@@ -257,29 +260,22 @@ export function formatEstimate(est: RunEstimate, concurrency: number): string[] 
   if (est.isPreRun && est.mode) {
     const m = est.mode;
     const round1Total = m.numCategories * m.perCategoryRound1;
+    const variantWord = m.attacksPerStrategy === 1 ? "variant" : "variants";
     if (m.isFullPool) {
-      const variantWord = m.attacksPerStrategy === 1 ? "variant" : "variants";
       lines.push(
-        row("Mode", `full-pool — every strategy runs ${m.attacksPerStrategy}× ${variantWord}`),
-      );
-      lines.push(
-        row(
-          "Per category",
-          `${m.effectiveStrategies} ${plural(m.effectiveStrategies, "strategy", "strategies")} × ${m.attacksPerStrategy}/strategy + ${m.seedsPerCategory} seeds = ~${m.perCategoryRound1} attacks`,
-        ),
+        row("Mode", `full-pool — every strategy in pool runs ${m.attacksPerStrategy}× ${variantWord}`),
       );
     } else {
-      const generated = Math.min(m.maxAttacksPerCategory, m.effectiveStrategies);
       lines.push(
-        row("Mode", `batch — sample ${m.effectiveStrategies} of ${m.poolLen} strategies/category`),
-      );
-      lines.push(
-        row(
-          "Per category",
-          `${generated} LLM attacks + ${m.seedsPerCategory} seeds = ~${m.perCategoryRound1} attacks`,
-        ),
+        row("Mode", `batch — top ${m.effectiveStrategies} of ${m.poolLen} strategies/category × ${m.attacksPerStrategy}× ${variantWord}`),
       );
     }
+    lines.push(
+      row(
+        "Per category",
+        `${m.effectiveStrategies} ${plural(m.effectiveStrategies, "strategy", "strategies")} × ${m.attacksPerStrategy}/strategy + ${m.seedsPerCategory} seeds = ~${m.perCategoryRound1} attacks`,
+      ),
+    );
     lines.push(
       row(
         "Round 1 total",

@@ -459,14 +459,25 @@ function enqueueJob(
   config: Config,
   ctx?: RequestContext | null,
 ): Job {
-  // Estimate total attacks: categories × maxAttacksPerCategory × rounds
-  // + seed attacks (roughly 2-3 per category on round 1)
+  // Estimate total attacks. Both batch and full-pool modes generate
+  // effectiveStrategies × attacksPerStrategy attacks per category per round
+  // (commit 5927fb8 unified the behavior). Seeds add ~3 per category on
+  // round 1 only, and only when includeSeedAttacks !== false.
   const ac = config.attackConfig;
+  const TOTAL_STRATEGIES = 155;
   const numCategories = ac.enabledCategories?.length || 20; // default ~20 if unset
-  const attacksPerCat = ac.maxAttacksPerCategory || 5;
+  const poolLen = ac.enabledStrategies?.length || TOTAL_STRATEGIES;
+  const strategiesPerRound = ac.strategiesPerRound ?? 5;
+  const effectiveStrategies = Math.min(strategiesPerRound, poolLen);
+  const attacksPerStrategy = Math.max(1, ac.attacksPerStrategy ?? 1);
   const rounds = ac.adaptiveRounds || 2;
-  const seedsPerCat = 3; // approximate
-  const estimatedTotal = (numCategories * attacksPerCat * rounds) + (numCategories * seedsPerCat);
+  const seedsPerCat = (ac.includeSeedAttacks ?? true) ? 3 : 0;
+  const generatedPerCat = effectiveStrategies * attacksPerStrategy;
+  const round1Total = numCategories * (generatedPerCat + seedsPerCat);
+  const laterRoundsTotal = numCategories * generatedPerCat * Math.max(0, rounds - 1);
+  // Add ~15% refinement attacks (each PARTIAL produces ~2 refined attacks).
+  const baseTotal = round1Total + laterRoundsTotal;
+  const estimatedTotal = Math.round(baseTotal * 1.3);
 
   const job: Job = {
     id: randomUUID(),
