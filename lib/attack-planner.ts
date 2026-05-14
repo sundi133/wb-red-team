@@ -382,6 +382,7 @@ async function generateAttackForStrategy(
   round: number,
   adaptiveContext: string,
   llm: ReturnType<typeof getLlmProvider>,
+  attemptLabel?: string,
 ): Promise<Attack | null> {
   const { header, realismFooter } = buildGenerationPreamble(
     config,
@@ -429,7 +430,16 @@ ${realismFooter}`;
 
     const parsed = parseJsonArrayFromLlmResponse<Attack>(text);
     const a = parsed[0];
-    if (!a) return null;
+    if (!a) {
+      const responsePreview =
+        typeof text === "string"
+          ? text.replace(/\s+/g, " ").slice(0, 500)
+          : String(text).slice(0, 500);
+      console.error(
+        `      ❌ Generation returned no valid attack JSON for ${mod.category}/${strategy.slug}${attemptLabel ? ` ${attemptLabel}` : ""}. Response preview: ${responsePreview || "(empty response)"}`,
+      );
+      return null;
+    }
     return {
       ...a,
       category: mod.category,
@@ -440,7 +450,10 @@ ${realismFooter}`;
       strategyId: strategy.id,
       strategyName: strategy.name,
     };
-  } catch {
+  } catch (error) {
+    console.error(
+      `      ❌ Failed to generate attack for ${mod.category}/${strategy.slug}${attemptLabel ? ` ${attemptLabel}` : ""}: ${formatErrorDetails(error)}`,
+    );
     return null;
   }
 }
@@ -475,6 +488,7 @@ async function generateAttacksForStrategies(
         round,
         adaptiveContext,
         llm,
+        attacksPerStrategy > 1 ? `(variant ${j + 1}/${attacksPerStrategy})` : undefined,
       );
       if (attack) results.push(attack);
     }
