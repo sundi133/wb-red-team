@@ -75,6 +75,7 @@ describe("loadConfig", () => {
     expect(config.attackConfig.delayBetweenRequestsMs).toBe(200);
     expect(config.attackConfig.llmModel).toBe("gpt-4o");
     expect(config.attackConfig.enableLlmGeneration).toBe(true);
+    expect(config.attackConfig.includeSeedAttacks).toBe(true);
     expect(config.attackConfig.maxMultiTurnSteps).toBe(8);
   });
 
@@ -85,6 +86,7 @@ describe("loadConfig", () => {
         attackConfig: {
           adaptiveRounds: 5,
           llmModel: "gpt-4o-mini",
+          includeSeedAttacks: false,
           strategyCategoryAffinityFile: "data/strategy-category-affinity.csv",
         },
       }),
@@ -92,6 +94,7 @@ describe("loadConfig", () => {
     const config = loadConfig(path);
     expect(config.attackConfig.adaptiveRounds).toBe(5);
     expect(config.attackConfig.llmModel).toBe("gpt-4o-mini");
+    expect(config.attackConfig.includeSeedAttacks).toBe(false);
     expect(config.attackConfig.strategyCategoryAffinityFile).toBe(
       "data/strategy-category-affinity.csv",
     );

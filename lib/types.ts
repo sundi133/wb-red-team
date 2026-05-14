@@ -520,6 +520,8 @@ export interface Config {
     /** Optional request-level guardrails array for judge LLM calls. */
     judgeGuardrails?: string[];
     enableLlmGeneration: boolean;
+    /** Include built-in seed attacks on round 1. Default: true. */
+    includeSeedAttacks?: boolean;
     maxMultiTurnSteps: number;
     /** Optional allowlist of attack categories to run. Omit or set to empty array to run all. */
     enabledCategories?: AttackCategory[];

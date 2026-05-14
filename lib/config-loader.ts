@@ -97,6 +97,7 @@ function validateAndNormalizeConfig(config: Config): Config {
     llmProvider: "openai",
     llmModel: "gpt-4o",
     enableLlmGeneration: true,
+    includeSeedAttacks: true,
     maxMultiTurnSteps: 8,
     strategiesPerRound: 8,
     requireReviewConfirmation: true,
