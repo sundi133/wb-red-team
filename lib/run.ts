@@ -6,6 +6,8 @@ import { loadConfigFromObject } from "./config-loader.js";
 import { describeTarget, getTargetAdapter } from "./target-adapter.js";
 import { analyzeCodebase } from "./codebase-analyzer.js";
 import { planAttacks, refinePartialAttacks } from "./attack-planner.js";
+import { estimatePreRun, estimateRun, formatEstimate } from "./run-estimator.js";
+import { getAllStrategies } from "./attack-strategies.js";
 import {
   preAuthenticate,
   executeAttack,
@@ -682,6 +684,20 @@ export async function runRedTeam(
       config.attackConfig.customAttacksOnly === true &&
       customAttacks.length > 0;
 
+    // Pre-run estimate — print BEFORE planning so dashboards/API clients
+    // see expected attack count and wall time immediately on round start.
+    if (!skipBuiltinPlanner) {
+      const totalStrategies = getAllStrategies(
+        config.attackConfig.customStrategiesFile,
+      ).length;
+      const est = estimatePreRun(config, relevantModules.length, totalStrategies);
+      const concurrency = Math.max(1, config.attackConfig.concurrency || 1);
+      log("attacks", "Pre-run estimate", { round });
+      for (const line of formatEstimate(est, concurrency)) {
+        log("attacks", line, { round });
+      }
+    }
+
     const planned = skipBuiltinPlanner
       ? []
       : await planAttacks(
@@ -698,6 +714,13 @@ export async function runRedTeam(
       totalRounds: config.attackConfig.adaptiveRounds,
       totalAttacks: attacks.length,
     });
+    {
+      const est = estimateRun(attacks, config);
+      const concurrency = Math.max(1, config.attackConfig.concurrency || 1);
+      for (const line of formatEstimate(est, concurrency)) {
+        log("attacks", line, { round });
+      }
+    }
 
     const roundResults: AttackResult[] = [];
 
@@ -879,6 +902,28 @@ export async function runRedTeam(
                   return { verdict: r.verdict, findings: r.findings };
                 },
               );
+
+              const lastStep = stepResults[stepResults.length - 1];
+              const result = await analyzeResponse(
+                config, attack, lastStep.statusCode, lastStep.body,
+                lastStep.timeMs, appContext, lastStep.executionTrace,
+              );
+              result.stepIndex = lastStep.stepIndex;
+              result.totalSteps = stepResults.length;
+              result.conversation = stepResults.map((sr) => ({
+                stepIndex: sr.stepIndex,
+                payload: sr.stepIndex === 0
+                  ? attack.payload
+                  : (attack.steps?.[sr.stepIndex - 1]?.payload ?? {}),
+                statusCode: sr.statusCode,
+                responseBody: sr.body,
+                responseTimeMs: sr.timeMs,
+              }));
+
+              log("refine", `[R${i + 1}/${refinedAttacks.length}] ${attack.name} → ${getVerdictLabel(result.verdict)} (${lastStep.statusCode}, ${lastStep.timeMs}ms)${stoppedEarly ? ` (stopped early)` : ""}`, progressExtra);
+              await maybeGenerateIdealResponse(config, result);
+              roundResults.push(result);
+              emitResult(result, progressExtra);
             } else if (
               config.attackConfig.enableAdaptiveMultiTurn &&
               config.attackConfig.enableMultiTurnGeneration
