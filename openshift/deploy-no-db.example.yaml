@@ -1,6 +1,9 @@
 # Secret: API keys and auth config (no DB)
 # NOTE: Replace these placeholder values with freshly-rotated keys.
 # The previous keys shared in chat must be revoked.
+#
+# WARNING: Without a database, guardrail reports and run history are lost
+# on pod restart. For persistent storage, use deploy-with-db.example.yaml instead.
 apiVersion: v1
 kind: Secret
 metadata:

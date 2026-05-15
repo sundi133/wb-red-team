@@ -1,0 +1,299 @@
+# =============================================================================
+# Red Team Dashboard — OpenShift deployment WITH Postgres
+# =============================================================================
+# This adds Postgres to the no-db deployment so guardrail reports, red-team
+# reports, audit logs, and compliance analyses persist across pod restarts.
+#
+# To deploy:
+#   oc apply -f openshift/deploy-with-db.example.yaml
+#
+# To upgrade from no-db:
+#   1. Generate encryption key:  openssl rand -hex 32
+#   2. Update the Secret below with the key and a strong DB password
+#   3. oc apply -f openshift/deploy-with-db.example.yaml
+#   4. The migration runs automatically on dashboard startup
+# =============================================================================
+
+---
+# Secret: API keys, DB credentials, encryption key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: red-team-secrets
+  labels:
+    app.kubernetes.io/part-of: red-team-ai
+type: Opaque
+stringData:
+  ANTHROPIC_API_KEY: ""                    # REQUIRED
+  OPENAI_API_KEY: ""                       # optional
+  POSTGRES_PASSWORD: "CHANGE-ME-STRONG"    # REQUIRED: strong password
+  DATABASE_URL: "postgres://redteam:CHANGE-ME-STRONG@postgres:5432/redteam"
+  MASTER_ENCRYPTION_KEY: ""                # REQUIRED: openssl rand -hex 32
+  SIMPLE_AUTH_SESSION_SECRET: ""           # REQUIRED: openssl rand -hex 32
+  SIMPLE_AUTH_PASSWORD: ""                 # REQUIRED: dashboard login password
+
+---
+# PVC: Postgres data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  labels:
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# PVC: Red-team reports (file fallback)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: red-team-reports
+  labels:
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+# PVC: Guardrails reports (file fallback)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: red-team-guardrail-reports
+  labels:
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+# ── Postgres Deployment ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: redteam
+            - name: POSTGRES_USER
+              value: redteam
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "redteam"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "redteam"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: postgres-data
+
+---
+# Postgres Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# ── Red Team Dashboard ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: red-team-dashboard
+  labels:
+    app: red-team-dashboard
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: red-team-dashboard
+  template:
+    metadata:
+      labels:
+        app: red-team-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: docker.io/sundi133/wb-red-team:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4200
+              name: http
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: DATABASE_URL
+            - name: MASTER_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: MASTER_ENCRYPTION_KEY
+            - name: AUTH_MODE
+              value: "simple"
+            - name: SIMPLE_AUTH_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: SIMPLE_AUTH_SESSION_SECRET
+            - name: SIMPLE_AUTH_SESSION_TTL_HOURS
+              value: "12"
+            - name: SIMPLE_AUTH_USERNAME
+              value: "admin"
+            - name: SIMPLE_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: red-team-secrets
+                  key: SIMPLE_AUTH_PASSWORD
+            - name: SIMPLE_AUTH_ROLE
+              value: "admin"
+            - name: SIMPLE_AUTH_NAME
+              value: "Admin User"
+            # Add proxy env vars if behind corporate proxy:
+            # - name: HTTP_PROXY
+            #   value: "http://your-proxy:8080"
+            # - name: HTTPS_PROXY
+            #   value: "http://your-proxy:8080"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.svc,.cluster.local,postgres"
+          volumeMounts:
+            - name: reports
+              mountPath: /app/report
+            - name: guardrail-reports
+              mountPath: /app/reports
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4200
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4200
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: reports
+          persistentVolumeClaim:
+            claimName: red-team-reports
+        - name: guardrail-reports
+          persistentVolumeClaim:
+            claimName: red-team-guardrail-reports
+
+---
+# Dashboard Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: red-team-dashboard
+  labels:
+    app: red-team-dashboard
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  selector:
+    app: red-team-dashboard
+  ports:
+    - port: 4200
+      targetPort: 4200
+      name: http
+
+---
+# OpenShift Route (TLS edge termination)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: red-team-dashboard
+  labels:
+    app: red-team-dashboard
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  to:
+    kind: Service
+    name: red-team-dashboard
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

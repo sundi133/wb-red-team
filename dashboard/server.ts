@@ -32,6 +32,13 @@ import {
   getSimpleSessionUser,
   loginSimpleUser,
 } from "../lib/auth-simple.js";
+import {
+  storeGuardrailReport,
+  getGuardrailReport,
+  listGuardrailReports,
+  extractGuardrailSummary,
+  type GuardrailReportMeta,
+} from "../lib/guardrail-store.js";
 
 loadEnvFile();
 
@@ -1033,44 +1040,48 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
 
   // API: list litellm guardrails reports
   if (url.pathname === "/api/litellm-reports" && req.method === "GET") {
+    // Collect from DB
+    let dbMetas: GuardrailReportMeta[] = [];
+    if (isDbConfigured() && ctx?.tenantId) {
+      try {
+        dbMetas = await listGuardrailReports(ctx.tenantId);
+      } catch (dbErr) {
+        console.error("  [guardrails] DB list failed, falling back to files:", dbErr);
+      }
+    }
+    // Collect from files (for reports not yet in DB)
+    let fileMetas: GuardrailReportMeta[] = [];
     try {
+      const dbFilenames = new Set(dbMetas.map((m) => m.filename));
       const files = readdirSync(LITELLM_REPORT_DIR)
-        .filter((f) => f.endsWith(".json"))
+        .filter((f) => f.endsWith(".json") && !dbFilenames.has(f))
         .sort()
         .reverse();
-      const metas = files.map((f) => {
+      fileMetas = files.map((f) => {
         try {
           const raw = JSON.parse(readFileSync(join(LITELLM_REPORT_DIR, f), "utf-8"));
-          const results = raw.results || [];
-          const goodTotal = results.filter((r: any) => r.without_guardrails?.category === "good").length;
-          const badTotal = results.filter((r: any) => r.without_guardrails?.category === "bad").length;
-          const blocked = results.filter((r: any) => {
-            const g = r.with_guardrails;
-            if (!g || g.category !== "bad") return false;
-            if (g.verdict) return g.verdict === "guardrail_blocked" || g.verdict === "safe_refusal_or_redirect";
-            return g.status_code === 400 || g.status_code === 403 ||
-              (g.response_text || "").toLowerCase().includes("blocked by votal guardrails");
-          }).length;
+          const summary = extractGuardrailSummary(raw);
           return {
             filename: f,
             created_at: raw.created_at || "",
-            model: raw.model || "",
-            guardrails: raw.guardrails || [],
-            goodTotal,
-            badTotal,
-            blocked,
-            total: results.length,
+            model: summary.model,
+            guardrails: summary.guardrails,
+            goodTotal: summary.goodTotal,
+            badTotal: summary.badTotal,
+            blocked: summary.blocked,
+            total: summary.total,
           };
         } catch {
           return { filename: f, created_at: "", model: "", guardrails: [], goodTotal: 0, badTotal: 0, blocked: 0, total: 0 };
         }
       });
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(metas));
     } catch {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end("[]");
+      // No report directory — that's fine
     }
+    // Merge: DB reports first, then file-only reports
+    const merged = [...dbMetas, ...fileMetas];
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(merged));
     return;
   }
 
@@ -1082,6 +1093,20 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
       res.end("Bad request");
       return;
     }
+    // Try DB first
+    if (isDbConfigured() && ctx?.tenantId) {
+      try {
+        const json = await getGuardrailReport(filename, ctx.tenantId);
+        if (json) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(json);
+          return;
+        }
+      } catch (dbErr) {
+        console.error("  [guardrails] DB get failed, falling back to file:", dbErr);
+      }
+    }
+    // File fallback
     try {
       const raw = readFileSync(join(LITELLM_REPORT_DIR, filename), "utf-8");
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -1103,12 +1128,21 @@ const server = createServer(withMiddleware(async (req, res, ctx) => {
         res.end(JSON.stringify({ error: "Invalid report: missing results array" }));
         return;
       }
+      // Always write to disk as fallback
       if (!existsSync(LITELLM_REPORT_DIR)) {
         mkdirSync(LITELLM_REPORT_DIR, { recursive: true });
       }
       const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19) + "Z";
       const filename = `litellm-guardrails-${ts}.json`;
       writeFileSync(join(LITELLM_REPORT_DIR, filename), JSON.stringify(parsed, null, 2));
+      // Also store in DB if available
+      if (isDbConfigured() && ctx?.tenantId) {
+        try {
+          await storeGuardrailReport(body, ctx.tenantId, filename);
+        } catch (dbErr) {
+          console.error("  [guardrails] DB store failed (file was saved):", dbErr);
+        }
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ filename, message: "Report uploaded" }));
     } catch (err) {

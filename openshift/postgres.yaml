@@ -1,0 +1,120 @@
+# =============================================================================
+# Standalone Postgres for Red Team Dashboard — OpenShift
+# =============================================================================
+# Deploy this separately before the dashboard if you want to manage
+# Postgres independently (e.g., shared across environments).
+#
+# Usage:
+#   oc apply -f openshift/postgres.yaml
+#   oc wait --for=condition=ready pod -l app=postgres --timeout=60s
+#
+# Then deploy the dashboard with DATABASE_URL pointing to this service:
+#   postgres://redteam:<password>@postgres:5432/redteam
+# =============================================================================
+
+---
+# Secret: Postgres credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secrets
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "CHANGE-ME-STRONG"    # REQUIRED: change this
+
+---
+# PVC: Postgres data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Postgres Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: redteam
+            - name: POSTGRES_USER
+              value: redteam
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "redteam"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "redteam"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: postgres-data
+
+---
+# Postgres Service (accessible as "postgres:5432" within the namespace)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: red-team-ai
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
