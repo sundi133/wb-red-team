@@ -1,3 +1,6 @@
+import { bootstrapProxy } from "../lib/proxy-bootstrap.js";
+bootstrapProxy();
+
 import { createServer, type IncomingMessage } from "node:http";
 import { readFileSync, readdirSync, rmSync, mkdtempSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";

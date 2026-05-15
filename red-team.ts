@@ -1,5 +1,8 @@
 #!/usr/bin/env npx tsx
 
+import { bootstrapProxy } from "./lib/proxy-bootstrap.js";
+bootstrapProxy();
+
 import { createInterface } from "node:readline/promises";
 import { dirname, resolve } from "node:path";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, unlinkSync } from "node:fs";
