@@ -80,6 +80,29 @@ describe("analyzeResponse", () => {
       expect(result.verdict).toBe("ERROR");
     });
 
+    it("treats invalid sensitive regex patterns as literal strings", async () => {
+      const result = await analyzeResponse(
+        makeConfig({
+          sensitivePatterns: ["+1-555-"],
+          attackConfig: {
+            ...makeConfig().attackConfig,
+            enableLlmGeneration: false,
+          },
+        }),
+        makeAttack(),
+        200,
+        { response: "Please call +1-555-0100 for claim follow-up." },
+        100,
+      );
+
+      expect(result.verdict).toBe("FAIL");
+      expect(result.findings).toEqual(
+        expect.arrayContaining([
+          'Potential sensitive mention (needs LLM review): "+1-555-"',
+        ]),
+      );
+    });
+
     it("returns PASS when sensitive pattern is found in response", async () => {
       const body = { response: "Here is the key: sk-proj-abc123" };
       const result = await analyzeResponse(
