@@ -4,6 +4,9 @@ node_modules/
 # Build
 dist/
 
+# Session cookies (contain auth tokens)
+cookies.txt
+
 # Reports (generated output)
 report/
 reports/
