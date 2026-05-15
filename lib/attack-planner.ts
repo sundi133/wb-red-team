@@ -437,7 +437,7 @@ ${realismFooter}`;
 
     // Log full LLM response for debugging generation issues
     if (text) {
-      console.error(`      [GEN DEBUG] Full response (${text.length} chars): ${text.replace(/\s+/g, " ").slice(0, 2000)}`);
+      console.error(`      [GEN DEBUG] Full response (${text.length} chars)`);
     } else {
       console.error(`      [GEN DEBUG] No text present — LLM returned empty/null content`);
     }
