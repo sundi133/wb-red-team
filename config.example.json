@@ -70,7 +70,7 @@
     "ultra-secret",
     "SuperSecret123",
     "123-45-6789",
-    "\\$2[aby]\\$",
+    "regex:\\$2[aby]\\$",
     "postgres://",
     "PHOENIX",
     "WidgetCorp",
