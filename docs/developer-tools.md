@@ -5,6 +5,9 @@ nav_order: 14
 
 # Developer Tools & Agent Integration
 
+{: .note }
+For SDK integration examples (LangChain, CrewAI, OpenAI, Anthropic, Vercel AI SDK) and the REST API reference, see [APIs & SDKs](sdk-integrations.md).
+
 ## MCP tools
 
 The framework exposes 12 MCP tools via `hermes-redteam/mcp-server.ts` for use with any MCP-compatible agent:
