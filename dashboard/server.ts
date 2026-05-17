@@ -1478,15 +1478,26 @@ Be specific and factual. Reference real incidents and realistic financial figure
       res.end(JSON.stringify({ error: "Audit log requires authentication" }));
       return;
     }
-    const result = await queryAuditLog(ctx.tenantId, {
-      limit: parseInt(url.searchParams.get("limit") || "100", 10),
-      offset: parseInt(url.searchParams.get("offset") || "0", 10),
-      action: url.searchParams.get("action") || undefined,
-      since: url.searchParams.get("since") || undefined,
-    });
-    await logAudit(ctx, "audit.view");
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(result));
+    if (!isDbConfigured()) {
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Audit log requires a database connection. Start Postgres or set DATABASE_URL in .env." }));
+      return;
+    }
+    try {
+      const result = await queryAuditLog(ctx.tenantId, {
+        limit: parseInt(url.searchParams.get("limit") || "100", 10),
+        offset: parseInt(url.searchParams.get("offset") || "0", 10),
+        action: url.searchParams.get("action") || undefined,
+        since: url.searchParams.get("since") || undefined,
+      });
+      await logAudit(ctx, "audit.view");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      console.error("Audit log query failed:", err instanceof Error ? err.message : err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Failed to fetch audit log" }));
+    }
     return;
   }
 

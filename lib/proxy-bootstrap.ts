@@ -1,10 +1,10 @@
 /**
  * Global proxy bootstrap — call once at app startup.
  * Configures Node's global fetch dispatcher to route through
- * HTTP_PROXY / HTTPS_PROXY when set, so the OpenAI SDK and
- * raw fetch() calls respect corporate proxies.
+ * HTTP_PROXY / HTTPS_PROXY when set, while respecting NO_PROXY
+ * for internal endpoints (targets, databases, etc.).
  */
-import { ProxyAgent, setGlobalDispatcher } from "undici";
+import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
 
 export function bootstrapProxy(): void {
   const proxyUrl =
@@ -15,7 +15,12 @@ export function bootstrapProxy(): void {
 
   if (!proxyUrl) return;
 
-  const agent = new ProxyAgent(proxyUrl);
+  // EnvHttpProxyAgent reads HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
+  // automatically — internal targets listed in NO_PROXY bypass the proxy.
+  const agent = new EnvHttpProxyAgent();
   setGlobalDispatcher(agent);
+
+  const noProxy = process.env.NO_PROXY || process.env.no_proxy || "(none)";
   console.log(`  [proxy] Global fetch dispatcher set → ${proxyUrl}`);
+  console.log(`  [proxy] NO_PROXY → ${noProxy}`);
 }

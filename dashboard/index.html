@@ -3668,8 +3668,9 @@
           if (action) params.set("action", action);
           const res = await fetch("/api/audit-log?" + params);
 
-          if (res.status === 403 || res.status === 401) {
-            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">Audit log requires enterprise mode (DATABASE_URL).</div>';
+          if (res.status === 403 || res.status === 401 || res.status === 503) {
+            const errData = await res.json().catch(() => ({}));
+            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);">' + esc(errData.error || 'Audit log requires enterprise mode (DATABASE_URL).') + '</div>';
             return;
           }
 
