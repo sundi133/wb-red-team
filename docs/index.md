@@ -90,4 +90,5 @@ Three real findings from running against [`demo-agentic-app`](https://github.com
 - Black-box only? → [API-Only Testing]({{ site.baseurl }}/api-only/)
 - Looking up an attack? → [Attack Catalog]({{ site.baseurl }}/attack-catalog/)
 - Deploying for your team? → [Deployment]({{ site.baseurl }}/deployment/)
+- AWS / Azure Marketplace? → [Cloud Marketplaces]({{ site.baseurl }}/marketplace/)
 - Need compliance mapping? → [Compliance Frameworks]({{ site.baseurl }}/compliance/)

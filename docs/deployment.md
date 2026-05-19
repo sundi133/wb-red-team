@@ -42,6 +42,8 @@ docker compose up -d
 
 Deploy anywhere — AWS, GCP, Azure, Railway, on-prem, or any environment that runs Docker + Postgres.
 
+For **AWS Marketplace** and **Azure Marketplace** — both deploying from a listing and publishing your own listing — see the [Cloud Marketplaces guide]({{ site.baseurl }}/marketplace/).
+
 **Prerequisites:** Docker runtime, Postgres 13+, OIDC identity provider (Clerk, Okta, Azure AD, Auth0, Keycloak).
 
 **Features:**
